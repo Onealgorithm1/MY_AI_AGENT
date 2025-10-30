@@ -1,0 +1,274 @@
+-- My AI Agent - Initial Database Setup
+-- Creates all tables, indexes, triggers, and default admin user
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users Table
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'user' CHECK (role IN ('user', 'admin', 'superadmin')),
+    is_active BOOLEAN DEFAULT true,
+    email_verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP,
+    settings JSONB DEFAULT '{}'::jsonb,
+    preferences JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+
+-- Conversations Table
+CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(500) DEFAULT 'New Conversation',
+    model VARCHAR(100) DEFAULT 'gpt-4o',
+    pinned BOOLEAN DEFAULT false,
+    archived BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message_count INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_pinned ON conversations(pinned);
+CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived);
+
+-- Messages Table
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    model VARCHAR(100),
+    tokens_used INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    is_streaming BOOLEAN DEFAULT false,
+    parent_message_id UUID REFERENCES messages(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role);
+CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages(conversation_id, created_at DESC);
+
+-- Memory Facts Table
+CREATE TABLE IF NOT EXISTS memory_facts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fact TEXT NOT NULL,
+    category VARCHAR(100),
+    source_conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+    source_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+    confidence FLOAT DEFAULT 1.0,
+    manually_added BOOLEAN DEFAULT false,
+    approved BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_referenced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    times_referenced INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_facts_user_id ON memory_facts(user_id);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_category ON memory_facts(category);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_approved ON memory_facts(approved);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_user_referenced ON memory_facts(user_id, last_referenced_at DESC);
+
+-- Attachments Table
+CREATE TABLE IF NOT EXISTS attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_name VARCHAR(500) NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    file_size INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    mime_type VARCHAR(200),
+    status VARCHAR(50) DEFAULT 'uploaded' CHECK (status IN ('uploaded', 'processing', 'completed', 'failed')),
+    analysis_result JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachments_conversation_id ON attachments(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_message_id ON attachments(message_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_user_id ON attachments(user_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_status ON attachments(status);
+
+-- Error Logs Table
+CREATE TABLE IF NOT EXISTS error_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+    error_type VARCHAR(100) NOT NULL,
+    error_message TEXT NOT NULL,
+    error_stack TEXT,
+    request_url TEXT,
+    request_method VARCHAR(10),
+    status_code INTEGER,
+    severity VARCHAR(50) DEFAULT 'error' CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+    resolved BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_error_logs_user_id ON error_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_error_logs_created_at ON error_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_error_logs_severity ON error_logs(severity);
+CREATE INDEX IF NOT EXISTS idx_error_logs_resolved ON error_logs(resolved);
+
+-- Performance Metrics Table
+CREATE TABLE IF NOT EXISTS performance_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    metric_type VARCHAR(100) NOT NULL,
+    metric_name VARCHAR(200) NOT NULL,
+    value FLOAT NOT NULL,
+    unit VARCHAR(50),
+    endpoint VARCHAR(500),
+    method VARCHAR(10),
+    status_code INTEGER,
+    duration_ms INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_user_id ON performance_metrics(user_id);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_type ON performance_metrics(metric_type);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_created_at ON performance_metrics(created_at DESC);
+
+-- Feedback Table
+CREATE TABLE IF NOT EXISTS feedback (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    rating INTEGER CHECK (rating IN (-1, 1)),
+    feedback_type VARCHAR(100),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_conversation_id ON feedback(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_message_id ON feedback(message_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_rating ON feedback(rating);
+
+-- Usage Tracking Table
+CREATE TABLE IF NOT EXISTS usage_tracking (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    messages_sent INTEGER DEFAULT 0,
+    voice_minutes_used FLOAT DEFAULT 0.0,
+    tokens_consumed INTEGER DEFAULT 0,
+    files_uploaded INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_date ON usage_tracking(user_id, date);
+
+-- Voice Sessions Table
+CREATE TABLE IF NOT EXISTS voice_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'interrupted', 'error')),
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
+    duration_seconds INTEGER,
+    tokens_used INTEGER DEFAULT 0,
+    model VARCHAR(100),
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_sessions_user_id ON voice_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_sessions_status ON voice_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_voice_sessions_started_at ON voice_sessions(started_at DESC);
+
+-- API Secrets Table
+CREATE TABLE IF NOT EXISTS api_secrets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key_name VARCHAR(100) UNIQUE NOT NULL,
+    key_value TEXT NOT NULL,
+    service_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP,
+    created_by UUID REFERENCES users(id),
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_secrets_key_name ON api_secrets(key_name);
+CREATE INDEX IF NOT EXISTS idx_api_secrets_service_name ON api_secrets(service_name);
+CREATE INDEX IF NOT EXISTS idx_api_secrets_is_active ON api_secrets(is_active);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC);
+
+-- Functions and Triggers
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
+CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_usage_tracking_updated_at ON usage_tracking;
+CREATE TRIGGER update_usage_tracking_updated_at BEFORE UPDATE ON usage_tracking
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_api_secrets_updated_at ON api_secrets;
+CREATE TRIGGER update_api_secrets_updated_at BEFORE UPDATE ON api_secrets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE FUNCTION update_conversation_message_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE conversations 
+        SET message_count = message_count + 1,
+            last_message_at = NEW.created_at
+        WHERE id = NEW.conversation_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE conversations 
+        SET message_count = GREATEST(0, message_count - 1)
+        WHERE id = OLD.conversation_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS trigger_update_conversation_message_count ON messages;
+CREATE TRIGGER trigger_update_conversation_message_count
+AFTER INSERT OR DELETE ON messages
+FOR EACH ROW EXECUTE FUNCTION update_conversation_message_count();
+
+-- Create default admin user
+INSERT INTO users (email, password_hash, full_name, role, email_verified) 
+VALUES ('admin@myaiagent.com', '$2a$10$rGQ8VqKLxJ5K9xJ5K9xJ5eLG0KqV3wvJ5K9xJ5K9xJ5K9xJ5K9xJ5u', 'Admin User', 'admin', true)
+ON CONFLICT (email) DO NOTHING;
