@@ -1,13 +1,27 @@
 import crypto from 'crypto';
 
-// Encryption key from environment (should be 32 bytes)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 const ALGORITHM = 'aes-256-gcm';
+
+// Validate and get encryption key (lazy validation)
+function getEncryptionKey() {
+  if (!process.env.ENCRYPTION_KEY) {
+    console.error('❌ FATAL: ENCRYPTION_KEY environment variable is not set!');
+    console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
+
+  if (process.env.ENCRYPTION_KEY.length < 64) {
+    console.error('❌ FATAL: ENCRYPTION_KEY must be at least 64 characters (32 bytes hex)!');
+    process.exit(1);
+  }
+
+  return process.env.ENCRYPTION_KEY;
+}
 
 // Encrypt a secret value
 export function encryptSecret(text) {
   const iv = crypto.randomBytes(16);
-  const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
+  const key = Buffer.from(getEncryptionKey().substring(0, 64), 'hex');
   
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   
@@ -26,8 +40,8 @@ export function decryptSecret(encryptedText) {
   const iv = Buffer.from(parts[0], 'hex');
   const authTag = Buffer.from(parts[1], 'hex');
   const encrypted = parts[2];
-  
-  const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
+
+  const key = Buffer.from(getEncryptionKey().substring(0, 64), 'hex');
   
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
