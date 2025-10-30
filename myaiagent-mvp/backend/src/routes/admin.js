@@ -59,22 +59,49 @@ router.get('/stats', async (req, res) => {
 
     // Average response time (last 100 requests)
     const perfResult = await query(
-      `SELECT AVG(duration_ms) as avg_duration 
-       FROM performance_metrics 
+      `SELECT AVG(duration_ms) as avg_duration
+       FROM performance_metrics
        WHERE created_at > NOW() - INTERVAL '1 hour'
        LIMIT 100`
     );
     const avgResponseTime = Math.round(perfResult.rows[0].avg_duration) || 0;
 
+    // New users today
+    const newUsersTodayResult = await query(
+      `SELECT COUNT(*) FROM users
+       WHERE created_at >= CURRENT_DATE`
+    );
+    const newUsersToday = parseInt(newUsersTodayResult.rows[0].count);
+
+    // New conversations today
+    const newConversationsTodayResult = await query(
+      `SELECT COUNT(*) FROM conversations
+       WHERE created_at >= CURRENT_DATE`
+    );
+    const newConversationsToday = parseInt(newConversationsTodayResult.rows[0].count);
+
+    // Total voice minutes (all time)
+    const totalVoiceMinutesResult = await query(
+      `SELECT SUM(voice_minutes_used) as total_voice_minutes
+       FROM usage_tracking`
+    );
+    const totalVoiceMinutes = parseFloat(totalVoiceMinutesResult.rows[0].total_voice_minutes) || 0;
+
+    // Total files uploaded (all time)
+    const totalFilesResult = await query(
+      `SELECT COUNT(*) FROM attachments`
+    );
+    const totalFiles = parseInt(totalFilesResult.rows[0].count);
+
     res.json({
       users: {
         total: totalUsers,
         active: activeUsers,
-        newToday: 0, // TODO: Calculate
+        newToday: newUsersToday,
       },
       conversations: {
         total: totalConversations,
-        todayCount: 0, // TODO: Calculate
+        todayCount: newConversationsToday,
       },
       messages: {
         total: totalMessages,
@@ -82,7 +109,7 @@ router.get('/stats', async (req, res) => {
       },
       voice: {
         minutesToday: parseFloat(todayUsage.voice_minutes_today) || 0,
-        minutesTotal: 0, // TODO: Calculate
+        minutesTotal: totalVoiceMinutes,
       },
       tokens: {
         total: totalTokens,
@@ -91,7 +118,7 @@ router.get('/stats', async (req, res) => {
       },
       files: {
         today: parseInt(todayUsage.files_today) || 0,
-        total: 0, // TODO: Calculate
+        total: totalFiles,
       },
       system: {
         recentErrors,

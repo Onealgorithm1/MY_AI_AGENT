@@ -8,6 +8,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import logger from './utils/logger.js';
 
 // Import routes (after dotenv is loaded)
 import authRoutes from './routes/auth.js';
@@ -44,12 +45,26 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Compression
 app.use(compression());
 
-// Request logging
+// Request logging with winston
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    const logData = {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+    };
+
+    if (res.statusCode >= 500) {
+      logger.error(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    } else if (res.statusCode >= 400) {
+      logger.warn(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    } else {
+      logger.http(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    }
   });
   next();
 });
@@ -125,8 +140,14 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    userId: req.user?.id,
+  });
+
   // Log to database
   if (req.user) {
     import('./utils/database.js').then(({ query }) => {
@@ -142,7 +163,7 @@ app.use((err, req, res, next) => {
           req.method,
           err.statusCode || 500,
         ]
-      ).catch(console.error);
+      ).catch(dbError => logger.error('Failed to log error to database', { error: dbError.message }));
     });
   }
 
@@ -160,17 +181,17 @@ createVoiceWebSocketServer(server);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  logger.info('SIGTERM received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('\n🛑 SIGINT received, shutting down gracefully...');
+  logger.info('SIGINT received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
@@ -189,6 +210,13 @@ server.listen(PORT, () => {
   console.log(`\n🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing'}`);
   console.log('\n' + '='.repeat(50) + '\n');
+
+  logger.info('Server started successfully', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
+    databaseConfigured: !!process.env.DATABASE_URL,
+  });
 });
 
 export default app;

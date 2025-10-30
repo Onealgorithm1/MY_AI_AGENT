@@ -2,26 +2,20 @@ import express from 'express';
 import { hashPassword, verifyPassword, generateToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate, schemas } from '../middleware/validate.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
 // Sign up
-router.post('/signup', async (req, res) => {
+router.post('/signup', validate(schemas.register), async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
-
-    // Validate input
-    if (!email || !password || !fullName) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
 
     // Check if user exists
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
+      logger.warn('Registration attempted with existing email', { email });
       return res.status(400).json({ error: 'Email already registered' });
     }
 
@@ -49,6 +43,8 @@ router.post('/signup', async (req, res) => {
       [user.id]
     );
 
+    logger.info('New user registered', { userId: user.id, email: user.email });
+
     res.status(201).json({
       message: 'Account created successfully',
       user: {
@@ -60,19 +56,15 @@ router.post('/signup', async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    logger.error('Signup failed', { error: error.message });
     res.status(500).json({ error: 'Failed to create account' });
   }
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', validate(schemas.login), async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password required' });
-    }
 
     // Get user
     const result = await query(
@@ -81,6 +73,7 @@ router.post('/login', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      logger.warn('Login attempt with non-existent email', { email });
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -88,14 +81,18 @@ router.post('/login', async (req, res) => {
 
     // Check if account is active
     if (!user.is_active) {
+      logger.warn('Login attempt on inactive account', { email, userId: user.id });
       return res.status(403).json({ error: 'Account is inactive' });
     }
 
     // Verify password
     const isValid = await verifyPassword(password, user.password_hash);
     if (!isValid) {
+      logger.warn('Login attempt with invalid password', { email });
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+
+    logger.info('User logged in', { userId: user.id, email: user.email });
 
     // Update last login
     await query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
