@@ -1,15 +1,16 @@
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import logger from './utils/logger.js';
 
-// Load environment variables
-dotenv.config();
-
-// Import routes
+// Import routes (after dotenv is loaded)
 import authRoutes from './routes/auth.js';
 import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
@@ -44,22 +45,51 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Compression
 app.use(compression());
 
-// Request logging
+// Request logging with winston
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    const logData = {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+    };
+
+    if (res.statusCode >= 500) {
+      logger.error(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    } else if (res.statusCode >= 400) {
+      logger.warn(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    } else {
+      logger.http(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, logData);
+    }
   });
   next();
 });
 
-// Rate limiting for API endpoints
+// Strict rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login/register attempts per 15 minutes
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General rate limiting for API endpoints
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
 });
+
+// Apply auth rate limiter to sensitive endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// Apply general rate limiter to all API endpoints
 app.use('/api/', limiter);
 
 // Health check
@@ -110,8 +140,14 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    userId: req.user?.id,
+  });
+
   // Log to database
   if (req.user) {
     import('./utils/database.js').then(({ query }) => {
@@ -127,7 +163,7 @@ app.use((err, req, res, next) => {
           req.method,
           err.statusCode || 500,
         ]
-      ).catch(console.error);
+      ).catch(dbError => logger.error('Failed to log error to database', { error: dbError.message }));
     });
   }
 
@@ -145,17 +181,17 @@ createVoiceWebSocketServer(server);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  logger.info('SIGTERM received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('\n🛑 SIGINT received, shutting down gracefully...');
+  logger.info('SIGINT received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
@@ -174,6 +210,13 @@ server.listen(PORT, () => {
   console.log(`\n🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing'}`);
   console.log('\n' + '='.repeat(50) + '\n');
+
+  logger.info('Server started successfully', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
+    databaseConfigured: !!process.env.DATABASE_URL,
+  });
 });
 
 export default app;

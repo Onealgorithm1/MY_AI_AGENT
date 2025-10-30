@@ -1,4 +1,5 @@
 import { query } from '../utils/database.js';
+import logger from '../utils/logger.js';
 
 const MESSAGES_LIMIT = parseInt(process.env.RATE_LIMIT_MESSAGES) || 100;
 const VOICE_MINUTES_LIMIT = parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 30;
@@ -40,8 +41,11 @@ export async function checkRateLimit(req, res, next) {
 
     next();
   } catch (error) {
-    console.error('Rate limit check error:', error);
-    next(); // Allow request on error
+    logger.error('Rate limit check failed', { error: error.message, userId: req.user?.id });
+    // Fail securely: deny request if rate limit check fails
+    return res.status(503).json({
+      error: 'Service temporarily unavailable. Please try again.',
+    });
   }
 }
 
@@ -79,8 +83,11 @@ export async function checkVoiceLimit(req, res, next) {
 
     next();
   } catch (error) {
-    console.error('Voice limit check error:', error);
-    next();
+    logger.error('Voice limit check failed', { error: error.message, userId: req.user?.id });
+    // Fail securely: deny request if voice limit check fails
+    return res.status(503).json({
+      error: 'Service temporarily unavailable. Please try again.',
+    });
   }
 }
 

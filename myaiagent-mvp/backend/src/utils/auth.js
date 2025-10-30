@@ -1,7 +1,22 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-key';
+// Validate and get JWT secret (lazy validation)
+function getJWTSecret() {
+  if (!process.env.JWT_SECRET) {
+    console.error('❌ FATAL: JWT_SECRET environment variable is not set!');
+    console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
+
+  if (process.env.JWT_SECRET.length < 32) {
+    console.error('❌ FATAL: JWT_SECRET must be at least 32 characters long!');
+    process.exit(1);
+  }
+
+  return process.env.JWT_SECRET;
+}
+
 const JWT_EXPIRY = process.env.SESSION_DURATION_HOURS || 24;
 
 // Hash password
@@ -21,8 +36,8 @@ export function generateToken(user) {
     email: user.email,
     role: user.role,
   };
-  
-  return jwt.sign(payload, JWT_SECRET, {
+
+  return jwt.sign(payload, getJWTSecret(), {
     expiresIn: `${JWT_EXPIRY}h`,
   });
 }
@@ -30,7 +45,7 @@ export function generateToken(user) {
 // Verify JWT token
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, getJWTSecret());
   } catch (error) {
     throw new Error('Invalid token');
   }
