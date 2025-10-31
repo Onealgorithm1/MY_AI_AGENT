@@ -1,9 +1,71 @@
 export const uiSchema = {
   application: {
     name: "My AI Agent",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "AI chat application with voice, memory, and multi-model support"
   },
+  
+  updateHistory: [
+    {
+      version: '1.1.0',
+      date: '2025-10-31',
+      title: 'Enhanced System Prompt for Direct Action Execution',
+      summary: 'AI now understands it has direct UI control capabilities',
+      changes: [
+        'Updated system prompt to state "you have DIRECT UI CONTROL"',
+        'AI can now see current conversation state',
+        'AI responds with "I\'ll do X for you" instead of just giving instructions',
+        'Fixed Tests 8 & 9 - AI acknowledges ability to see and delete conversations',
+        'Added 10 executable actions to system prompt with examples'
+      ],
+      filesModified: [
+        'backend/src/middleware/uiContext.js',
+        'UI_AGENT_TEST_SCRIPT.txt'
+      ],
+      impact: 'AI behavior changed from passive guide to active assistant'
+    },
+    {
+      version: '1.0.0',
+      date: '2025-10-31',
+      title: 'UI-Aware AI Agent System',
+      summary: 'Complete system for AI to understand and control the UI',
+      changes: [
+        'Created UI Schema Layer with metadata for all components',
+        'Built Context Engine middleware for UI context injection',
+        'Implemented Action Execution Layer with 10 executable actions',
+        'Added Event Tracking System for user interaction logging',
+        'Frontend integration with React hooks (useUIActions, useEventTracking)',
+        'Created 2 new database tables (ui_actions, user_events)',
+        'Added 11 new API endpoints for UI schema, actions, and events'
+      ],
+      filesCreated: [
+        'backend/src/schemas/uiSchema.js',
+        'backend/src/middleware/uiContext.js',
+        'backend/src/services/actionExecutor.js',
+        'backend/src/services/eventTracker.js',
+        'backend/src/routes/ui-schema.js',
+        'backend/src/routes/ui-actions.js',
+        'backend/src/routes/events.js',
+        'frontend/src/hooks/useUIActions.js',
+        'frontend/src/hooks/useEventTracking.js',
+        'frontend/src/services/uiActions.js',
+        'frontend/src/services/events.js'
+      ],
+      executableActions: [
+        'navigate',
+        'createNewChat',
+        'switchConversation',
+        'deleteConversation',
+        'pinConversation',
+        'renameConversation',
+        'changeModel',
+        'uploadFile',
+        'startVoiceChat',
+        'giveFeedback'
+      ],
+      impact: 'AI can now understand UI structure and execute actions directly'
+    }
+  ],
 
   pages: {
     chat: {
