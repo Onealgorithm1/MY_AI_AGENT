@@ -14,14 +14,17 @@ import {
   User,
   LogOut,
   Settings,
+  Shield,
   MoreVertical,
   Pin,
   Trash2,
   ChevronDown,
   Loader2,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function ChatPage() {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const {
     currentConversation,
@@ -210,6 +213,15 @@ export default function ChatPage() {
                 {user?.fullName}
               </p>
             </div>
+            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Admin Panel"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={logout}
               className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
