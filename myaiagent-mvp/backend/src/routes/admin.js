@@ -324,17 +324,51 @@ router.get('/health', async (req, res) => {
 // Get API key status (masked)
 router.get('/api-keys', async (req, res) => {
   try {
-    const openaiKey = process.env.OPENAI_API_KEY;
+    const { hasApiKey } = await import('../utils/apiKeys.js');
+    const openaiConfigured = await hasApiKey('openai');
+    const elevenLabsConfigured = await hasApiKey('elevenlabs');
 
     res.json({
       openai: {
-        configured: !!openaiKey,
-        preview: openaiKey ? `${openaiKey.substring(0, 10)}...${openaiKey.substring(openaiKey.length - 4)}` : null,
+        configured: openaiConfigured,
+        preview: openaiConfigured ? 'sk-...****' : null,
+      },
+      elevenlabs: {
+        configured: elevenLabsConfigured, 
+        preview: elevenLabsConfigured ? 'xi-...****' : null,
       },
     });
   } catch (error) {
     console.error('Get API keys error:', error);
     res.status(500).json({ error: 'Failed to get API keys' });
+  }
+});
+
+// Save API keys
+router.post('/api-keys', async (req, res) => {
+  try {
+    const { provider, apiKey } = req.body;
+    
+    if (!provider || !apiKey) {
+      return res.status(400).json({ error: 'Provider and API key are required' });
+    }
+    
+    const allowedProviders = ['openai', 'elevenlabs'];
+    if (!allowedProviders.includes(provider)) {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+    
+    const { saveApiKey } = await import('../utils/apiKeys.js');
+    const success = await saveApiKey(provider, apiKey, req.user.id);
+    
+    if (success) {
+      res.json({ message: `${provider} API key saved successfully` });
+    } else {
+      res.status(500).json({ error: 'Failed to save API key' });
+    }
+  } catch (error) {
+    console.error('Save API key error:', error);
+    res.status(500).json({ error: 'Failed to save API key' });
   }
 });
 

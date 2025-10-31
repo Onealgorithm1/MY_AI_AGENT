@@ -1,13 +1,18 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
+import { getApiKey } from '../utils/apiKeys.js';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
 // Chat completion with streaming
 export async function createChatCompletion(messages, model = 'gpt-4o', stream = false) {
   try {
+    const apiKey = await getApiKey('openai');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
+    }
+
     const response = await axios.post(
       `${OPENAI_BASE_URL}/chat/completions`,
       {
@@ -19,7 +24,7 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         responseType: stream ? 'stream' : 'json',
@@ -28,14 +33,19 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
 
     return response.data;
   } catch (error) {
-    console.error('OpenAI chat error:', error.response?.data || error.message);
-    throw new Error('Failed to get AI response');
+    console.error('OpenAI chat error:', error.response || error.message);
+    throw new Error(error.message || 'Failed to get AI response');
   }
 }
 
 // Speech-to-text (Whisper)
 export async function transcribeAudio(audioFilePath) {
   try {
+    const apiKey = await getApiKey('openai');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
+    }
+
     const formData = new FormData();
     formData.append('file', fs.createReadStream(audioFilePath));
     formData.append('model', 'whisper-1');
@@ -46,7 +56,7 @@ export async function transcribeAudio(audioFilePath) {
       formData,
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           ...formData.getHeaders(),
         },
       }
@@ -62,6 +72,11 @@ export async function transcribeAudio(audioFilePath) {
 // Text-to-speech
 export async function generateSpeech(text, voice = 'alloy') {
   try {
+    const apiKey = await getApiKey('openai');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
+    }
+
     const response = await axios.post(
       `${OPENAI_BASE_URL}/audio/speech`,
       {
@@ -71,7 +86,7 @@ export async function generateSpeech(text, voice = 'alloy') {
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         responseType: 'arraybuffer',
@@ -88,6 +103,11 @@ export async function generateSpeech(text, voice = 'alloy') {
 // Vision (analyze images)
 export async function analyzeImage(imageUrl, prompt = 'What do you see in this image?') {
   try {
+    const apiKey = await getApiKey('openai');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
+    }
+
     const response = await axios.post(
       `${OPENAI_BASE_URL}/chat/completions`,
       {
@@ -108,7 +128,7 @@ export async function analyzeImage(imageUrl, prompt = 'What do you see in this i
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       }
@@ -124,6 +144,11 @@ export async function analyzeImage(imageUrl, prompt = 'What do you see in this i
 // Extract memory facts from conversation
 export async function extractMemoryFacts(conversationHistory) {
   try {
+    const apiKey = await getApiKey('openai');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
+    }
+
     const systemPrompt = `You are a memory extraction system. Analyze the conversation and extract important facts about the user. 
     
 Return ONLY a JSON array of facts in this format:
@@ -151,7 +176,7 @@ Rules:
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       }
