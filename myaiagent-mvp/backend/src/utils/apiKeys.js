@@ -1,37 +1,47 @@
 import { query } from './database.js';
 import crypto from 'crypto';
 
-// Encryption key from environment
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-this';
+// Encryption key from environment (should be 32 bytes)
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const ALGORITHM = 'aes-256-gcm';
 
-// Encrypt value
+// Encrypt value (using same method as secrets service)
 export function encrypt(text) {
   if (!text) return null;
   
-  const algorithm = 'aes-256-cbc';
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
   const iv = crypto.randomBytes(16);
+  const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
   
-  const cipher = crypto.createCipheriv(algorithm, key, iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   
-  return iv.toString('hex') + ':' + encrypted;
+  const authTag = cipher.getAuthTag();
+  
+  // Return IV + authTag + encrypted data as single string
+  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
 }
 
-// Decrypt value
-export function decrypt(encryptedData) {
-  if (!encryptedData) return null;
+// Decrypt value (using same method as secrets service)
+export function decrypt(encryptedText) {
+  if (!encryptedText) return null;
   
   try {
-    const algorithm = 'aes-256-cbc';
-    const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+    const parts = encryptedText.split(':');
+    if (parts.length !== 3) {
+      console.error('Invalid encrypted data format');
+      return null;
+    }
     
-    const [ivHex, encrypted] = encryptedData.split(':');
-    if (!ivHex || !encrypted) return null;
+    const iv = Buffer.from(parts[0], 'hex');
+    const authTag = Buffer.from(parts[1], 'hex');
+    const encrypted = parts[2];
     
-    const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
     
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
