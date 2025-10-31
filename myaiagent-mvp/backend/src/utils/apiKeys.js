@@ -47,7 +47,7 @@ export function decrypt(encryptedData) {
 export async function getApiKey(provider) {
   try {
     const result = await query(
-      'SELECT encrypted_value FROM api_secrets WHERE provider = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1',
+      'SELECT key_value FROM api_secrets WHERE service_name = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1',
       [provider]
     );
     
@@ -55,7 +55,7 @@ export async function getApiKey(provider) {
       return null;
     }
     
-    const encryptedValue = result.rows[0].encrypted_value;
+    const encryptedValue = result.rows[0].key_value;
     return decrypt(encryptedValue);
   } catch (error) {
     console.error(`Error fetching ${provider} API key:`, error);
@@ -68,15 +68,15 @@ export async function saveApiKey(provider, apiKey, userId) {
   try {
     // Deactivate old keys
     await query(
-      'UPDATE api_secrets SET is_active = false WHERE provider = $1',
+      'UPDATE api_secrets SET is_active = false WHERE service_name = $1',
       [provider]
     );
     
     // Insert new key
     const encryptedValue = encrypt(apiKey);
     await query(
-      'INSERT INTO api_secrets (provider, encrypted_value, created_by, is_active) VALUES ($1, $2, $3, true)',
-      [provider, encryptedValue, userId]
+      'INSERT INTO api_secrets (service_name, key_name, key_value, created_by, is_active) VALUES ($1, $2, $3, $4, true)',
+      [provider, `${provider}_api_key`, encryptedValue, userId]
     );
     
     return true;
@@ -90,7 +90,7 @@ export async function saveApiKey(provider, apiKey, userId) {
 export async function hasApiKey(provider) {
   try {
     const result = await query(
-      'SELECT 1 FROM api_secrets WHERE provider = $1 AND is_active = true LIMIT 1',
+      'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true LIMIT 1',
       [provider]
     );
     return result.rows.length > 0;
