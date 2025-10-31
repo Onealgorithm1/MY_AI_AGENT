@@ -46,9 +46,21 @@ export function decrypt(encryptedData) {
 // Get API key from database
 export async function getApiKey(provider) {
   try {
+    // Map provider to key_name format used in database
+    const keyNameMap = {
+      'openai': 'OPENAI_API_KEY',
+      'elevenlabs': 'ELEVENLABS_API_KEY'
+    };
+    
+    const keyName = keyNameMap[provider.toLowerCase()];
+    if (!keyName) {
+      console.error(`Unknown provider: ${provider}`);
+      return null;
+    }
+    
     const result = await query(
-      'SELECT key_value FROM api_secrets WHERE service_name = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1',
-      [provider]
+      'SELECT key_value FROM api_secrets WHERE key_name = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1',
+      [keyName]
     );
     
     if (result.rows.length === 0) {
