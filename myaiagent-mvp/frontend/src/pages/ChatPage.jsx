@@ -90,7 +90,7 @@ export default function ChatPage() {
     addMessage(userMessage);
     setInputMessage('');
     setIsSending(true);
-    setStreamingMessage('');
+    setStreamingMessage('●●●');
 
     try {
       // Send message with streaming
@@ -108,6 +108,15 @@ export default function ChatPage() {
         }),
       });
 
+      // Check for HTTP errors before streaming
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+        toast.error(errorData.error || 'Failed to send message');
+        setStreamingMessage('');
+        setIsSending(false);
+        return;
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullResponse = '';
@@ -123,10 +132,20 @@ export default function ChatPage() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.substring(6));
+              
+              // Handle error events
+              if (data.error) {
+                toast.error(data.error);
+                setStreamingMessage('');
+                setIsSending(false);
+                return;
+              }
+              
               if (data.content) {
                 fullResponse += data.content;
                 setStreamingMessage(fullResponse);
               }
+              
               if (data.done) {
                 addMessage({
                   id: Date.now(),
