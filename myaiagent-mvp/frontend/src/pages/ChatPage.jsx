@@ -75,6 +75,12 @@ export default function ChatPage() {
     try {
       const response = await conversationsApi.getMessages(conversationId);
       setMessages(response.data.messages);
+      
+      // Set the current conversation
+      const conv = conversations.find(c => c.id === conversationId);
+      if (conv) {
+        useChatStore.getState().setCurrentConversation(conv);
+      }
     } catch (error) {
       toast.error('Failed to load conversation');
     }
@@ -257,6 +263,14 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
+
+  // Auto-load first conversation on page load
+  useEffect(() => {
+    if (conversations.length > 0 && !currentConversation) {
+      const firstConv = conversations[0];
+      loadConversation(firstConv.id);
+    }
+  }, [conversations, currentConversation]);
 
   // Handle Enter key
   const handleKeyPress = (e) => {
