@@ -212,12 +212,17 @@ export default function ChatPage() {
   const handleDelete = async (convId) => {
     try {
       await conversationsApi.delete(convId);
-      queryClient.invalidateQueries(['conversations']);
-      toast.success('Chat deleted successfully');
       setDeleteConfirmId(null);
+      
+      // If deleting the current conversation, clear it
       if (currentConversation?.id === convId) {
+        setCurrentConversation(null);
         setMessages([]);
       }
+      
+      // Refresh conversation list
+      queryClient.invalidateQueries(['conversations']);
+      toast.success('Chat deleted successfully');
     } catch (error) {
       toast.error('Failed to delete chat');
     }
