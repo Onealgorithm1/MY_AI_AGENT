@@ -321,7 +321,10 @@ export default function ChatPage() {
                       {conv.title || 'New Chat'}
                     </span>
                   </button>
-                  <div className="relative">
+                  <div 
+                    className="relative"
+                    onMouseLeave={() => setMenuOpenId(null)}
+                  >
                     <button
                       onClick={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
                       className="p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-gray-100"
