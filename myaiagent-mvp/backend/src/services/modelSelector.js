@@ -35,22 +35,6 @@ const MODELS = {
     capabilities: ['text', 'basic-reasoning'],
     bestFor: ['simple-chat', 'quick-answers', 'extreme-cost-optimization'],
   },
-  
-  // Reasoning models
-  'o1-preview': {
-    name: 'o1 Preview',
-    cost: 'very-high',
-    speed: 'slow',
-    capabilities: ['text', 'advanced-reasoning', 'problem-solving'],
-    bestFor: ['math', 'science', 'coding', 'logic-puzzles', 'complex-problems'],
-  },
-  'o1-mini': {
-    name: 'o1 Mini',
-    cost: 'medium',
-    speed: 'medium',
-    capabilities: ['text', 'reasoning', 'problem-solving'],
-    bestFor: ['basic-math', 'simple-coding', 'light-reasoning'],
-  },
 };
 
 // Keywords that indicate complex reasoning tasks
@@ -88,20 +72,20 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
     return 'gpt-4o';
   }
   
-  // 2. Check for complex reasoning (use o1 models)
+  // 2. Check for complex reasoning (use GPT-4o for advanced tasks)
   const hasReasoningKeywords = REASONING_KEYWORDS.some(keyword => lowerContent.includes(keyword));
   const isLongQuery = wordCount > 100;
   const hasCodeBlock = content.includes('```') || lowerContent.includes('code');
   const hasMath = /\d+\s*[\+\-\*\/\^]\s*\d+/.test(content) || lowerContent.includes('equation');
   
   if (hasReasoningKeywords && (isLongQuery || hasCodeBlock || hasMath)) {
-    // Use o1-preview for very complex reasoning
-    return 'o1-preview';
+    // Use GPT-4o for very complex reasoning, coding, math
+    return 'gpt-4o';
   }
   
   if (hasReasoningKeywords || hasMath || hasCodeBlock) {
-    // Use o1-mini for moderate reasoning
-    return 'o1-mini';
+    // Use GPT-4 Turbo for moderate reasoning tasks
+    return 'gpt-4-turbo';
   }
   
   // 3. Check for simple queries (use cheapest/fastest)
