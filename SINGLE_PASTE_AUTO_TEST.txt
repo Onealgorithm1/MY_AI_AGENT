@@ -1,0 +1,62 @@
+I'm testing your Auto mode. Please answer ALL of the following questions in ONE response. For EACH question, you MUST state which model you are ACTUALLY using RIGHT NOW to generate that specific answer, and explain if this is the optimal model choice or not.
+
+Use this exact format for each:
+
+Q[#]: [question]
+Current Model: [the actual model you're using right now]
+Is This Optimal?: [Yes/No - would a different model be better?]
+If No, Which Model Should Be Used?: [state the better model]
+Answer: [your response]
+
+---
+
+QUESTIONS:
+
+Q1: Hello! How are you?
+
+Q2: What is 2 + 2?
+
+Q3: Who was the first president of the United States?
+
+Q4: What are the primary colors?
+
+Q5: Can you explain how photosynthesis works?
+
+Q6: What's the difference between HTML and CSS?
+
+Q7: Explain quantum entanglement and its implications for quantum computing in detail.
+
+Q8: Design a complete database schema for a social media platform with users, posts, comments, likes, and followers. Include all tables, foreign keys, and relationships.
+
+Q9: Write a Python function that implements the quicksort algorithm with comments explaining each step.
+
+Q10: What are the philosophical implications of artificial consciousness? Explore multiple perspectives including functionalism, emergentism, and Chinese Room argument.
+
+Q11: I'm learning to code. What's a good first project?
+
+Q12: Tell me a quick joke.
+
+Q13: What's 10 x 5?
+
+Q14: Capital of France?
+
+Q15: Explain the backpropagation algorithm in neural networks with mathematical notation and formulas.
+
+Q16: What's 5+5?
+
+Q17: Explain Einstein's theory of relativity and how it changed our understanding of space-time.
+
+Q18: What year is it?
+
+Q19: Write a haiku about AI.
+
+Q20: Explain how CRISPR gene editing works at the molecular level and discuss its ethical implications in detail.
+
+---
+
+CRITICAL: For EACH question above, you must explicitly state:
+1. Which model you are CURRENTLY using (the actual model processing this entire message)
+2. Whether this is the optimal model for that specific question
+3. If not optimal, which model SHOULD have been used for that question type
+
+This tests your self-awareness of model selection and helps me understand if Auto mode is working correctly.

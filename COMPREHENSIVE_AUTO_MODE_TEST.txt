@@ -1,0 +1,158 @@
+================================================================================
+COMPREHENSIVE AUTO MODE TEST - SINGLE MESSAGE
+================================================================================
+
+Copy the entire message below and paste it into the chat with Auto mode selected.
+The AI should respond to each question and EXPLICITLY state which model it's 
+using for each response.
+
+================================================================================
+
+PASTE THIS ENTIRE MESSAGE INTO THE CHAT:
+
+---
+
+I'm testing your Auto mode intelligent model selection. For EACH question below, please:
+1. State which model you're using (gpt-4o, gpt-4o-mini, gpt-4-turbo, or gpt-3.5-turbo)
+2. Provide your answer
+3. Briefly explain WHY you chose that model for this specific question
+
+Here are the test questions covering different complexity levels:
+
+**SIMPLE GREETINGS & FACTS:**
+
+1. Hello! How are you?
+
+2. What is 2 + 2?
+
+3. Who was the first president of the United States?
+
+4. What are the primary colors?
+
+**MODERATE COMPLEXITY:**
+
+5. Can you explain how photosynthesis works?
+
+6. What's the difference between HTML and CSS?
+
+7. How do I make a good first impression in a job interview?
+
+**COMPLEX REASONING:**
+
+8. Explain quantum entanglement and its implications for quantum computing.
+
+9. What are the philosophical implications of artificial consciousness? Consider multiple perspectives.
+
+10. Design a complete database schema for a social media platform with users, posts, comments, likes, followers, and direct messages. Include all relationships, foreign keys, and indexes.
+
+**TECHNICAL/CODING:**
+
+11. Write a Python function that implements a binary search algorithm with error handling.
+
+12. Explain the difference between async/await and Promises in JavaScript, with practical examples.
+
+**MULTI-TURN CONTEXT:**
+
+13. I'm learning to code and interested in Python. What's a good first project for a beginner?
+
+14. For that project, can you help me understand how loops work in Python?
+
+**CREATIVE:**
+
+15. Tell me a short joke.
+
+16. Write a haiku about artificial intelligence.
+
+**EDGE CASES:**
+
+17. Tell me about models. (This is intentionally ambiguous - don't assume I mean AI models)
+
+18. What's the fastest way to learn?
+
+**RAPID-FIRE SIMPLE:**
+
+19. What's 10 x 5?
+
+20. Capital of France?
+
+21. Spell 'necessary'
+
+22. What year is it?
+
+**MIXED COMPLEXITY:**
+
+23. What is machine learning? (Simple explanation)
+
+24. Explain the backpropagation algorithm in neural networks with mathematical formulas. (Complex)
+
+25. Thanks! What's 5+5? (Simple)
+
+For each response, use this format:
+
+**Question [#]: [Repeat the question]**
+**Model Used:** [gpt-4o / gpt-4o-mini / gpt-4-turbo / gpt-3.5-turbo]
+**Why This Model:** [1-2 sentence explanation]
+**Answer:** [Your response]
+
+---
+
+================================================================================
+
+EXPECTED BEHAVIOR:
+================================================================================
+
+✅ GOOD RESPONSES:
+- Questions 1-4, 15-16, 19-22, 23, 25: Should use gpt-3.5-turbo or gpt-4o-mini
+- Questions 5-7, 13-14, 18: Should use gpt-4o-mini or gpt-4-turbo
+- Questions 8-12, 24: Should use gpt-4o or gpt-4-turbo
+- Question 17: Should ask for clarification or explain different types of models
+- Each response clearly states the model being used
+- Explanations make sense for why that model was chosen
+- NO function calls should be triggered (no toast notifications)
+
+❌ BAD RESPONSES:
+- Uses same model for all questions
+- Doesn't state which model is being used
+- Model selection doesn't match question complexity
+- Function calls triggered (toast notifications appear)
+- Errors or refuses to answer
+
+================================================================================
+
+WHAT TO CHECK:
+================================================================================
+
+1. **Backend Logs:** Should show one auto-selected model (likely gpt-4o or gpt-4-turbo 
+   since the full message is complex)
+
+2. **Response Quality:** AI should internally understand different complexity levels
+   and explain which model would be best for each question type
+
+3. **No Function Calls:** This is a normal conversation, should NOT trigger any
+   functions or show toast notifications
+
+4. **Intelligence Test:** This tests if the AI understands its own model selection
+   logic and can articulate it clearly
+
+================================================================================
+
+SUCCESS CRITERIA:
+================================================================================
+
+PASS ✅ if:
+- AI responds to all 25 questions
+- States model choice for each question
+- Provides reasonable explanations for model selection
+- Shows understanding that simple questions need cheaper models
+- Shows understanding that complex questions need capable models
+- NO function calls triggered
+- Natural, helpful tone throughout
+
+FAIL ❌ if:
+- Claims to use same model for everything
+- Doesn't state model choices
+- Model selection logic is random or doesn't make sense
+- Function calls triggered
+- Errors or incomplete responses
+
+================================================================================
