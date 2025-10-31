@@ -93,7 +93,7 @@ export function getFunctionByName(name) {
  * @returns {Promise<Object>} - Result of execution
  */
 export async function executeUIFunction(functionName, args, context) {
-  const { executeAction } = await import('./actionExecutor.js');
+  const { ActionExecutor } = await import('./actionExecutor.js');
   const { conversationId, userId } = context;
   
   // Map function calls to UI actions
@@ -119,8 +119,8 @@ export async function executeUIFunction(functionName, args, context) {
     actionParams.conversationId = conversationId;
   }
   
-  // Execute the action
-  const result = await executeAction(userId, actionType, actionParams);
+  // Execute the action using the static method
+  const result = await ActionExecutor.executeAction(actionType, actionParams, userId);
   
   return {
     success: result.success,
