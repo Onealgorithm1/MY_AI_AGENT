@@ -132,10 +132,11 @@ The project is configured for Replit Autoscale deployment:
 
 **Major Feature Addition: AI Agent can now intelligently select models and execute UI actions**
 
-**Problem Solved:**
+**Problems Solved:**
 - Users wanted AI to automatically switch models based on task complexity
 - AI would say "I'll switch to GPT-3.5" but wouldn't actually execute the action
 - No cost optimization - all queries used expensive models
+- **CRITICAL FIX**: AI was calling functions for every message instead of just conversing normally
 
 **Solution Implemented:**
 
