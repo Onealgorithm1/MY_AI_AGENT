@@ -12,14 +12,27 @@ This is an AI chat application similar to ChatGPT, featuring:
 - File upload with AI vision capabilities
 - User authentication and admin dashboard
 - Memory system that remembers facts about users
+- **UI-Aware AI Agent** - AI understands the interface and can guide users through workflows
 
 ## Architecture
 
 ```
-Frontend (React + Vite) → Backend (Node.js + Express) → PostgreSQL Database
-                                ↓
-                        OpenAI API (GPT-4o + Realtime + Whisper + TTS)
+Frontend (React + Vite) ←→ Backend (Node.js + Express) → PostgreSQL Database
+        ↓                          ↓
+   UI Actions               OpenAI API (GPT-4o + Realtime + Whisper + TTS)
+   Event Tracking           UI Schema & Context Engine
 ```
+
+### UI-Aware AI Agent System
+
+The application features an intelligent AI agent that understands the user interface:
+
+**Components:**
+1. **UI Schema Layer** - Structured metadata for all UI components, pages, and workflows
+2. **Context Engine** - Middleware that injects UI state and available actions into AI prompts
+3. **LLM Orchestrator** - Enhanced system prompts with UI awareness
+4. **Action Execution Layer** - API endpoints for AI to trigger UI commands
+5. **Bidirectional Event System** - Tracks user actions and enables real-time UI updates
 
 ## Project Structure
 
@@ -56,7 +69,7 @@ myaiagent-mvp/
 
 ## Database Schema
 
-The application uses 11 PostgreSQL tables:
+The application uses 13 PostgreSQL tables:
 - `users` - User accounts with role-based access
 - `conversations` - Chat conversations
 - `messages` - Chat messages with streaming support
@@ -68,6 +81,8 @@ The application uses 11 PostgreSQL tables:
 - `error_logs` - Error tracking
 - `performance_metrics` - Performance monitoring
 - `api_secrets` - Encrypted API keys storage
+- **`ui_actions`** - AI agent action execution audit trail
+- **`user_events`** - User interaction tracking for AI context
 
 ## Key Features Implemented
 
@@ -79,6 +94,8 @@ The application uses 11 PostgreSQL tables:
 6. **Admin Dashboard**: User management, API usage stats, system monitoring
 7. **Rate Limiting**: Message and voice usage limits per user
 8. **Security**: Helmet middleware, CORS, encrypted secrets storage
+9. **UI-Aware AI Agent**: AI understands interface structure and can execute UI actions
+10. **Bidirectional Events**: Tracks user actions and enables AI-triggered UI updates
 
 ## Default Credentials
 
@@ -109,8 +126,21 @@ The project is configured for Replit Autoscale deployment:
 - **Run**: Installs backend dependencies and starts server in production mode
 - **Port**: 5000 (serves both frontend and API in production)
 
-## Recent Changes (Replit Setup)
+## Recent Changes
 
+### UI-Aware AI Agent System (Latest)
+1. **Schema Layer**: Created comprehensive UI metadata system (`backend/src/schemas/uiSchema.js`)
+2. **Context Engine**: Middleware injects UI context into AI prompts (`backend/src/middleware/uiContext.js`)
+3. **Action Execution**: 10 AI-executable actions with validation and audit logging
+   - Navigate, create/switch/delete conversations, pin/rename, change model, voice, feedback
+4. **Event Tracking**: User interaction tracking for AI context awareness
+5. **Frontend Integration**: React hooks (`useUIActions`, `useEventTracking`)
+6. **API Endpoints**: 
+   - `/api/ui-schema` - UI metadata for AI
+   - `/api/ui-actions/*` - Execute, validate, history
+   - `/api/events/*` - Track, recent, since
+
+### Replit Setup
 1. Fixed database schema path in setup script
 2. Configured Vite to run on port 5000 with host 0.0.0.0
 3. Added `allowedHosts: true` to Vite config for Replit proxy

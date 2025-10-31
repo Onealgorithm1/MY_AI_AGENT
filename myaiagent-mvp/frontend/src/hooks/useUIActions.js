@@ -86,6 +86,29 @@ export function useUIActions() {
             setCurrentConversation(result.result.conversation);
           }
           break;
+          
+        case 'uploadFile':
+          if (result.result.action === 'trigger_file_upload') {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) {
+              fileInput.click();
+            }
+          }
+          break;
+          
+        case 'startVoiceChat':
+          if (result.result.action === 'start_voice_chat') {
+            const voiceButton = document.querySelector('[data-action="start-voice"]');
+            if (voiceButton) {
+              voiceButton.click();
+            } else {
+              navigate('/chat');
+            }
+          }
+          break;
+          
+        case 'giveFeedback':
+          break;
       }
       
       setLoading(false);
