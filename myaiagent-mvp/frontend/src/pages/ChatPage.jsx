@@ -236,6 +236,18 @@ export default function ChatPage() {
     setEditingTitle('');
   };
 
+  // Close menu on escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpenId(null);
+        setDeleteConfirmId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -312,7 +324,8 @@ export default function ChatPage() {
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
-                      className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
+                      className="p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-gray-100"
+                      aria-label="Conversation actions"
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
