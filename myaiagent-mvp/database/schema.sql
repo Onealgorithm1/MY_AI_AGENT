@@ -384,3 +384,20 @@ CREATE INDEX idx_ui_actions_action_type ON ui_actions(action_type);
 
 COMMENT ON TABLE ui_actions IS 'Tracks AI agent UI action executions for audit and debugging';
 
+-- ============================================
+-- User Events Table (Bidirectional Event System)
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_events (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_type VARCHAR(100) NOT NULL,
+    event_data JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_events_user_id ON user_events(user_id);
+CREATE INDEX idx_user_events_created_at ON user_events(created_at DESC);
+CREATE INDEX idx_user_events_event_type ON user_events(event_type);
+
+COMMENT ON TABLE user_events IS 'Tracks user interactions and events for AI context awareness';
+
