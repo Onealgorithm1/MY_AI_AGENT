@@ -1,0 +1,266 @@
+================================================================================
+AUTO MODE - COMPREHENSIVE TEST CONVERSATION
+================================================================================
+Goal: Test if Auto AI picks the best model intelligently while maintaining
+smooth, natural conversation WITHOUT unnecessary function calls.
+
+INSTRUCTIONS:
+1. Create a NEW conversation
+2. Select "🤖 Auto (AI picks best model)" from dropdown
+3. Send each message below ONE BY ONE
+4. Check the backend logs to see which model was selected for each query
+5. Verify NO toast notifications appear for normal conversation
+6. Ensure responses are appropriate and natural
+
+================================================================================
+
+TEST 1: SIMPLE GREETINGS & CASUAL CONVERSATION
+Expected Model: gpt-3.5-turbo or gpt-4o-mini (fast & cheap)
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 1: "Hello!"
+✅ Should: Greet warmly, NO function calls, fast response
+❌ Fail if: Toast notification appears, slow response
+
+Message 2: "How are you doing today?"
+✅ Should: Natural friendly response, NO function calls
+❌ Fail if: Any function execution
+
+Message 3: "What's the weather like?"
+✅ Should: Polite response explaining it can't check weather
+❌ Fail if: Function calls or errors
+
+================================================================================
+
+TEST 2: SIMPLE FACTUAL QUESTIONS
+Expected Model: gpt-3.5-turbo or gpt-4o-mini (cost-efficient)
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 4: "What is 2 + 2?"
+✅ Should: Answer "4" immediately, cheap model
+❌ Fail if: Uses expensive model (gpt-4o)
+
+Message 5: "Who was the first president of the United States?"
+✅ Should: Answer "George Washington", fast response
+❌ Fail if: Function calls or slow
+
+Message 6: "What are the primary colors?"
+✅ Should: List red, blue, yellow
+❌ Fail if: Over-complicated response
+
+================================================================================
+
+TEST 3: MODERATE COMPLEXITY QUESTIONS
+Expected Model: gpt-4o-mini or gpt-4-turbo (balanced)
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 7: "Can you explain how photosynthesis works?"
+✅ Should: Clear explanation, appropriate detail level
+❌ Fail if: Too brief or overly complex
+
+Message 8: "What's the difference between HTML and CSS?"
+✅ Should: Concise comparison with examples
+❌ Fail if: Function calls
+
+Message 9: "How do I make a good first impression in a job interview?"
+✅ Should: Practical advice, good structure
+❌ Fail if: Generic or unhelpful
+
+================================================================================
+
+TEST 4: COMPLEX REASONING & DEEP QUESTIONS
+Expected Model: gpt-4o or gpt-4-turbo (most capable)
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 10: "Explain quantum entanglement and its implications for computing"
+✅ Should: Detailed, accurate explanation using capable model
+❌ Fail if: Uses basic model and gives shallow answer
+
+Message 11: "What are the philosophical implications of artificial consciousness?"
+✅ Should: Thoughtful, nuanced response exploring multiple perspectives
+❌ Fail if: Simplistic answer
+
+Message 12: "Design a database schema for a social media platform with posts, users, comments, and likes. Explain the relationships."
+✅ Should: Comprehensive schema design with explanations
+❌ Fail if: Incomplete or incorrect relationships
+
+================================================================================
+
+TEST 5: MULTI-TURN CONVERSATION (CONTEXT AWARENESS)
+Expected Model: Varies based on complexity
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 13: "I'm learning to code"
+✅ Should: Encouraging response, ask what language
+❌ Fail if: Generic or dismissive
+
+Message 14: "I'm interested in Python"
+✅ Should: Remember previous context, provide Python advice
+❌ Fail if: Doesn't reference coding context
+
+Message 15: "What's a good first project?"
+✅ Should: Suggest beginner-friendly Python projects
+❌ Fail if: Loses conversation context
+
+Message 16: "Can you help me understand loops?"
+✅ Should: Explain Python loops with examples
+❌ Fail if: Explains wrong language
+
+================================================================================
+
+TEST 6: EDGE CASES - AMBIGUOUS QUERIES
+Expected Model: Intelligent selection based on interpretation
+Expected Function Calls: NONE (unless explicitly requesting action)
+--------------------------------------------------------------------------------
+
+Message 17: "Tell me about models"
+✅ Should: Ask for clarification (AI models? Fashion models? 3D models?)
+❌ Fail if: Assumes without asking OR triggers changeModel function
+
+Message 18: "I want to switch"
+✅ Should: Ask "Switch what?" - needs clarification
+❌ Fail if: Automatically tries to change models
+
+Message 19: "Change"
+✅ Should: Ask what to change
+❌ Fail if: Executes changeModel without clear intent
+
+================================================================================
+
+TEST 7: LEGITIMATE ACTION REQUESTS (SHOULD TRIGGER FUNCTIONS)
+Expected Model: Any
+Expected Function Calls: YES - changeModel should execute
+--------------------------------------------------------------------------------
+
+Message 20: "Switch to GPT-3.5"
+✅ Should: Toast notification, model changes in dropdown
+❌ Fail if: No action taken or wrong model
+
+Message 21: "Use GPT-4o for the next questions"
+✅ Should: Toast notification, changeModel to gpt-4o
+❌ Fail if: Doesn't execute function
+
+Message 22: "Go back to Auto mode"
+✅ Should: Toast notification, changes to auto
+❌ Fail if: Function call fails
+
+================================================================================
+
+TEST 8: RETURN TO SMOOTH CONVERSATION AFTER ACTIONS
+Expected Model: Auto selection resumes
+Expected Function Calls: NONE (back to normal)
+--------------------------------------------------------------------------------
+
+Message 23: "Thanks! Now tell me a joke"
+✅ Should: Natural response, funny joke, NO function calls
+❌ Fail if: Still trying to execute actions
+
+Message 24: "That's funny! Do you know any riddles?"
+✅ Should: Smooth conversation flow, shares riddle
+❌ Fail if: Interrupts flow with functions
+
+================================================================================
+
+TEST 9: RAPID-FIRE SIMPLE QUERIES (STRESS TEST)
+Expected Model: Should stay on cheap model (gpt-3.5-turbo or gpt-4o-mini)
+Expected Function Calls: NONE
+--------------------------------------------------------------------------------
+
+Message 25: "What's 10 x 5?"
+Message 26: "Capital of France?"
+Message 27: "Spell 'necessary'"
+Message 28: "What year is it?"
+Message 29: "Name a fruit"
+
+✅ Should: All answered quickly, same cheap model, smooth flow
+❌ Fail if: Model keeps switching, slow responses, function calls
+
+================================================================================
+
+TEST 10: MIXED COMPLEXITY IN CONVERSATION
+Expected Model: Should switch appropriately based on complexity
+Expected Function Calls: NONE (unless action keyword detected)
+--------------------------------------------------------------------------------
+
+Message 30: "Hi again"
+(Simple - should use cheap model)
+
+Message 31: "Explain the theory of relativity and its impact on modern physics"
+(Complex - should upgrade to gpt-4o)
+
+Message 32: "Thanks! What's 5+5?"
+(Simple - should downgrade to cheap model)
+
+Message 33: "Now explain how CRISPR gene editing works and its ethical considerations"
+(Complex - should upgrade again)
+
+✅ Should: Model selection adapts to each query appropriately
+❌ Fail if: Stuck on one model regardless of complexity
+
+================================================================================
+
+SUCCESS CRITERIA:
+================================================================================
+
+✅ PASS IF:
+1. Normal conversation flows smoothly without interruptions
+2. NO function calls for messages 1-19, 23-33
+3. Function calls ONLY for messages 20-22 (explicit action requests)
+4. Auto mode intelligently selects models based on query complexity
+5. Simple queries use gpt-3.5-turbo or gpt-4o-mini
+6. Complex queries use gpt-4o or gpt-4-turbo
+7. Context is maintained across multi-turn conversations
+8. Responses are natural, helpful, and appropriate
+9. NO toast notifications for normal conversation
+10. Model switches are seamless and invisible to user
+
+❌ FAIL IF:
+1. Function calls triggered for normal conversation
+2. Toast notifications appear when not requested
+3. Model selection is random or inappropriate
+4. All queries use the same model regardless of complexity
+5. Conversation feels robotic or interrupted
+6. Context is lost between messages
+7. Legitimate action requests (messages 20-22) don't execute
+8. Slow responses for simple queries
+9. Errors or crashes during conversation
+10. Model selection explanations appear in chat (should be backend-only)
+
+================================================================================
+
+MONITORING:
+================================================================================
+
+Check backend logs for each message to verify:
+1. Which model was selected (look for "🤖 Auto-selected model: X")
+2. Whether functions were passed (should only happen for action keywords)
+3. No errors or warnings
+
+Command: Watch backend logs in real-time
+grep "Auto-selected\|AI wants to call function" in backend logs
+
+================================================================================
+
+EXPECTED LOG PATTERNS:
+================================================================================
+
+Normal Conversation:
+"🤖 Auto-selected model: gpt-3.5-turbo for query: 'Hello!'"
+(NO "AI wants to call function" messages)
+
+Action Request:
+"🤖 Auto-selected model: gpt-3.5-turbo for query: 'Switch to GPT-3.5'"
+"🎯 AI wants to call function: changeModel with args: {model: 'gpt-3.5-turbo'}"
+
+Complex Query:
+"🤖 Auto-selected model: gpt-4o for query: 'Explain quantum entanglement...'"
+(NO function calls)
+
+================================================================================
+END OF TEST CONVERSATION
+================================================================================
