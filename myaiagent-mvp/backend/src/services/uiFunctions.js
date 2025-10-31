@@ -6,7 +6,7 @@
 export const UI_FUNCTIONS = [
   {
     name: 'changeModel',
-    description: 'Switch the AI model being used for the conversation. ONLY use this when the user EXPLICITLY asks you to change/switch models (e.g., "switch to GPT-3.5", "change model to GPT-4"). DO NOT use this for normal conversation.',
+    description: 'Switch the AI model PERMANENTLY for this conversation. ONLY call this when the user gives a DIRECT COMMAND to change models, such as: "switch to GPT-3.5", "use GPT-4", "change model to GPT-4 Turbo". DO NOT call this function in these situations: 1) Normal conversation about models, 2) When Auto mode already selected a model for you, 3) When user just asks "what model are you?", 4) When explaining model capabilities. If you are unsure, DO NOT call this function.',
     parameters: {
       type: 'object',
       properties: {

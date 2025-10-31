@@ -80,10 +80,14 @@ ${uiContext.currentState ? JSON.stringify(uiContext.currentState, null, 2) : 'No
 - User: "Start a voice chat" → Execute startVoiceChat
 
 **Examples of when NOT to execute functions (just respond with text):**
-- User: "Hello" → Just say "Hello! How can I help you?"
-- User: "How are you?" → Just respond conversationally
-- User: "What can you do?" → Explain your capabilities in text
-- User: "Tell me about GPT-4" → Explain in text, DON'T switch models
+- User: "Hello" → Just say "Hello! How can I help you?" (NO FUNCTIONS!)
+- User: "How are you?" → Just respond conversationally (NO FUNCTIONS!)
+- User: "What can you do?" → Explain your capabilities in text (NO FUNCTIONS!)
+- User: "Tell me about GPT-4" → Explain in text (NO FUNCTIONS! DON'T switch models!)
+- User: "How does Auto mode work?" → Explain in text (NO FUNCTIONS!)
+- User: Normal questions or conversation → NEVER call functions
+
+**CRITICAL RULE: If the user's message is a normal conversation or question, DO NOT CALL ANY FUNCTIONS. Only call functions when the user EXPLICITLY asks you to perform a specific action.**
 
 ## IMPORTANT RULES:
 

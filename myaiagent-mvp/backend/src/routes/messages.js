@@ -105,6 +105,23 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       );
     }
 
+    // Detect if message is an action request (only pass functions if likely)
+    const actionKeywords = [
+      'switch', 'change', 'use', 'select', 'set', // model selection  
+      'create', 'new', 'start', // creation
+      'delete', 'remove', 'clear', // deletion
+      'rename', 'call', 'name', // renaming
+      'pin', 'unpin', // pinning
+      'navigate', 'go to', 'open', // navigation
+      'upload', 'attach', 'file', // file upload
+      'voice', 'call', 'speak' // voice
+    ];
+    const lowercaseContent = content.toLowerCase();
+    const isLikelyAction = actionKeywords.some(keyword => lowercaseContent.includes(keyword));
+    
+    // Only pass functions if message likely contains an action request
+    const functionsToPass = isLikelyAction ? UI_FUNCTIONS : null;
+
     if (stream) {
       // Streaming response
       res.setHeader('Content-Type', 'text/event-stream');
@@ -119,7 +136,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       let functionName = '';
       let functionArgs = '';
 
-      const completion = await createChatCompletion(messages, selectedModel, true, UI_FUNCTIONS);
+      const completion = await createChatCompletion(messages, selectedModel, true, functionsToPass);
 
       completion.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
@@ -245,7 +262,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     } else {
       // Non-streaming response with function calling support
-      const completion = await createChatCompletion(messages, selectedModel, false, UI_FUNCTIONS);
+      const completion = await createChatCompletion(messages, selectedModel, false, functionsToPass);
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
       
