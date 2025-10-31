@@ -128,7 +128,77 @@ The project is configured for Replit Autoscale deployment:
 
 ## Recent Changes & Update History
 
-### Latest Update: Enhanced System Prompt for Direct Action Execution (October 31, 2025)
+### Latest Update: Intelligent Model Selection & Streaming Function Calling (October 31, 2025)
+
+**Major Feature Addition: AI Agent can now intelligently select models and execute UI actions**
+
+**Problem Solved:**
+- Users wanted AI to automatically switch models based on task complexity
+- AI would say "I'll switch to GPT-3.5" but wouldn't actually execute the action
+- No cost optimization - all queries used expensive models
+
+**Solution Implemented:**
+
+1. **Intelligent Model Selection Service** (`backend/src/services/modelSelector.js`)
+   - Analyzes query complexity, length, keywords, and task type
+   - Auto-selects optimal model:
+     - `gpt-4o-mini` for simple questions (cost efficient)
+     - `o1-preview` for complex reasoning tasks
+     - `gpt-4o` for multimodal/vision tasks
+   - Provides explanations for model selection
+   
+2. **Auto Mode in Model Dropdown**
+   - Added "Auto 🤖" option (set as default)
+   - Shows all 6 OpenAI models with descriptions and cost indicators:
+     - gpt-4o (Most capable, vision & audio)
+     - gpt-4o-mini (Fast & affordable) ⭐
+     - gpt-4-turbo (Previous flagship)
+     - gpt-3.5-turbo (Legacy, cheapest) 💰
+     - o1-preview (Best reasoning) 🧠
+     - o1-mini (Faster reasoning)
+   
+3. **Streaming Function Calling Support**
+   - **Critical Fix**: Function calling now works in streaming mode (used by frontend)
+   - AI can execute 10 UI actions during streaming:
+     - changeModel, navigate, createNewChat, switchConversation
+     - deleteConversation, pinConversation, renameConversation
+     - uploadFile, startVoiceChat, giveFeedback
+   - Backend detects function_call deltas, accumulates arguments, executes actions
+   - Frontend receives action payload and updates UI automatically
+   - Shows toast confirmations when actions execute
+   
+4. **End-to-End Flow**
+   - User: "Switch to GPT-3.5"
+   - AI calls: `changeModel({model: "gpt-3.5-turbo"})`
+   - Backend: Executes action, validates ownership
+   - Frontend: Updates dropdown, shows toast "Switched to gpt-3.5-turbo"
+   - Database: Logs action execution in ui_actions table
+
+**Technical Implementation:**
+```
+Files Modified:
+- backend/src/routes/messages.js (streaming + non-streaming function support)
+- backend/src/services/modelSelector.js (new intelligent selector)
+- backend/src/services/uiFunctions.js (UI action definitions)
+- backend/src/services/openai.js (function calling integration)
+- frontend/src/pages/ChatPage.jsx (action handler + model dropdown)
+```
+
+**Architect Reviews:**
+- ✅ First review: Identified streaming didn't support function calling
+- ✅ Second review: Confirmed streaming fix works end-to-end
+- ✅ Security: Proper validation and ownership checks
+- ✅ Production-ready
+
+**Impact:**
+- 💰 Automatic cost optimization (simple queries use gpt-4o-mini)
+- 🎯 AI can now execute actions, not just describe them
+- 🚀 Seamless UX - model switches happen instantly
+- 📊 All actions logged for audit trail
+
+---
+
+### Enhanced System Prompt for Direct Action Execution (October 31, 2025)
 
 **Problem Identified:**
 - AI was responding passively, saying "I cannot delete conversations" or "Click the button to..."
