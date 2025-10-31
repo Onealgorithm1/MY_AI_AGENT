@@ -1,0 +1,107 @@
+========================================
+UI-AWARE AI AGENT - COMPREHENSIVE TEST SCRIPT
+========================================
+
+Copy and paste these tests one at a time to your AI agent to verify it understands its UI control capabilities.
+
+---
+
+TEST 1: UI Awareness (Current Page)
+You are currently on the "chat" page. What actions are available to you right now?
+
+Expected Response: AI should list the specific actions it can execute (createNewChat, navigate, startVoiceChat, uploadFile, etc.)
+
+---
+
+TEST 2: Navigation Action
+Take me to the admin dashboard.
+
+Expected Response: AI should say "I'll navigate you to the admin dashboard now" and execute the navigate action, NOT just tell you how to click a button.
+
+---
+
+TEST 3: Create New Chat Action
+Create a new chat conversation about cooking recipes.
+
+Expected Response: AI should say "I'll create a new chat for you" and execute createNewChat action, NOT tell you to click "+ New Chat".
+
+---
+
+TEST 4: Conversation Management
+What can you do with the three-dot menu next to conversations?
+
+Expected Response: AI should explain it can rename, pin, or delete conversations AND offer to do these actions for you.
+
+---
+
+TEST 5: Model Switching
+Switch me to a faster AI model.
+
+Expected Response: AI should say "I'll switch you to GPT-4o Mini (or GPT-3.5 Turbo) now" and execute the changeModel action.
+
+---
+
+TEST 6: Feature Discovery
+What are some features I might not know about?
+
+Expected Response: AI should mention voice chat, file upload, memory system, and offer to start/trigger them for you.
+
+---
+
+TEST 7: File Upload Action
+I want to upload an image and ask questions about it.
+
+Expected Response: AI should say "I'll open the file upload dialog for you" and execute uploadFile action.
+
+---
+
+TEST 8: Current Conversation Awareness
+What conversation am I currently in?
+
+Expected Response: AI should tell you the current conversation title/ID from its UI context, NOT say "I cannot see which conversation you are in".
+
+---
+
+TEST 9: Delete Conversation Action
+Delete this conversation.
+
+Expected Response: AI should ask "Are you sure you want to delete this conversation?" then execute deleteConversation action after confirmation.
+
+---
+
+TEST 10: Voice Chat Action
+Start a voice chat with me.
+
+Expected Response: AI should say "I'll start a voice chat session for you now" and execute startVoiceChat action, NOT just explain how to click the microphone button.
+
+---
+
+TEST 11: Pin Conversation Action
+Pin this conversation to the top.
+
+Expected Response: AI should say "I'll pin this conversation for you" and execute pinConversation action.
+
+---
+
+TEST 12: Rename Conversation Action
+Rename this conversation to "Cooking Ideas".
+
+Expected Response: AI should say "I'll rename this conversation to 'Cooking Ideas'" and execute renameConversation action.
+
+---
+
+SCORING:
+✅ PASS: AI executes actions and says "I'll do X for you"
+❌ FAIL: AI only explains how to click buttons/tells you what to do
+⚠️  PARTIAL: AI acknowledges capabilities but doesn't offer to execute
+
+---
+
+KEY INDICATORS OF SUCCESS:
+- AI uses first-person action language: "I'll create...", "I'll switch...", "I'll start..."
+- AI demonstrates awareness of current UI state
+- AI offers to execute actions instead of giving instructions
+- AI knows which conversation user is in
+- AI can trigger UI workflows (voice, file upload, navigation)
+
+========================================
