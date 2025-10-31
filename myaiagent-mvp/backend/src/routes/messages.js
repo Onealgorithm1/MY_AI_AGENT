@@ -66,7 +66,7 @@ router.post('/', authenticate, checkRateLimit, async (req, res) => {
     const memoryFacts = memoryResult.rows;
 
     // Build messages with memory context
-    const messages = buildMessagesWithMemory(conversationHistory, memoryFacts);
+    const messages = buildMessagesWithMemory(conversationHistory, memoryFacts, selectedModel);
 
     // Update memory references
     if (memoryFacts.length > 0) {

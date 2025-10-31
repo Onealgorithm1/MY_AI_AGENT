@@ -262,8 +262,10 @@ export default function ChatPage() {
               onChange={(e) => setSelectedModel(e.target.value)}
               className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
             >
-              <option value="gpt-4o">GPT-4o (Smartest)</option>
-              <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
+              <option value="gpt-4o">GPT-4o (Smartest, Multimodal)</option>
+              <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo (Previous Gen)</option>
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fastest)</option>
             </select>
           </div>
 

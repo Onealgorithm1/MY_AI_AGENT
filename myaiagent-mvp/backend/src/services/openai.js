@@ -198,18 +198,20 @@ export function estimateTokens(text) {
 }
 
 // Build messages with memory context
-export function buildMessagesWithMemory(messages, memoryFacts) {
-  if (!memoryFacts || memoryFacts.length === 0) {
-    return messages;
-  }
+export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gpt-4o') {
+  const memoryContext = memoryFacts && memoryFacts.length > 0
+    ? memoryFacts.map(f => f.fact).join('\n- ')
+    : null;
 
-  const memoryContext = memoryFacts
-    .map(f => f.fact)
-    .join('\n- ');
+  let systemContent = `You are a helpful AI assistant powered by OpenAI's ${modelName} model.`;
+  
+  if (memoryContext) {
+    systemContent += `\n\nHere's what you know about the user:\n\n- ${memoryContext}\n\nUse this context naturally in your responses when relevant.`;
+  }
 
   const systemMessage = {
     role: 'system',
-    content: `You are a helpful AI assistant. Here's what you know about the user:\n\n- ${memoryContext}\n\nUse this context naturally in your responses when relevant.`,
+    content: systemContent,
   };
 
   // Insert system message at the beginning
