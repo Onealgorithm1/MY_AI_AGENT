@@ -10,8 +10,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  idleTimeoutMillis: 600000, // 10 minutes (was 30 seconds)
+  connectionTimeoutMillis: 10000, // 10 seconds (was 2 seconds)
+  keepAlive: true, // Keep connections alive
+  keepAliveInitialDelayMillis: 10000, // Start keepalive after 10s
 });
 
 // Test connection
