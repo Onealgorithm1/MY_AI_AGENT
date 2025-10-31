@@ -2,6 +2,7 @@ import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkRateLimit } from '../middleware/rateLimit.js';
+import { attachUIContext, generateUIAwarePrompt, buildEnhancedContext } from '../middleware/uiContext.js';
 import { 
   createChatCompletion, 
   buildMessagesWithMemory,
@@ -11,7 +12,7 @@ import {
 const router = express.Router();
 
 // Send message and get AI response
-router.post('/', authenticate, checkRateLimit, async (req, res) => {
+router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res) => {
   try {
     const { conversationId, content, model = 'gpt-4o', stream = false } = req.body;
 
@@ -65,8 +66,14 @@ router.post('/', authenticate, checkRateLimit, async (req, res) => {
 
     const memoryFacts = memoryResult.rows;
 
-    // Build messages with memory context
-    const messages = buildMessagesWithMemory(conversationHistory, memoryFacts, selectedModel);
+    // Build UI-aware context
+    const uiAwareSystemPrompt = generateUIAwarePrompt(req.uiContext, {
+      fullName: req.user.fullName,
+      role: req.user.role
+    });
+
+    // Build messages with memory context and UI awareness
+    const messages = buildMessagesWithMemory(conversationHistory, memoryFacts, selectedModel, uiAwareSystemPrompt);
 
     // Update memory references
     if (memoryFacts.length > 0) {

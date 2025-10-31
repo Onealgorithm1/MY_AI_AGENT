@@ -197,16 +197,16 @@ export function estimateTokens(text) {
   return Math.ceil(text.length / 4);
 }
 
-// Build messages with memory context
-export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gpt-4o') {
+// Build messages with memory context and optional UI awareness
+export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gpt-4o', uiAwarePrompt = null) {
   const memoryContext = memoryFacts && memoryFacts.length > 0
     ? memoryFacts.map(f => f.fact).join('\n- ')
     : null;
 
-  let systemContent = `You are a helpful AI assistant powered by OpenAI's ${modelName} model.`;
+  let systemContent = uiAwarePrompt || `You are a helpful AI assistant powered by OpenAI's ${modelName} model.`;
   
   if (memoryContext) {
-    systemContent += `\n\nHere's what you know about the user:\n\n- ${memoryContext}\n\nUse this context naturally in your responses when relevant.`;
+    systemContent += `\n\n## WHAT YOU REMEMBER ABOUT THIS USER:\n\n- ${memoryContext}\n\nUse this context naturally in your responses when relevant.`;
   }
 
   const systemMessage = {

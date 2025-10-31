@@ -23,6 +23,7 @@ import attachmentRoutes from './routes/attachments.js';
 import feedbackRoutes from './routes/feedback.js';
 import adminRoutes from './routes/admin.js';
 import secretsRoutes from './routes/secrets.js';
+import uiSchemaRoutes from './routes/ui-schema.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -106,6 +107,7 @@ app.use('/api/attachments', attachmentRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/secrets', secretsRoutes);
+app.use('/api/ui-schema', uiSchemaRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
