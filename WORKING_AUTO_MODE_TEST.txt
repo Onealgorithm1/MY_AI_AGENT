@@ -1,0 +1,92 @@
+================================================================================
+WORKING AUTO MODE TEST - PASTE THIS ENTIRE MESSAGE
+================================================================================
+
+This tests Auto mode's intelligent model selection by asking questions of 
+varying complexity. The backend will automatically select the best model for
+each part of your response. Just answer all questions naturally.
+
+COPY AND PASTE THIS ENTIRE MESSAGE:
+
+---
+
+Please answer ALL of the following questions in ONE comprehensive response. Take your time and provide complete answers for each question. Number your responses Q1, Q2, etc.
+
+**SIMPLE QUESTIONS:**
+
+Q1: Hello! How are you?
+
+Q2: What is 2 + 2?
+
+Q3: Who was the first president of the United States?
+
+Q4: What are the primary colors?
+
+Q5: What's 10 x 5?
+
+Q6: Capital of France?
+
+Q7: What year is it?
+
+**MODERATE COMPLEXITY:**
+
+Q8: Can you explain how photosynthesis works?
+
+Q9: What's the difference between HTML and CSS?
+
+Q10: How do I make a good first impression in a job interview?
+
+Q11: I'm learning to code and interested in Python. What's a good first project for a beginner?
+
+Q12: Tell me a short joke, then explain why it's funny.
+
+**COMPLEX & TECHNICAL:**
+
+Q13: Explain quantum entanglement and its implications for quantum computing in detail.
+
+Q14: Design a complete database schema for a social media platform with users, posts, comments, likes, and followers. Include all tables, foreign keys, indexes, and explain the relationships.
+
+Q15: Write a Python function that implements the quicksort algorithm with detailed comments explaining each step and the time complexity.
+
+Q16: What are the philosophical implications of artificial consciousness? Explore multiple perspectives including functionalism, emergentism, and the Chinese Room argument.
+
+Q17: Explain the backpropagation algorithm in neural networks. Include mathematical notation showing how gradients are calculated and propagated backward through the network.
+
+Q18: Explain Einstein's theory of relativity and how it fundamentally changed our understanding of space-time. Include both special and general relativity.
+
+Q19: Explain how CRISPR-Cas9 gene editing works at the molecular level and discuss the ethical implications of human germline editing.
+
+Q20: Describe the architectural differences between microservices and monolithic applications, including deployment strategies, scalability patterns, and when to use each approach.
+
+---
+
+Please provide thorough, detailed answers to ALL questions above. Don't skip any!
+
+================================================================================
+
+INSTRUCTIONS FOR TESTER:
+================================================================================
+
+1. Create a NEW conversation
+2. Select "🤖 Auto (AI picks best model)" from dropdown
+3. Copy the ENTIRE message above and paste it
+4. While it's responding, watch the backend logs
+
+EXPECTED BEHAVIOR:
+- Auto mode will select ONE model for the entire message (likely gpt-4o since the overall message is complex)
+- The AI should answer all 20 questions
+- Responses to simple questions (Q1-Q7) should be brief
+- Responses to moderate questions (Q8-Q12) should be moderately detailed
+- Responses to complex questions (Q13-Q20) should be very detailed and comprehensive
+
+WHAT TO CHECK IN BACKEND LOGS:
+Look for: "🤖 Auto-selected model: [model name] for query: 'Please answer ALL...'"
+
+Expected model selection:
+- If it picks gpt-4o or gpt-4-turbo: CORRECT (the overall message is complex)
+- If it picks gpt-3.5-turbo or gpt-4o-mini: WRONG (should use capable model for this)
+
+SUCCESS = AI answers all 20 questions thoroughly
+FAILURE = Short response, skipped questions, or errors
+
+================================================================================
