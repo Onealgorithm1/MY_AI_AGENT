@@ -53,6 +53,10 @@ externalPort = 80
 localPort = 5000
 externalPort = 5000
 
+[[ports]]
+localPort = 34541
+externalPort = 3000
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd myaiagent-mvp/backend && npm install && NODE_ENV=production npm start"]
