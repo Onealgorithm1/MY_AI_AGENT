@@ -6,13 +6,13 @@
 export const UI_FUNCTIONS = [
   {
     name: 'changeModel',
-    description: 'Switch the AI model being used for the conversation. Use this when the user asks to change models or you need a different model for the task.',
+    description: 'Switch the AI model being used for the conversation. ONLY use this when the user EXPLICITLY asks you to change/switch models (e.g., "switch to GPT-3.5", "change model to GPT-4"). DO NOT use this for normal conversation.',
     parameters: {
       type: 'object',
       properties: {
         model: {
           type: 'string',
-          enum: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini', 'auto'],
+          enum: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'auto'],
           description: 'The model to switch to',
         },
       },

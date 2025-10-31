@@ -479,8 +479,6 @@ export default function ChatPage() {
               <option value="gpt-4o-mini">GPT-4o Mini • Fast & Cheap ⚡</option>
               <option value="gpt-4-turbo">GPT-4 Turbo • Previous Gen</option>
               <option value="gpt-3.5-turbo">GPT-3.5 Turbo • Fastest 💨</option>
-              <option value="o1-preview">o1 Preview • Advanced Reasoning 🧠</option>
-              <option value="o1-mini">o1 Mini • Light Reasoning</option>
             </select>
           </div>
 
