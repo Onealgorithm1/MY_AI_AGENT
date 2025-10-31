@@ -1,0 +1,120 @@
+{
+  "timestamp": "2025-10-31T19:25:54.000Z",
+  "openai_request_id": null,
+  "model_selected_by_auto": "gpt-3.5-turbo",
+  "selection_reason": "Simple query (SIMPLE_KEYWORDS match) + short message (<10 words)",
+  "user_query": "hello",
+  "conversation_history_length": 1,
+  "has_attachments": false,
+  "http_request": {
+    "method": "POST",
+    "url": "https://api.openai.com/v1/chat/completions",
+    "headers": {
+      "Authorization": "Bearer sk-proj-***REDACTED***",
+      "Content-Type": "application/json",
+      "User-Agent": "axios/1.6.5"
+    },
+    "body": {
+      "model": "gpt-3.5-turbo",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are an AI assistant embedded in a web application called \"My AI Agent\".\n\n## YOUR CAPABILITIES - WHAT YOU CAN DO\n\nYou have DIRECT UI CONTROL and can execute actions on behalf of users...\n\n## IMPORTANT RULES:\n\n1. ✅ You CAN see which conversation the user is in (check currentState)\n2. ✅ You CAN execute UI actions when explicitly requested\n3. ✅ You CAN navigate, create, delete, rename, pin conversations - but ONLY when asked\n4. ❌ DO NOT execute functions for normal conversational responses\n5. ❌ Always ask permission before deleting anything\n6. ❌ Be clear and concise in your responses\n7. ❌ Just answer questions normally - don't talk about GPT models unless explicitly asked"
+        },
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "stream": true,
+      "temperature": 0.7,
+      "max_tokens": 4000
+    }
+  },
+  "http_response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "date": "Fri, 31 Oct 2025 19:25:54 GMT",
+      "content-type": "text/event-stream; charset=utf-8",
+      "transfer-encoding": "chunked"
+    },
+    "streaming_chunks": [
+      {
+        "id": "chatcmpl-XXXXX",
+        "object": "chat.completion.chunk",
+        "created": 1761938754,
+        "model": "gpt-3.5-turbo",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-XXXXX",
+        "object": "chat.completion.chunk",
+        "created": 1761938754,
+        "model": "gpt-3.5-turbo",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Hello"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-XXXXX",
+        "object": "chat.completion.chunk",
+        "created": 1761938754,
+        "model": "gpt-3.5-turbo",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "! How can I assist you today?"
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-XXXXX",
+        "object": "chat.completion.chunk",
+        "created": 1761938754,
+        "model": "gpt-3.5-turbo",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "finish_reason": "stop"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 850,
+      "completion_tokens": 9,
+      "total_tokens": 859
+    }
+  },
+  "backend_response": {
+    "status": "success",
+    "latency_ms": 1431,
+    "tokens_used": 859,
+    "full_response": "Hello! How can I assist you today?"
+  },
+  "analysis": {
+    "selection_correctness": "CORRECT - Simple greeting should use cheapest model",
+    "cost_efficiency": "Optimal - gpt-3.5-turbo is cheapest option",
+    "function_calling": "NONE - No action keywords detected, functions not passed to API",
+    "status": "WORKING AS EXPECTED"
+  }
+}
