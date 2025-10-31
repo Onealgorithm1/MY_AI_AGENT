@@ -42,7 +42,7 @@ export default function ChatPage() {
 
   const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('auto');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
   const [editingConvId, setEditingConvId] = useState(null);
@@ -168,6 +168,11 @@ export default function ChatPage() {
                   created_at: new Date().toISOString(),
                 });
                 setStreamingMessage('');
+                
+                // Handle UI actions from AI
+                if (data.action) {
+                  handleAIAction(data.action);
+                }
               }
             } catch (e) {
               // Skip invalid JSON
@@ -245,6 +250,45 @@ export default function ChatPage() {
   const cancelEditing = () => {
     setEditingConvId(null);
     setEditingTitle('');
+  };
+
+  // Handle AI-triggered actions
+  const handleAIAction = (action) => {
+    console.log('🤖 Executing AI action:', action);
+    
+    switch (action.type) {
+      case 'changeModel':
+        if (action.params?.model) {
+          setSelectedModel(action.params.model);
+          toast.success(`Switched to ${action.params.model}`);
+        }
+        break;
+        
+      case 'createNewChat':
+        createConversation.mutate();
+        break;
+        
+      case 'deleteConversation':
+        if (currentConversation) {
+          handleDelete(currentConversation.id);
+        }
+        break;
+        
+      case 'renameConversation':
+        if (currentConversation && action.params?.title) {
+          handleRename(currentConversation.id, action.params.title);
+        }
+        break;
+        
+      case 'navigate':
+        if (action.params?.page) {
+          navigate(`/${action.params.page === 'chat' ? '' : action.params.page}`);
+        }
+        break;
+        
+      default:
+        console.log('Unknown action type:', action.type);
+    }
   };
 
   // Close menu on escape key
@@ -430,10 +474,13 @@ export default function ChatPage() {
               onChange={(e) => setSelectedModel(e.target.value)}
               className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
             >
-              <option value="gpt-4o">GPT-4o (Smartest, Multimodal)</option>
-              <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
-              <option value="gpt-4-turbo">GPT-4 Turbo (Previous Gen)</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fastest)</option>
+              <option value="auto">🤖 Auto (AI picks best model)</option>
+              <option value="gpt-4o">GPT-4o • Smartest, Multimodal</option>
+              <option value="gpt-4o-mini">GPT-4o Mini • Fast & Cheap ⚡</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo • Previous Gen</option>
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo • Fastest 💨</option>
+              <option value="o1-preview">o1 Preview • Advanced Reasoning 🧠</option>
+              <option value="o1-mini">o1 Mini • Light Reasoning</option>
             </select>
           </div>
 

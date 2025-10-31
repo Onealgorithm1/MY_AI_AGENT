@@ -8,6 +8,8 @@ import {
   buildMessagesWithMemory,
   estimateTokens 
 } from '../services/openai.js';
+import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
+import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 
 const router = express.Router();
 
@@ -31,7 +33,24 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     }
 
     const conversation = convCheck.rows[0];
-    const selectedModel = model || conversation.model;
+    let selectedModel = model || conversation.model;
+    
+    // Auto model selection
+    if (selectedModel === 'auto') {
+      // Get conversation history for context
+      const historyForSelection = await query(
+        `SELECT role, content FROM messages 
+         WHERE conversation_id = $1 
+         ORDER BY created_at ASC
+         LIMIT 20`,
+        [conversationId]
+      );
+      
+      const hasAttachments = req.body.attachments && req.body.attachments.length > 0;
+      selectedModel = selectBestModel(content, hasAttachments, historyForSelection.rows);
+      
+      console.log(`🤖 Auto-selected model: ${selectedModel} for query: "${content.substring(0, 50)}..."`);
+    }
 
     // Save user message
     const userMessage = await query(
@@ -96,8 +115,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       let fullResponse = '';
       let tokensUsed = 0;
+      let functionCall = null;
+      let functionName = '';
+      let functionArgs = '';
 
-      const completion = await createChatCompletion(messages, selectedModel, true);
+      const completion = await createChatCompletion(messages, selectedModel, true, UI_FUNCTIONS);
 
       completion.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
@@ -107,11 +129,23 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           
           try {
             const parsed = JSON.parse(line.replace('data: ', ''));
-            const content = parsed.choices[0]?.delta?.content;
+            const delta = parsed.choices[0]?.delta;
             
-            if (content) {
-              fullResponse += content;
-              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            // Check for function call
+            if (delta?.function_call) {
+              if (delta.function_call.name) {
+                functionName = delta.function_call.name;
+              }
+              if (delta.function_call.arguments) {
+                functionArgs += delta.function_call.arguments;
+              }
+              functionCall = { name: functionName, arguments: functionArgs };
+            }
+            
+            // Regular text content
+            if (delta?.content) {
+              fullResponse += delta.content;
+              res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
             }
           } catch (e) {
             // Skip invalid JSON
@@ -120,9 +154,70 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       });
 
       completion.on('end', async () => {
-        tokensUsed = estimateTokens(fullResponse);
+        tokensUsed = estimateTokens(fullResponse || functionArgs);
 
-        // Save assistant message
+        // Handle function call execution
+        if (functionCall && functionCall.name) {
+          console.log(`🎯 AI wants to call function: ${functionCall.name} with args: ${functionCall.arguments}`);
+          
+          try {
+            const parsedArgs = JSON.parse(functionCall.arguments);
+            const functionResult = await executeUIFunction(functionCall.name, parsedArgs, {
+              userId: req.user.id,
+              conversationId,
+            });
+            
+            const responseMessage = `✅ ${functionResult.message}`;
+            
+            // Save assistant message
+            await query(
+              `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [conversationId, 'assistant', responseMessage, selectedModel, tokensUsed]
+            );
+            
+            // Update usage tracking
+            await query(
+              `UPDATE usage_tracking 
+               SET messages_sent = messages_sent + 1,
+                   tokens_consumed = tokens_consumed + $1
+               WHERE user_id = $2 AND date = CURRENT_DATE`,
+              [tokensUsed, req.user.id]
+            );
+            
+            // Send action to frontend
+            res.write(`data: ${JSON.stringify({ 
+              content: responseMessage,
+              action: {
+                type: functionCall.name,
+                params: parsedArgs,
+                result: functionResult.data
+              },
+              done: true 
+            })}\n\n`);
+            res.end();
+            return;
+          } catch (error) {
+            console.error('Function execution error:', error);
+            const errorMessage = `❌ Failed to ${functionCall.name}: ${error.message}`;
+            
+            await query(
+              `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed]
+            );
+            
+            res.write(`data: ${JSON.stringify({ 
+              content: errorMessage,
+              error: error.message,
+              done: true 
+            })}\n\n`);
+            res.end();
+            return;
+          }
+        }
+        
+        // Regular text response (no function call)
         await query(
           `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
            VALUES ($1, $2, $3, $4, $5)`,
@@ -149,10 +244,78 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       });
 
     } else {
-      // Non-streaming response
-      const completion = await createChatCompletion(messages, selectedModel, false);
-      const aiResponse = completion.choices[0].message.content;
+      // Non-streaming response with function calling support
+      const completion = await createChatCompletion(messages, selectedModel, false, UI_FUNCTIONS);
+      const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
+      
+      // Check if AI wants to call a function
+      if (responseMessage.function_call) {
+        const functionName = responseMessage.function_call.name;
+        const functionArgs = JSON.parse(responseMessage.function_call.arguments);
+        
+        console.log(`🎯 AI wants to call function: ${functionName} with args:`, functionArgs);
+        
+        try {
+          // Execute the UI function
+          const functionResult = await executeUIFunction(functionName, functionArgs, {
+            userId: req.user.id,
+            conversationId,
+          });
+          
+          // Send the result back to the frontend
+          const aiResponse = `✅ ${functionResult.message}`;
+          
+          // Save assistant message
+          await query(
+            `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [conversationId, 'assistant', aiResponse, selectedModel, tokensUsed]
+          );
+          
+          // Update usage tracking
+          await query(
+            `UPDATE usage_tracking 
+             SET messages_sent = messages_sent + 1,
+                 tokens_consumed = tokens_consumed + $1
+             WHERE user_id = $2 AND date = CURRENT_DATE`,
+            [tokensUsed, req.user.id]
+          );
+          
+          res.json({
+            message: aiResponse,
+            action: {
+              type: functionName,
+              params: functionArgs,
+              result: functionResult.data,
+            },
+          });
+          return;
+        } catch (error) {
+          console.error('Function execution error:', error);
+          const errorMessage = `❌ Failed to ${functionName}: ${error.message}`;
+          
+          await query(
+            `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed]
+          );
+          
+          res.json({
+            message: errorMessage,
+            action: {
+              type: functionName,
+              params: functionArgs,
+              error: error.message,
+            },
+          });
+          return;
+        }
+      }
+      
+      // Regular text response (no function call)
+      const aiResponse = responseMessage.content;
 
       // Save assistant message
       const assistantMessage = await query(

@@ -5,23 +5,31 @@ import { getApiKey } from '../utils/apiKeys.js';
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
-// Chat completion with streaming
-export async function createChatCompletion(messages, model = 'gpt-4o', stream = false) {
+// Chat completion with streaming and function calling
+export async function createChatCompletion(messages, model = 'gpt-4o', stream = false, functions = null) {
   try {
     const apiKey = await getApiKey('openai');
     if (!apiKey) {
       throw new Error('OpenAI API key not configured. Please add it in the admin dashboard.');
     }
 
+    const requestBody = {
+      model,
+      messages,
+      stream,
+      temperature: 0.7,
+      max_tokens: 4000,
+    };
+    
+    // Add function calling support
+    if (functions && functions.length > 0) {
+      requestBody.functions = functions;
+      requestBody.function_call = 'auto'; // Let AI decide when to call functions
+    }
+
     const response = await axios.post(
       `${OPENAI_BASE_URL}/chat/completions`,
-      {
-        model,
-        messages,
-        stream,
-        temperature: 0.7,
-        max_tokens: 4000,
-      },
+      requestBody,
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
