@@ -5,9 +5,14 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -23,11 +28,24 @@ import secretsRoutes from './routes/secrets.js';
 import { createVoiceWebSocketServer } from './websocket/voice.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 5000 : 3000);
 
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'wss:', 'ws:', 'https://api.openai.com'],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  } : false,
 }));
 
 // CORS
@@ -82,30 +100,47 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/secrets', secretsRoutes);
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'My AI Agent API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      conversations: '/api/conversations',
-      messages: '/api/messages',
-      memory: '/api/memory',
-      attachments: '/api/attachments',
-      feedback: '/api/feedback',
-      admin: '/api/admin',
-      secrets: '/api/secrets',
-      voice: 'ws://localhost:3000/voice',
-    },
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendPath));
+  
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/voice')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
   });
-});
+} else {
+  // Root endpoint in development
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'My AI Agent API',
+      version: '1.0.0',
+      status: 'running',
+      endpoints: {
+        health: '/health',
+        auth: '/api/auth',
+        conversations: '/api/conversations',
+        messages: '/api/messages',
+        memory: '/api/memory',
+        attachments: '/api/attachments',
+        feedback: '/api/feedback',
+        admin: '/api/admin',
+        secrets: '/api/secrets',
+        voice: 'ws://localhost:3000/voice',
+      },
+    });
+  });
+}
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  if (req.path.startsWith('/api')) {
+    res.status(404).json({ error: 'Endpoint not found' });
+  } else {
+    res.status(404).send('Not found');
+  }
 });
 
 // Global error handler
