@@ -20,6 +20,9 @@ import {
   Trash2,
   ChevronDown,
   Loader2,
+  Edit2,
+  Check,
+  X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,6 +45,10 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState('gpt-4o');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
+  const [editingConvId, setEditingConvId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
 
   // Get conversations
   const { data: conversationsData } = useQuery({
@@ -177,6 +184,58 @@ export default function ChatPage() {
     return response.data.conversation.id;
   };
 
+  // Rename conversation
+  const handleRename = async (convId, newTitle) => {
+    try {
+      await conversationsApi.update(convId, { title: newTitle });
+      queryClient.invalidateQueries(['conversations']);
+      toast.success('Chat renamed successfully');
+      setEditingConvId(null);
+      setEditingTitle('');
+    } catch (error) {
+      toast.error('Failed to rename chat');
+    }
+  };
+
+  // Toggle pin conversation
+  const handleTogglePin = async (convId, currentPinned) => {
+    try {
+      await conversationsApi.update(convId, { pinned: !currentPinned });
+      queryClient.invalidateQueries(['conversations']);
+      toast.success(currentPinned ? 'Chat unpinned' : 'Chat pinned');
+    } catch (error) {
+      toast.error('Failed to update chat');
+    }
+  };
+
+  // Delete conversation
+  const handleDelete = async (convId) => {
+    try {
+      await conversationsApi.delete(convId);
+      queryClient.invalidateQueries(['conversations']);
+      toast.success('Chat deleted successfully');
+      setDeleteConfirmId(null);
+      if (currentConversation?.id === convId) {
+        setMessages([]);
+      }
+    } catch (error) {
+      toast.error('Failed to delete chat');
+    }
+  };
+
+  // Start editing
+  const startEditing = (convId, currentTitle) => {
+    setEditingConvId(convId);
+    setEditingTitle(currentTitle);
+    setMenuOpenId(null);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingConvId(null);
+    setEditingTitle('');
+  };
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -208,16 +267,90 @@ export default function ChatPage() {
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto p-2">
           {conversations.map((conv) => (
-            <button
+            <div
               key={conv.id}
-              onClick={() => loadConversation(conv.id)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left mb-1"
+              className="relative group mb-1"
             >
-              <MessageCircle className="w-4 h-4 text-gray-500" />
-              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">
-                {conv.title || 'New Chat'}
-              </span>
-            </button>
+              {editingConvId === conv.id ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRename(conv.id, editingTitle);
+                      if (e.key === 'Escape') cancelEditing();
+                    }}
+                    className="flex-1 px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleRename(conv.id, editingTitle)}
+                    className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => loadConversation(conv.id)}
+                    className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                  >
+                    {conv.pinned && <Pin className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
+                    <MessageCircle className="w-4 h-4 text-gray-500" />
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">
+                      {conv.title || 'New Chat'}
+                    </span>
+                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
+                      className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                    {menuOpenId === conv.id && (
+                      <div className="absolute right-0 top-6 z-10 w-48 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1">
+                        <button
+                          onClick={() => startEditing(conv.id, conv.title)}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleTogglePin(conv.id, conv.pinned);
+                            setMenuOpenId(null);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                          <Pin className="w-4 h-4" />
+                          {conv.pinned ? 'Unpin' : 'Pin'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteConfirmId(conv.id);
+                            setMenuOpenId(null);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -385,6 +518,34 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Delete Chat?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              This will permanently delete this chat and all its messages. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
