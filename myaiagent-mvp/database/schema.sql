@@ -364,3 +364,23 @@ COMMENT ON TABLE api_secrets IS 'Encrypted storage for API keys and secrets';
 CREATE TRIGGER update_api_secrets_updated_at BEFORE UPDATE ON api_secrets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ============================================
+-- UI Actions Table (AI Agent Action Execution)
+-- ============================================
+CREATE TABLE IF NOT EXISTS ui_actions (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action_type VARCHAR(100) NOT NULL,
+    action_params JSONB DEFAULT '{}'::jsonb,
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN DEFAULT true,
+    error_message TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX idx_ui_actions_user_id ON ui_actions(user_id);
+CREATE INDEX idx_ui_actions_executed_at ON ui_actions(executed_at DESC);
+CREATE INDEX idx_ui_actions_action_type ON ui_actions(action_type);
+
+COMMENT ON TABLE ui_actions IS 'Tracks AI agent UI action executions for audit and debugging';
+
