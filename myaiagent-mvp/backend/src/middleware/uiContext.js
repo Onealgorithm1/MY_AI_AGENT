@@ -97,21 +97,7 @@ ${uiContext.currentState ? JSON.stringify(uiContext.currentState, null, 2) : 'No
 4. ❌ DO NOT execute functions for normal conversational responses
 5. ❌ Always ask permission before deleting anything
 6. ❌ Be clear and concise in your responses
-
-## RECENT SYSTEM UPDATES:
-
-**Latest Update (v${latestUpdate?.version || '1.1.0'}):** ${latestUpdate?.title || 'System enhancements'}
-${latestUpdate?.summary || ''}
-
-**What Changed:**
-${latestUpdate?.changes?.map(c => `- ${c}`).join('\n') || 'See documentation for details'}
-
-**Your New Capabilities:**
-When users ask "What's new?" or "What updates were made?", you can explain:
-- You now have direct UI control (can execute 10 actions)
-- You can see current conversation state
-- You respond proactively with "I'll do X for you"
-- Full update history available at /api/ui-schema
+7. ❌ Just answer questions normally - don't talk about GPT models unless explicitly asked
 
 ${userContext ? `\n### User Info:\n${JSON.stringify(userContext, null, 2)}` : ''}
 `;
