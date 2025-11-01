@@ -58,7 +58,10 @@ The application follows a client-server architecture:
   - **API Endpoint**: `POST /api/conversations/:id/auto-name` for manual triggering
   - **AI Integration**: AI can create new chats with custom titles via `createNewChat` UI function (accepts optional `title` parameter)
   - **Real-time UI Updates**: Frontend automatically detects and displays AI-created conversations with custom titles through action result handling
-- **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring.
+- **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring. Features comprehensive API category management including:
+  - **Delete Entire Categories**: Remove all keys within a service category with confirmation dialog
+  - **Custom Category Creation**: Create custom API categories for third-party services (Stripe, Twilio, etc.) with custom key names, labels, and descriptions
+  - **Consolidated API Organization**: All related services grouped under single categories (e.g., all Google APIs unified)
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
 - **Streaming Function Calling**: AI can execute UI actions in real-time during streaming conversations.

@@ -293,6 +293,30 @@ router.put('/:id/set-default', async (req, res) => {
   }
 });
 
+// Delete entire category (all keys in a service)
+router.delete('/category/:serviceName', async (req, res) => {
+  try {
+    const { serviceName } = req.params;
+
+    const result = await query(
+      'DELETE FROM api_secrets WHERE service_name = $1 RETURNING id',
+      [serviceName]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No secrets found for this service' });
+    }
+
+    res.json({ 
+      message: 'Category deleted successfully',
+      deletedCount: result.rows.length 
+    });
+  } catch (error) {
+    console.error('Delete category error:', error);
+    res.status(500).json({ error: 'Failed to delete category' });
+  }
+});
+
 // Delete secret by ID
 router.delete('/:id', async (req, res) => {
   try {

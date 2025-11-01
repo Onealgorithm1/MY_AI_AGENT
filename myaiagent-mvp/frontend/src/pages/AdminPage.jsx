@@ -28,6 +28,10 @@ export default function AdminPage() {
   const [newKeyLabel, setNewKeyLabel] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
+  const [customKeyName, setCustomKeyName] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -109,6 +113,45 @@ export default function AdminPage() {
       refetchSecrets();
     } catch (error) {
       toast.error('Failed to delete API key');
+    }
+  };
+
+  const handleDeleteCategory = async (serviceName) => {
+    if (!confirm(`Are you sure you want to delete the entire "${serviceName}" category and all its keys?`)) return;
+    try {
+      const response = await secrets.deleteCategory(serviceName);
+      toast.success(`${serviceName} category deleted (${response.data.deletedCount} keys removed)`);
+      refetchSecrets();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete category');
+    }
+  };
+
+  const handleSaveCustomCategory = async () => {
+    if (!customCategoryName || !customKeyName || !secretValue) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      await secrets.save({
+        serviceName: customCategoryName,
+        keyName: customKeyName,
+        keyValue: secretValue,
+        keyLabel: newKeyLabel || `${customCategoryName} Key`,
+        description: customDescription,
+        isDefault: true,
+      });
+      toast.success('Custom category created successfully');
+      setIsAddingCustomCategory(false);
+      setCustomCategoryName('');
+      setCustomKeyName('');
+      setCustomDescription('');
+      setSecretValue('');
+      setNewKeyLabel('');
+      refetchSecrets();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to create custom category');
     }
   };
 
@@ -273,6 +316,16 @@ export default function AdminPage() {
                           Get API key →
                         </a>
                       </div>
+                      {serviceKeys.length > 0 && (
+                        <button
+                          onClick={() => handleDeleteCategory(def.service_name)}
+                          className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
+                          title="Delete entire category"
+                        >
+                          <X className="w-3 h-3" />
+                          Delete Category
+                        </button>
+                      )}
                     </div>
 
                     {/* Existing Keys */}
@@ -390,6 +443,81 @@ export default function AdminPage() {
                   </div>
                 );
               })}
+
+              {/* Custom Category Creation */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
+                {isAddingCustomCategory ? (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                      Create Custom API Category
+                    </h3>
+                    <input
+                      type="text"
+                      value={customCategoryName}
+                      onChange={(e) => setCustomCategoryName(e.target.value)}
+                      placeholder="Category Name (e.g., Stripe, Twilio, SendGrid)"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={customKeyName}
+                      onChange={(e) => setCustomKeyName(e.target.value)}
+                      placeholder="Key Name (e.g., STRIPE_API_KEY, TWILIO_AUTH_TOKEN)"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
+                    />
+                    <input
+                      type="text"
+                      value={newKeyLabel}
+                      onChange={(e) => setNewKeyLabel(e.target.value)}
+                      placeholder="Key Label (e.g., Production Key)"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={secretValue}
+                      onChange={(e) => setSecretValue(e.target.value)}
+                      placeholder="API Key Value"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                    />
+                    <textarea
+                      value={customDescription}
+                      onChange={(e) => setCustomDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      rows={2}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveCustomCategory}
+                        className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <Save className="w-4 h-4" />
+                        Create Category
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddingCustomCategory(false);
+                          setCustomCategoryName('');
+                          setCustomKeyName('');
+                          setCustomDescription('');
+                          setSecretValue('');
+                          setNewKeyLabel('');
+                        }}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingCustomCategory(true)}
+                    className="w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm font-medium"
+                  >
+                    + Create Custom API Category
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

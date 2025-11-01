@@ -186,6 +186,8 @@ export const secrets = {
     api.put(`/secrets/${id}/toggle`),
   delete: (id) =>
     api.delete(`/secrets/${id}`),
+  deleteCategory: (serviceName) =>
+    api.delete(`/secrets/category/${encodeURIComponent(serviceName)}`),
   test: (id) =>
     api.post(`/secrets/${id}/test`),
   setDefault: (id) =>
