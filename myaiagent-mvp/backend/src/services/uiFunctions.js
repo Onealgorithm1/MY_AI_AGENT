@@ -76,6 +76,25 @@ export const UI_FUNCTIONS = [
       required: ['page'],
     },
   },
+  {
+    name: 'webSearch',
+    description: 'Search the web for current information, news, facts, or real-time data. Use this when you need to answer questions about recent events, current statistics, live data, or information that changes frequently. Examples: "Who won the 2024 Super Bowl?", "What is the current weather in New York?", "Latest news about AI", "Current stock price of Apple". DO NOT use for general knowledge questions you already know.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The search query to look up on the web',
+        },
+        numResults: {
+          type: 'number',
+          description: 'Number of search results to return (default: 5, max: 10)',
+          default: 5,
+        },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 /**
@@ -93,8 +112,31 @@ export function getFunctionByName(name) {
  * @returns {Promise<Object>} - Result of execution
  */
 export async function executeUIFunction(functionName, args, context) {
-  const { ActionExecutor } = await import('./actionExecutor.js');
   const { conversationId, userId } = context;
+  
+  if (functionName === 'webSearch') {
+    const { performWebSearch, logSearchUsage } = await import('./webSearch.js');
+    
+    try {
+      const searchResults = await performWebSearch(args.query, args.numResults || 5);
+      
+      await logSearchUsage(userId, args.query, searchResults.results.length, conversationId);
+      
+      return {
+        success: true,
+        message: `Found ${searchResults.results.length} results for "${args.query}"`,
+        data: searchResults,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Web search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  const { ActionExecutor } = await import('./actionExecutor.js');
   
   // Map function calls to UI actions
   const actionMap = {
