@@ -16,14 +16,15 @@ const ALLOWED_ACTIONS = {
   },
   
   createNewChat: {
-    allowedParams: [],
+    allowedParams: ['title'],
     validate: (params) => true,
     execute: async (params, userId) => {
+      const title = params.title || 'New Conversation';
       const result = await pool.query(
         `INSERT INTO conversations (user_id, title, model) 
          VALUES ($1, $2, $3) 
          RETURNING id, title, model, created_at`,
-        [userId, 'New Conversation', 'gpt-4o']
+        [userId, title, 'gpt-4o']
       );
       return {
         conversation: result.rows[0]
