@@ -220,9 +220,15 @@ export default function ChatPage() {
   };
 
   const createNewConversation = async () => {
-    const response = await conversationsApi.create('New Chat', selectedModel);
-    queryClient.invalidateQueries(['conversations']);
-    return response.data.conversation.id;
+    try {
+      const response = await conversationsApi.create('New Chat', selectedModel);
+      queryClient.invalidateQueries(['conversations']);
+      return response.data.conversation.id;
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      toast.error('Failed to create new chat');
+      return null;
+    }
   };
 
   // Copy message to clipboard
