@@ -421,16 +421,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
   } catch (error) {
     console.error('Send message error:', error);
-    
-    // Check if headers have been sent (streaming has started)
-    if (res.headersSent) {
-      // If streaming, send error as SSE and end
-      res.write(`data: ${JSON.stringify({ error: 'Failed to send message' })}\n\n`);
-      res.end();
-    } else {
-      // If not streaming, send error response
-      res.status(500).json({ error: 'Failed to send message' });
-    }
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
 
