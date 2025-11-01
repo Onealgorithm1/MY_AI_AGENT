@@ -32,6 +32,7 @@ export default function AdminPage() {
   const [customCategoryName, setCustomCategoryName] = useState('');
   const [customKeyName, setCustomKeyName] = useState('');
   const [customDescription, setCustomDescription] = useState('');
+  const [customDocsUrl, setCustomDocsUrl] = useState('');
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -128,8 +129,8 @@ export default function AdminPage() {
   };
 
   const handleSaveCustomCategory = async () => {
-    if (!customCategoryName || !customKeyName || !secretValue) {
-      toast.error('Please fill in all fields');
+    if (!customCategoryName || !customKeyName || !secretValue || !customDocsUrl) {
+      toast.error('Please fill in all required fields (Category Name, Key Name, API Key Value, and Docs URL)');
       return;
     }
 
@@ -140,6 +141,7 @@ export default function AdminPage() {
         keyValue: secretValue,
         keyLabel: newKeyLabel || `${customCategoryName} Key`,
         description: customDescription,
+        docsUrl: customDocsUrl,
         isDefault: true,
       });
       toast.success('Custom category created successfully');
@@ -147,6 +149,7 @@ export default function AdminPage() {
       setCustomCategoryName('');
       setCustomKeyName('');
       setCustomDescription('');
+      setCustomDocsUrl('');
       setSecretValue('');
       setNewKeyLabel('');
       refetchSecrets();
@@ -479,6 +482,13 @@ export default function AdminPage() {
                       placeholder="API Key Value"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
                     />
+                    <input
+                      type="url"
+                      value={customDocsUrl}
+                      onChange={(e) => setCustomDocsUrl(e.target.value)}
+                      placeholder="Get API Key URL (e.g., https://dashboard.stripe.com/apikeys)"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    />
                     <textarea
                       value={customDescription}
                       onChange={(e) => setCustomDescription(e.target.value)}
@@ -500,6 +510,7 @@ export default function AdminPage() {
                           setCustomCategoryName('');
                           setCustomKeyName('');
                           setCustomDescription('');
+                          setCustomDocsUrl('');
                           setSecretValue('');
                           setNewKeyLabel('');
                         }}

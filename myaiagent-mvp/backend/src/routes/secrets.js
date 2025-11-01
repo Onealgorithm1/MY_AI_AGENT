@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
   try {
     const result = await query(
       `SELECT id, key_name, service_name, key_label, key_type, is_default, 
-              description, is_active, created_at, updated_at, last_used_at, metadata
+              description, docs_url, is_active, created_at, updated_at, last_used_at, metadata
        FROM api_secrets 
        ORDER BY service_name, is_default DESC, key_label`
     );
@@ -122,6 +122,7 @@ router.get('/:id', async (req, res) => {
         keyType: secret.key_type,
         isDefault: secret.is_default,
         description: secret.description,
+        docsUrl: secret.docs_url,
         isActive: secret.is_active,
         maskedValue: maskSecret(decryptSecret(secret.key_value)),
         createdAt: secret.created_at,
@@ -154,7 +155,8 @@ router.post('/', async (req, res) => {
       keyName, 
       keyValue, 
       serviceName, 
-      description, 
+      description,
+      docsUrl,
       isActive = true,
       keyLabel,
       keyType,
@@ -168,6 +170,7 @@ router.post('/', async (req, res) => {
     // Get service name from definition or use provided
     const finalServiceName = serviceName || SECRET_DEFINITIONS[keyName]?.service_name || 'Custom';
     const finalDescription = description || SECRET_DEFINITIONS[keyName]?.description || '';
+    const finalDocsUrl = docsUrl || SECRET_DEFINITIONS[keyName]?.docs_url || '';
     const finalKeyName = keyName || `${finalServiceName}_API_KEY`;
     
     // Auto-detect key type if not provided
@@ -197,19 +200,20 @@ router.post('/', async (req, res) => {
 
     // Upsert secret using (service_name, key_label) uniqueness
     const result = await query(
-      `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, is_active, is_default, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, docs_url, is_active, is_default, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (service_name, key_label) 
        DO UPDATE SET 
          key_value = EXCLUDED.key_value,
          key_name = EXCLUDED.key_name,
          key_type = EXCLUDED.key_type,
          description = EXCLUDED.description,
+         docs_url = EXCLUDED.docs_url,
          is_active = EXCLUDED.is_active,
          is_default = EXCLUDED.is_default,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id, key_name, service_name, key_label, key_type, is_active, is_default`,
-      [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, isActive, isDefault, req.user.id]
+      [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault, req.user.id]
     );
 
     res.status(201).json({

@@ -350,6 +350,7 @@ CREATE TABLE api_secrets (
     key_type VARCHAR(50) DEFAULT 'project' CHECK (key_type IN ('project', 'admin', 'other')),
     is_default BOOLEAN DEFAULT false,
     description TEXT,
+    docs_url TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
