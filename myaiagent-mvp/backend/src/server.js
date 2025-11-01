@@ -100,6 +100,10 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve uploaded files
+const uploadsPath = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);

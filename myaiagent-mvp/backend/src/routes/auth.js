@@ -1,9 +1,46 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { hashPassword, verifyPassword, generateToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Configure multer for profile picture uploads
+const uploadDir = process.env.UPLOAD_DIR || './uploads';
+const profilePicsDir = path.join(uploadDir, 'profile-pictures');
+
+// Ensure directories exist
+if (!fs.existsSync(profilePicsDir)) {
+  fs.mkdirSync(profilePicsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, profilePicsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `user-${req.user.id}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for profile pictures
+  fileFilter: (req, file, cb) => {
+    // Only allow image files
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, GIF, WebP) are allowed'));
+    }
+  },
+});
 
 // Sign up
 router.post('/signup', async (req, res) => {
@@ -398,6 +435,71 @@ router.put('/profile/password', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Upload profile picture (file upload)
+router.post('/profile/upload-picture', authenticate, upload.single('profilePicture'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Delete old profile picture if it exists and is a local file
+    if (req.user.profile_image) {
+      const oldImagePath = req.user.profile_image;
+      // Only delete if it's a local file (starts with /uploads/)
+      if (oldImagePath.startsWith('/uploads/')) {
+        const fullPath = path.join(__dirname, '../../', oldImagePath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+    }
+
+    // Generate public URL for the uploaded file
+    const profileImageUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+    // Update user's profile image in database
+    const result = await query(
+      `UPDATE users 
+       SET profile_image = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 
+       RETURNING id, email, full_name, phone, profile_image, role, created_at, last_login_at, settings, preferences`,
+      [profileImageUrl, req.user.id]
+    );
+
+    const user = result.rows[0];
+
+    res.json({
+      message: 'Profile picture uploaded successfully',
+      profileImage: profileImageUrl,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        phone: user.phone,
+        profileImage: user.profile_image,
+        role: user.role,
+        createdAt: user.created_at,
+        lastLoginAt: user.last_login_at,
+        settings: user.settings,
+        preferences: user.preferences,
+      },
+    });
+  } catch (error) {
+    console.error('Upload profile picture error:', error);
+    
+    // Delete uploaded file if database update fails
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    if (error.message && error.message.includes('Only image files')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to upload profile picture' });
   }
 });
 
