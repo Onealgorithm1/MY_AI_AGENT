@@ -95,6 +95,112 @@ export const UI_FUNCTIONS = [
       required: ['query'],
     },
   },
+  {
+    name: 'readEmails',
+    description: 'Read emails from the user\'s Gmail inbox. Use this when the user asks to check emails, read messages, show inbox, or wants to see their recent emails.',
+    parameters: {
+      type: 'object',
+      properties: {
+        maxResults: {
+          type: 'number',
+          description: 'Number of emails to retrieve (default: 10, max: 50)',
+          default: 10,
+        },
+        query: {
+          type: 'string',
+          description: 'Optional search query (e.g., "from:example@gmail.com", "is:unread", "subject:important")',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'searchEmails',
+    description: 'Search for specific emails in Gmail. Use this when the user wants to find emails matching certain criteria.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query (e.g., "from:john@example.com", "subject:meeting", "has:attachment newer_than:7d")',
+        },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results (default: 10)',
+          default: 10,
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'sendEmail',
+    description: 'Send an email via Gmail. Use this when the user asks to send an email, compose a message, or write to someone.',
+    parameters: {
+      type: 'object',
+      properties: {
+        to: {
+          type: 'string',
+          description: 'Recipient email address',
+        },
+        subject: {
+          type: 'string',
+          description: 'Email subject line',
+        },
+        body: {
+          type: 'string',
+          description: 'Plain text email body',
+        },
+        html: {
+          type: 'string',
+          description: 'Optional HTML email body (if formatting is needed)',
+        },
+      },
+      required: ['to', 'subject', 'body'],
+    },
+  },
+  {
+    name: 'markEmailAsRead',
+    description: 'Mark an email as read in Gmail. Use this when the user wants to mark a message as read.',
+    parameters: {
+      type: 'object',
+      properties: {
+        emailId: {
+          type: 'string',
+          description: 'ID of the email to mark as read',
+        },
+      },
+      required: ['emailId'],
+    },
+  },
+  {
+    name: 'archiveEmail',
+    description: 'Archive an email in Gmail (remove from inbox). Use this when the user wants to archive or remove an email from their inbox.',
+    parameters: {
+      type: 'object',
+      properties: {
+        emailId: {
+          type: 'string',
+          description: 'ID of the email to archive',
+        },
+      },
+      required: ['emailId'],
+    },
+  },
+  {
+    name: 'deleteEmail',
+    description: 'Delete an email from Gmail. Use this when the user explicitly asks to delete or permanently remove an email.',
+    parameters: {
+      type: 'object',
+      properties: {
+        emailId: {
+          type: 'string',
+          description: 'ID of the email to delete',
+        },
+      },
+      required: ['emailId'],
+    },
+  },
 ];
 
 /**
@@ -131,6 +237,108 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `Web search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'readEmails' || functionName === 'searchEmails') {
+    const { listEmails, searchEmails } = await import('./gmail.js');
+    
+    try {
+      const emails = functionName === 'readEmails' 
+        ? await listEmails({ maxResults: args.maxResults || 10, query: args.query || '' })
+        : await searchEmails(args.query, args.maxResults || 10);
+      
+      return {
+        success: true,
+        message: `Found ${emails.length} email(s)`,
+        data: { emails },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to read emails: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'sendEmail') {
+    const { sendEmail } = await import('./gmail.js');
+    
+    try {
+      const result = await sendEmail(args);
+      
+      return {
+        success: true,
+        message: `Email sent successfully to ${args.to}`,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to send email: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'markEmailAsRead') {
+    const { markAsRead } = await import('./gmail.js');
+    
+    try {
+      await markAsRead(args.emailId);
+      
+      return {
+        success: true,
+        message: 'Email marked as read',
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to mark as read: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'archiveEmail') {
+    const { archiveEmail } = await import('./gmail.js');
+    
+    try {
+      await archiveEmail(args.emailId);
+      
+      return {
+        success: true,
+        message: 'Email archived successfully',
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to archive email: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'deleteEmail') {
+    const { deleteEmail } = await import('./gmail.js');
+    
+    try {
+      await deleteEmail(args.emailId);
+      
+      return {
+        success: true,
+        message: 'Email deleted successfully',
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to delete email: ${error.message}`,
         data: null,
       };
     }

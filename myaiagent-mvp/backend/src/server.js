@@ -27,6 +27,7 @@ import uiSchemaRoutes from './routes/ui-schema.js';
 import uiActionsRoutes from './routes/ui-actions.js';
 import eventsRoutes from './routes/events.js';
 import toolsRoutes from './routes/tools.js';
+import gmailRoutes from './routes/gmail.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -118,6 +119,7 @@ app.use('/api/ui-schema', uiSchemaRoutes);
 app.use('/api/ui-actions', uiActionsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/gmail', gmailRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
