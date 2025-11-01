@@ -33,7 +33,7 @@ export default function PreferencesPanel() {
     creativity: 'balanced', // conservative, balanced, creative
     explanationDepth: 'medium', // simple, medium, technical
     examplesPreference: true,
-    proactivesuggestions: true,
+    proactiveSuggestions: true,
     
     // Topics of Interest
     topicsOfInterest: [],
