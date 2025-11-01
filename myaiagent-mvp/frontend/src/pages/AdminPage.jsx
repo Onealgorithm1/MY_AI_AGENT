@@ -25,6 +25,9 @@ export default function AdminPage() {
   const [showSecretValues, setShowSecretValues] = useState({});
   const [editingSecret, setEditingSecret] = useState(null);
   const [secretValue, setSecretValue] = useState('');
+  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -54,31 +57,58 @@ export default function AdminPage() {
     },
   });
 
-  const handleSaveSecret = async (keyName) => {
+  const handleSaveSecret = async (serviceName, keyName) => {
     try {
       await secrets.save({
+        serviceName,
         keyName,
         keyValue: secretValue,
+        keyLabel: newKeyLabel || `${serviceName} Key`,
+        isDefault: isAddingNew, // New keys default to being the default
       });
       toast.success('API key saved successfully');
       setEditingSecret(null);
       setSecretValue('');
+      setNewKeyLabel('');
+      setIsAddingNew(false);
+      setSelectedService(null);
       refetchSecrets();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to save API key');
     }
   };
 
-  const handleTestSecret = async (keyName) => {
+  const handleTestSecret = async (secretId) => {
     try {
-      const response = await secrets.test(keyName);
+      const response = await secrets.test(secretId);
       if (response.data.success) {
-        toast.success(`✓ ${keyName} is valid`);
+        toast.success(`✓ ${response.data.message}`);
       } else {
-        toast.error(`✗ ${keyName} test failed: ${response.data.message}`);
+        toast.error(`✗ Test failed: ${response.data.message}${response.data.hint ? ` (${response.data.hint})` : ''}`);
       }
     } catch (error) {
       toast.error('Failed to test API key');
+    }
+  };
+
+  const handleSetDefault = async (secretId) => {
+    try {
+      await secrets.setDefault(secretId);
+      toast.success('Default key updated');
+      refetchSecrets();
+    } catch (error) {
+      toast.error('Failed to set default key');
+    }
+  };
+
+  const handleDeleteSecret = async (secretId) => {
+    if (!confirm('Are you sure you want to delete this API key?')) return;
+    try {
+      await secrets.delete(secretId);
+      toast.success('API key deleted');
+      refetchSecrets();
+    } catch (error) {
+      toast.error('Failed to delete API key');
     }
   };
 
@@ -201,17 +231,17 @@ export default function AdminPage() {
                     API Keys Management
                   </h4>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    Configure API keys for OpenAI, ElevenLabs, and other services. Keys are encrypted and stored securely.
+                    Configure multiple API keys for each service. Use project keys (sk-proj-) for chat and admin keys (sk-admin-) for administrative operations.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Available Services */}
+            {/* Services with Keys */}
             <div className="grid gap-4">
               {definitions.map((def) => {
-                const existingSecret = secretsList.find((s) => s.key_name === def.keyName);
-                const isEditing = editingSecret === def.keyName;
+                const serviceKeys = secretsList.filter((s) => s.service_name === def.service_name);
+                const isAddingToService = isAddingNew && selectedService === def.service_name;
 
                 return (
                   <div
@@ -225,9 +255,9 @@ export default function AdminPage() {
                           <h3 className="font-semibold text-gray-900 dark:text-white">
                             {def.serviceName}
                           </h3>
-                          {existingSecret && (
+                          {serviceKeys.length > 0 && (
                             <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
-                              Configured
+                              {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
                             </span>
                           )}
                         </div>
@@ -245,8 +275,79 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {isEditing ? (
-                      <div className="space-y-3">
+                    {/* Existing Keys */}
+                    {serviceKeys.length > 0 && (
+                      <div className="space-y-2 mb-4">
+                        {serviceKeys.map((secret) => (
+                          <div
+                            key={secret.id}
+                            className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {secret.key_label || 'Unnamed Key'}
+                                </span>
+                                {secret.is_default && (
+                                  <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
+                                    Default
+                                  </span>
+                                )}
+                                <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                  secret.key_type === 'project' 
+                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                                    : secret.key_type === 'admin'
+                                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
+                                }`}>
+                                  {secret.key_type}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                ••••••••••••
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!secret.is_default && (
+                                <button
+                                  onClick={() => handleSetDefault(secret.id)}
+                                  className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                                  title="Set as default"
+                                >
+                                  Set Default
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleTestSecret(secret.id)}
+                                className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                title="Test key"
+                              >
+                                <TestTube className="w-3 h-3" />
+                                Test
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSecret(secret.id)}
+                                className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title="Delete key"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add New Key Form */}
+                    {isAddingToService ? (
+                      <div className="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <input
+                          type="text"
+                          value={newKeyLabel}
+                          onChange={(e) => setNewKeyLabel(e.target.value)}
+                          placeholder="Key label (e.g., Production, Development, Admin)"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
                         <input
                           type="text"
                           value={secretValue}
@@ -256,16 +357,18 @@ export default function AdminPage() {
                         />
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleSaveSecret(def.keyName)}
+                            onClick={() => handleSaveSecret(def.service_name, def.keyName)}
                             className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm flex items-center gap-2"
                           >
                             <Save className="w-4 h-4" />
-                            Save
+                            Save Key
                           </button>
                           <button
                             onClick={() => {
-                              setEditingSecret(null);
+                              setIsAddingNew(false);
+                              setSelectedService(null);
                               setSecretValue('');
+                              setNewKeyLabel('');
                             }}
                             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
                           >
@@ -274,36 +377,15 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        {existingSecret ? (
-                          <>
-                            <div className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg font-mono text-sm text-gray-600 dark:text-gray-400">
-                              ••••••••••••
-                            </div>
-                            <button
-                              onClick={() => handleTestSecret(def.keyName)}
-                              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
-                              title="Test API key"
-                            >
-                              <TestTube className="w-4 h-4" />
-                              Test
-                            </button>
-                            <button
-                              onClick={() => setEditingSecret(def.keyName)}
-                              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                            >
-                              Update
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setEditingSecret(def.keyName)}
-                            className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm"
-                          >
-                            Add API Key
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => {
+                          setIsAddingNew(true);
+                          setSelectedService(def.service_name);
+                        }}
+                        className="w-full px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white text-sm"
+                      >
+                        + Add {def.serviceName} API Key
+                      </button>
                     )}
                   </div>
                 );

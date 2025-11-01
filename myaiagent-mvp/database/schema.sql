@@ -339,26 +339,36 @@ COMMENT ON TABLE voice_sessions IS 'Real-time voice conversation sessions';
 
 -- ============================================
 -- API Secrets Management Table
+-- Supports multiple API keys per service with labels and types
 -- ============================================
 CREATE TABLE api_secrets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    key_name VARCHAR(100) UNIQUE NOT NULL,
+    key_name VARCHAR(100) NOT NULL,
     key_value TEXT NOT NULL,
     service_name VARCHAR(100) NOT NULL,
+    key_label VARCHAR(100),
+    key_type VARCHAR(50) DEFAULT 'project' CHECK (key_type IN ('project', 'admin', 'other')),
+    is_default BOOLEAN DEFAULT false,
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP,
     created_by UUID REFERENCES users(id),
-    metadata JSONB DEFAULT '{}'::jsonb
+    metadata JSONB DEFAULT '{}'::jsonb,
+    UNIQUE (service_name, key_label)
 );
 
 CREATE INDEX idx_api_secrets_key_name ON api_secrets(key_name);
 CREATE INDEX idx_api_secrets_service_name ON api_secrets(service_name);
 CREATE INDEX idx_api_secrets_is_active ON api_secrets(is_active);
+CREATE INDEX idx_api_secrets_key_type ON api_secrets(key_type);
+CREATE INDEX idx_api_secrets_is_default ON api_secrets(is_default);
 
-COMMENT ON TABLE api_secrets IS 'Encrypted storage for API keys and secrets';
+COMMENT ON TABLE api_secrets IS 'Encrypted storage for API keys and secrets with support for multiple keys per service';
+COMMENT ON COLUMN api_secrets.key_label IS 'User-friendly label for the key (e.g., "Production Chat", "Development")';
+COMMENT ON COLUMN api_secrets.key_type IS 'Type of key: project (sk-proj-), admin (sk-admin-), or other';
+COMMENT ON COLUMN api_secrets.is_default IS 'Mark this key as the default for the service';
 
 -- Trigger for updated_at
 CREATE TRIGGER update_api_secrets_updated_at BEFORE UPDATE ON api_secrets

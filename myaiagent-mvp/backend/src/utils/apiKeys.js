@@ -53,25 +53,68 @@ export function decrypt(encryptedText) {
   }
 }
 
-// Get API key from database
-export async function getApiKey(provider) {
+// Get API key from database with support for multiple keys per service
+export async function getApiKey(provider, keyType = 'project') {
   try {
-    // Map provider to key_name format used in database
-    const keyNameMap = {
-      'openai': 'OPENAI_API_KEY',
-      'elevenlabs': 'ELEVENLABS_API_KEY'
+    // Map provider to service_name format
+    const serviceNameMap = {
+      'openai': 'OpenAI',
+      'elevenlabs': 'ElevenLabs',
+      'anthropic': 'Anthropic',
+      'google': 'Google',
+      'stripe': 'Stripe'
     };
     
-    const keyName = keyNameMap[provider.toLowerCase()];
-    if (!keyName) {
+    const serviceName = serviceNameMap[provider.toLowerCase()];
+    if (!serviceName) {
       console.error(`Unknown provider: ${provider}`);
       return null;
     }
     
-    const result = await query(
-      'SELECT key_value FROM api_secrets WHERE key_name = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1',
-      [keyName]
+    // Try to get key in this order:
+    // 1. Default key of matching type (if specified)
+    // 2. Any default key
+    // 3. Any active key of matching type
+    // 4. Any active key
+    let result;
+    
+    // Try default key of matching type first
+    result = await query(
+      `SELECT key_value FROM api_secrets 
+       WHERE service_name = $1 AND is_active = true AND is_default = true AND key_type = $2
+       LIMIT 1`,
+      [serviceName, keyType]
     );
+    
+    // If not found, try any default key
+    if (result.rows.length === 0) {
+      result = await query(
+        `SELECT key_value FROM api_secrets 
+         WHERE service_name = $1 AND is_active = true AND is_default = true
+         LIMIT 1`,
+        [serviceName]
+      );
+    }
+    
+    // If still not found, try any key of matching type
+    if (result.rows.length === 0) {
+      result = await query(
+        `SELECT key_value FROM api_secrets 
+         WHERE service_name = $1 AND is_active = true AND key_type = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [serviceName, keyType]
+      );
+    }
+    
+    // Last resort: any active key
+    if (result.rows.length === 0) {
+      result = await query(
+        `SELECT key_value FROM api_secrets 
+         WHERE service_name = $1 AND is_active = true
+         ORDER BY created_at DESC LIMIT 1`,
+        [serviceName]
+      );
+    }
     
     if (result.rows.length === 0) {
       return null;

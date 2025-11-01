@@ -154,16 +154,18 @@ export const secrets = {
     api.get('/secrets/definitions'),
   list: () =>
     api.get('/secrets'),
-  get: (keyName) =>
-    api.get(`/secrets/${keyName}`),
+  get: (id) =>
+    api.get(`/secrets/${id}`),
   save: (data) =>
     api.post('/secrets', data),
-  toggle: (keyName) =>
-    api.put(`/secrets/${keyName}/toggle`),
-  delete: (keyName) =>
-    api.delete(`/secrets/${keyName}`),
-  test: (keyName) =>
-    api.post(`/secrets/${keyName}/test`),
+  toggle: (id) =>
+    api.put(`/secrets/${id}/toggle`),
+  delete: (id) =>
+    api.delete(`/secrets/${id}`),
+  test: (id) =>
+    api.post(`/secrets/${id}/test`),
+  setDefault: (id) =>
+    api.put(`/secrets/${id}/set-default`),
 };
 
 export default api;
