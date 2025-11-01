@@ -11,6 +11,7 @@ import {
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
@@ -60,9 +61,6 @@ async function triggerAutoNaming(conversationId, userId) {
 
 // Simple internal token generator (for internal API calls)
 function generateInternalToken(userId) {
-  // For internal calls, we can use the JWT secret to generate a token
-  // This is a simple implementation - in production, use a proper JWT library
-  const jwt = require('jsonwebtoken');
   const secret = process.env.JWT_SECRET || 'your-secret-key';
   return jwt.sign({ id: userId, internal: true }, secret, { expiresIn: '1m' });
 }

@@ -48,7 +48,14 @@ The application follows a client-server architecture:
 - **Voice Chat**: Real-time voice communication via WebSockets using OpenAI's Realtime API.
 - **File Upload**: Supports various file types (images, PDFs) with integrated AI vision capabilities.
 - **Memory System**: AI automatically extracts and stores facts about users to personalize interactions.
-- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences) and PreferencesPanel UI component integrated into profile page. Preferences automatically injected into AI system prompts to adapt response style, tone, length, creativity, and other behaviors to user's explicit choices.
+- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences). Preferences automatically injected into AI system prompts to adapt response style, tone, length, creativity, and other behaviors to user's explicit choices.
+- **Automatic Chat Naming**: Intelligent conversation title generation based on content analysis. After 2-3 user messages, the system automatically analyzes the conversation using keyword extraction and frequency analysis to generate descriptive titles (e.g., "Business Description Refinement"). Features include:
+  - **Smart Keyword Extraction**: Filters stop words, ranks word frequency, and selects top 2-4 meaningful keywords
+  - **Auto-Trigger**: Fires asynchronously after 2nd or 3rd user message without blocking responses
+  - **User Override Protection**: Respects manually renamed conversations, only auto-names default titles ("New Conversation", "New Chat", "Untitled Chat")
+  - **Fallback Logic**: Returns "New Chat" for empty/stop-word-only messages, truncates long titles to 50 characters
+  - **Frontend Integration**: Conversation list refreshes every 5 seconds to display auto-generated titles
+  - **API Endpoint**: `POST /api/conversations/:id/auto-name` for manual triggering
 - **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring.
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
