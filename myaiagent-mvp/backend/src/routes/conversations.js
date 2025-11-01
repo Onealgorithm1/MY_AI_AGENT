@@ -248,8 +248,8 @@ router.get('/:id/analytics', authenticate, async (req, res) => {
   }
 });
 
-// Helper function to extract keywords and generate title
-function generateTitleFromMessages(messages) {
+// Helper function to extract keywords and generate title (exported for use in messages route)
+export function generateTitleFromMessages(messages) {
   // Common stop words to filter out
   const stopWords = new Set([
     'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
@@ -394,5 +394,70 @@ router.post('/:id/auto-name', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Failed to auto-name conversation' });
   }
 });
+
+// Export auto-naming function for direct use (no HTTP needed)
+export async function autoNameConversation(conversationId, userId) {
+  try {
+    // Verify ownership
+    const check = await query(
+      'SELECT id, title FROM conversations WHERE id = $1 AND user_id = $2',
+      [conversationId, userId]
+    );
+
+    if (check.rows.length === 0) {
+      return { success: false, message: 'Conversation not found' };
+    }
+
+    const currentTitle = check.rows[0].title;
+
+    // Don't auto-rename if user has manually changed the title
+    const defaultTitles = ['New Conversation', 'New Chat', 'Untitled Chat'];
+    if (!defaultTitles.includes(currentTitle)) {
+      return { 
+        success: false,
+        message: 'Conversation already has a custom title',
+        title: currentTitle
+      };
+    }
+
+    // Get first 5 user messages
+    const messages = await query(
+      `SELECT role, content FROM messages 
+       WHERE conversation_id = $1 
+       ORDER BY created_at ASC
+       LIMIT 5`,
+      [conversationId]
+    );
+
+    if (messages.rows.length === 0) {
+      return { 
+        success: false,
+        message: 'No messages found to generate title',
+        title: currentTitle
+      };
+    }
+
+    // Generate title from messages
+    const newTitle = generateTitleFromMessages(messages.rows);
+
+    // Update conversation title
+    const result = await query(
+      `UPDATE conversations 
+       SET title = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 AND user_id = $3 
+       RETURNING id, title`,
+      [newTitle, conversationId, userId]
+    );
+
+    return {
+      success: true,
+      message: 'Conversation title auto-generated',
+      title: result.rows[0].title
+    };
+  } catch (error) {
+    console.error('Auto-name conversation error:', error);
+    return { success: false, message: 'Failed to auto-name conversation' };
+  }
+}
 
 export default router;

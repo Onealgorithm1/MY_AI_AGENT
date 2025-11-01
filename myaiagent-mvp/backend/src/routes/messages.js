@@ -10,8 +10,7 @@ import {
 } from '../services/openai.js';
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
-import axios from 'axios';
-import jwt from 'jsonwebtoken';
+import { autoNameConversation } from './conversations.js';
 
 const router = express.Router();
 
@@ -28,25 +27,13 @@ async function triggerAutoNaming(conversationId, userId) {
     
     // Trigger auto-naming after 2-3 user messages
     if (userMessageCount === 2 || userMessageCount === 3) {
-      // Call auto-naming endpoint asynchronously (don't await)
+      // Call auto-naming function directly (asynchronously, don't await)
       setImmediate(async () => {
         try {
-          // Make internal API call to auto-naming endpoint
-          const API_BASE = process.env.API_URL || 'http://localhost:3000/api';
-          const token = generateInternalToken(userId);
-          
-          await axios.post(
-            `${API_BASE}/conversations/${conversationId}/auto-name`,
-            {},
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          
-          console.log(`📝 Auto-named conversation ${conversationId} after ${userMessageCount} messages`);
+          const result = await autoNameConversation(conversationId, userId);
+          if (result.success) {
+            console.log(`📝 Auto-named conversation ${conversationId} to "${result.title}" after ${userMessageCount} messages`);
+          }
         } catch (error) {
           // Silently fail - auto-naming is not critical
           console.error('Auto-naming failed (non-critical):', error.message);
@@ -57,12 +44,6 @@ async function triggerAutoNaming(conversationId, userId) {
     // Silently fail - don't disrupt message flow
     console.error('Auto-naming trigger error:', error);
   }
-}
-
-// Simple internal token generator (for internal API calls)
-function generateInternalToken(userId) {
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
-  return jwt.sign({ id: userId, internal: true }, secret, { expiresIn: '1m' });
 }
 
 // Send message and get AI response
