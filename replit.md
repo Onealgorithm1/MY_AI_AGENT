@@ -20,6 +20,7 @@ The application follows a client-server architecture:
 - **Action Execution Layer**: Enables the AI to trigger specific UI commands via dedicated API endpoints. This includes actions like changing models, navigation, conversation management (create, switch, delete, pin, rename), file uploads, starting voice chats, and providing feedback.
 - **Bidirectional Event System**: Tracks user actions on the frontend and allows the AI to initiate real-time UI updates, creating a highly responsive and interactive experience.
 - **Code Awareness**: The AI is explicitly aware of and can discuss backend code (routes, services, middleware), frontend components, API endpoints, database schema, and implementation details when asked.
+- **User Awareness**: The AI has complete awareness of who it's chatting with, including name, email, role, phone, account creation date, last login, and user preferences. This enables highly personalized interactions where the AI can address users by name, acknowledge their role (especially admin privileges), and provide context-aware assistance.
 
 **Technical Implementations & Features**:
 - **Authentication**: JWT-based authentication with bcrypt hashing.
