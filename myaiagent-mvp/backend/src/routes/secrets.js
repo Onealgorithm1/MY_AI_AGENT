@@ -17,12 +17,6 @@ const SECRET_DEFINITIONS = {
     placeholder: 'sk-proj-...',
     docs_url: 'https://platform.openai.com/api-keys',
   },
-  ELEVENLABS_API_KEY: {
-    service_name: 'ElevenLabs',
-    description: 'ElevenLabs API key for realistic voice synthesis',
-    placeholder: 'abc123def456...',
-    docs_url: 'https://elevenlabs.io/app/settings/api-keys',
-  },
   ANTHROPIC_API_KEY: {
     service_name: 'Anthropic',
     description: 'Anthropic API key for Claude models',

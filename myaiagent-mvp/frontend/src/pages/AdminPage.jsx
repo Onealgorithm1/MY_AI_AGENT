@@ -539,8 +539,14 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* Predefined Services */}
-              {definitions.map((def) => {
+              {/* Predefined Services - only show if they have at least one key */}
+              {definitions
+                .filter((def) => {
+                  // Only show predefined categories that have at least one saved key
+                  const hasKeys = secretsList.some((s) => s.service_name === def.service_name);
+                  return hasKeys;
+                })
+                .map((def) => {
                 const serviceKeys = secretsList
                   .filter((s) => s.service_name === def.service_name)
                   .sort((a, b) => (a.key_label || '').localeCompare(b.key_label || '')); // Sort keys alphabetically
