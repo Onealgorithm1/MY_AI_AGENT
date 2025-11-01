@@ -680,8 +680,15 @@ export default function UserProfilePage() {
               <div className="flex items-center gap-3 pt-4">
                 <button
                   onClick={handleChangePassword}
-                  disabled={changePasswordMutation.isPending}
-                  className="flex items-center gap-2 px-6 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  disabled={
+                    changePasswordMutation.isPending ||
+                    !passwordData.currentPassword ||
+                    !passwordData.newPassword ||
+                    !passwordData.confirmPassword ||
+                    passwordData.newPassword.length < 8 ||
+                    passwordData.newPassword !== passwordData.confirmPassword
+                  }
+                  className="flex items-center gap-2 px-6 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {changePasswordMutation.isPending ? (
                     <>
