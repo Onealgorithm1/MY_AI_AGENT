@@ -7,6 +7,30 @@ export const uiSchema = {
   
   updateHistory: [
     {
+      version: '1.2.0',
+      date: '2025-11-01',
+      title: 'Comprehensive Performance Optimizations',
+      summary: 'Global performance optimization across database, backend, and frontend',
+      changes: [
+        'Database: Added 10+ performance indexes for frequently queried columns',
+        'Backend: Consolidated admin stats from 8+ queries to 1 efficient CTE query',
+        'Backend: Optimized connection pool (25 max, 5 min connections, slow query detection)',
+        'Backend: Image analysis now runs asynchronously to prevent blocking uploads',
+        'Backend: Added HTTP caching for static endpoints (5-10 min cache)',
+        'Frontend: Implemented lazy loading for ChatPage and AdminPage (code splitting)',
+        'Frontend: Optimized React Query (2min staleTime, 10min cacheTime, refetch on mount)',
+        'Frontend: Created performance utilities (debounce, throttle, memoization)'
+      ],
+      improvements: [
+        'Faster admin dashboard load times (8x fewer database queries)',
+        'Improved upload responsiveness (async image analysis)',
+        'Reduced initial page load size (code splitting)',
+        'Better data freshness with balanced caching strategy',
+        'Proactive slow query detection (>1000ms)'
+      ],
+      impact: 'Significantly faster application performance across all layers'
+    },
+    {
       version: '1.1.0',
       date: '2025-10-31',
       title: 'Enhanced System Prompt for Direct Action Execution',
