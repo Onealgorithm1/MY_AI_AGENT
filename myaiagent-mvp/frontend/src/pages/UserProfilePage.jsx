@@ -18,6 +18,9 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  Settings,
+  ChevronRight,
+  Brain,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -757,6 +760,33 @@ export default function UserProfilePage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* AI Preferences Link Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  AI Preferences
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Customize how the AI communicates with you
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/preferences')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="text-sm font-medium">Manage Preferences</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
