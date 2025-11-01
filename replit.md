@@ -36,6 +36,40 @@ The application follows a client-server architecture:
 - The application includes an "Auto 🤖" mode for model selection, which is the default, providing intelligent model switching.
 - The admin dashboard visually distinguishes API keys by type (project/admin/other) and allows for setting default keys.
 - User interactions and AI-triggered actions are confirmed with toast notifications.
+- Hover-based message controls (copy, feedback, model badge) appear below AI messages for a clean, modern interface.
+- Memory counter in sidebar shows how many facts the AI remembers about each user.
+- Conversation insights panel toggleable from chat header displays analytics and learning patterns.
+
+## Self-Awareness & Intelligence Features
+
+**Enhanced Memory System**:
+- **Proactive Memory Usage**: AI system prompts now explicitly encourage referencing stored facts to personalize responses
+- **Memory Counter**: Visual indicator shows users "AI remembers X facts about you" in the chat sidebar
+- **Smart Context**: Memory facts automatically retrieved and injected into every conversation with directive instructions to use them naturally
+
+**Conversation Analytics**:
+- **Per-Conversation Insights**: `/conversations/:id/analytics` endpoint provides comprehensive stats:
+  - Message counts (user vs AI)
+  - Models used and Auto mode selections
+  - Memory facts extracted during conversation
+  - Feedback ratings and satisfaction scores
+- **Visual Dashboard**: ConversationInsights component displays patterns, trends, and learning metrics
+- **Performance Optimized**: Single CTE-based query consolidates all analytics data
+
+**Feedback-Driven Improvements**:
+- **Model Performance Tracking**: `/admin/feedback-analytics` endpoint analyzes:
+  - Ratings by model with satisfaction rates
+  - Positive vs negative feedback counts
+  - Problem message detection for quality improvement
+  - Recent feedback trends over 30 days
+- **Real-time Feedback**: Thumbs up/down controls on all AI messages
+- **Quality Metrics**: Track which models perform best for continuous improvement
+
+**Session Context & Continuity**:
+- AI maintains awareness of conversation history and patterns
+- Memory facts ordered by recency for relevant context
+- Insights toggle allows users to see what the AI has learned
+- Conversation summaries show engagement and learning over time
 
 ## Performance Optimizations
 
