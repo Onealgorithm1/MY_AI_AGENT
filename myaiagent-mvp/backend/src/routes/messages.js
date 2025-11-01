@@ -421,7 +421,20 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    
+    // Check if headers have already been sent (e.g., during streaming)
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to send message' });
+    } else {
+      // If streaming, send error through SSE and close connection
+      try {
+        res.write(`data: ${JSON.stringify({ error: 'AI service error. Please try again.' })}\n\n`);
+        res.end();
+      } catch (writeError) {
+        // Connection may already be closed
+        console.error('Failed to send stream error:', writeError.message);
+      }
+    }
   }
 });
 
