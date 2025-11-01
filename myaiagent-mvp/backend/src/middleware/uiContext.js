@@ -52,6 +52,75 @@ export const generateUIAwarePrompt = (uiContext, userContext, fullSchema) => {
     userInfo += `\n\n**IMPORTANT**: Use this information to personalize your responses. Address the user by name when appropriate, acknowledge their role, and provide context-aware assistance based on who they are.`;
   }
 
+  // Build user preferences section
+  let preferencesInfo = '';
+  if (userContext?.preferences && Object.keys(userContext.preferences).length > 0) {
+    const prefs = userContext.preferences;
+    preferencesInfo = `\n## USER PREFERENCES\nThe user has set the following communication preferences. **You MUST adapt your responses accordingly:**\n`;
+    
+    if (prefs.responseStyle) {
+      preferencesInfo += `- **Response Style**: ${prefs.responseStyle}`;
+      if (prefs.responseStyle === 'casual') preferencesInfo += ` (Use relaxed, conversational language)`;
+      if (prefs.responseStyle === 'professional') preferencesInfo += ` (Use formal, business-appropriate language)`;
+      if (prefs.responseStyle === 'balanced') preferencesInfo += ` (Balance between casual and professional)`;
+      preferencesInfo += `\n`;
+    }
+    
+    if (prefs.responseLength) {
+      preferencesInfo += `- **Response Length**: ${prefs.responseLength}`;
+      if (prefs.responseLength === 'brief') preferencesInfo += ` (Keep responses concise and to-the-point)`;
+      if (prefs.responseLength === 'detailed') preferencesInfo += ` (Provide comprehensive, thorough explanations)`;
+      if (prefs.responseLength === 'medium') preferencesInfo += ` (Balance between brief and detailed)`;
+      preferencesInfo += `\n`;
+    }
+    
+    if (prefs.tone) {
+      preferencesInfo += `- **Tone**: ${prefs.tone}`;
+      if (prefs.tone === 'formal') preferencesInfo += ` (Maintain professional, respectful tone)`;
+      if (prefs.tone === 'friendly') preferencesInfo += ` (Be warm, approachable, and personable)`;
+      if (prefs.tone === 'enthusiastic') preferencesInfo += ` (Show excitement and energy in responses)`;
+      preferencesInfo += `\n`;
+    }
+    
+    if (prefs.useEmojis !== undefined) {
+      preferencesInfo += `- **Emojis**: ${prefs.useEmojis ? 'YES - Use emojis to enhance expressiveness' : 'NO - Do not use emojis'}\n`;
+    }
+    
+    if (prefs.creativity) {
+      preferencesInfo += `- **Creativity Level**: ${prefs.creativity}`;
+      if (prefs.creativity === 'conservative') preferencesInfo += ` (Stick to proven, conventional approaches)`;
+      if (prefs.creativity === 'creative') preferencesInfo += ` (Explore innovative and unique solutions)`;
+      if (prefs.creativity === 'balanced') preferencesInfo += ` (Mix conventional and creative approaches)`;
+      preferencesInfo += `\n`;
+    }
+    
+    if (prefs.explanationDepth) {
+      preferencesInfo += `- **Explanation Depth**: ${prefs.explanationDepth}`;
+      if (prefs.explanationDepth === 'simple') preferencesInfo += ` (Use simple language, avoid jargon)`;
+      if (prefs.explanationDepth === 'technical') preferencesInfo += ` (Use technical terms, assume expertise)`;
+      if (prefs.explanationDepth === 'medium') preferencesInfo += ` (Balance between simple and technical)`;
+      preferencesInfo += `\n`;
+    }
+    
+    if (prefs.examplesPreference !== undefined) {
+      preferencesInfo += `- **Examples**: ${prefs.examplesPreference ? 'YES - Include practical examples' : 'NO - Skip examples unless asked'}\n`;
+    }
+    
+    if (prefs.proactiveSuggestions !== undefined) {
+      preferencesInfo += `- **Proactive Suggestions**: ${prefs.proactiveSuggestions ? 'YES - Offer helpful suggestions' : 'NO - Only answer what was asked'}\n`;
+    }
+    
+    if (prefs.codeFormatPreference) {
+      preferencesInfo += `- **Code Format**: ${prefs.codeFormatPreference}`;
+      if (prefs.codeFormatPreference === 'minimal') preferencesInfo += ` (Compact code, minimal comments)`;
+      if (prefs.codeFormatPreference === 'detailed') preferencesInfo += ` (Extensive comments and documentation)`;
+      if (prefs.codeFormatPreference === 'readable') preferencesInfo += ` (Balance readability with comments)`;
+      preferencesInfo += `\n`;
+    }
+    
+    preferencesInfo += `\n**CRITICAL**: These preferences override your default behavior. Always respect them!`;
+  }
+
   const basePrompt = `You are an AI assistant in "My AI Agent" - a React/Node.js web application with voice chat, file uploads, and multi-model support.
 
 ## SYSTEM AWARENESS
@@ -60,7 +129,7 @@ export const generateUIAwarePrompt = (uiContext, userContext, fullSchema) => {
 - **Code Access**: You CAN see and discuss backend/frontend code, API endpoints, database schema, and implementation details when asked
 - **Recent Updates**: Performance optimizations (database indexes, query consolidation, lazy loading, caching)
 - **Your Model**: Currently running on ${uiContext.currentPage === 'chat' ? 'auto-selected model based on query complexity' : 'GPT-4o'}
-${userInfo}
+${userInfo}${preferencesInfo}
 
 ## UI CAPABILITIES
 You have DIRECT UI CONTROL. You're not just giving instructions - you can execute actions.
