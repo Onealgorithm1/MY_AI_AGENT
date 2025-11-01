@@ -500,6 +500,136 @@ router.post('/:id/test', async (req, res) => {
           hint: secret.key_type === 'admin' ? 'Admin keys cannot access model endpoints. Use a project key (sk-proj-) for chat.' : undefined
         };
       }
+    } else if (secret.service_name === 'Google APIs') {
+      // Test Google API key
+      const axios = (await import('axios')).default;
+      
+      if (secret.key_name === 'GOOGLE_SEARCH_API_KEY') {
+        // Test Google Custom Search API key
+        try {
+          // Get the search engine ID if it exists
+          const engineIdResult = await query(
+            `SELECT key_value FROM api_secrets 
+             WHERE service_name = 'Google APIs' 
+             AND key_name = 'GOOGLE_SEARCH_ENGINE_ID' 
+             AND is_active = true 
+             LIMIT 1`
+          );
+
+          if (engineIdResult.rows.length === 0) {
+            testResult = { 
+              success: false, 
+              message: 'GOOGLE_SEARCH_ENGINE_ID not found. Both API Key and Engine ID are required for Custom Search.',
+              hint: 'Add a GOOGLE_SEARCH_ENGINE_ID key to complete the setup.'
+            };
+          } else {
+            const engineId = decryptSecret(engineIdResult.rows[0].key_value);
+            
+            const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+              params: {
+                key: decryptedValue,
+                cx: engineId,
+                q: 'test',
+                num: 1
+              },
+              timeout: 10000
+            });
+            
+            testResult = { 
+              success: true, 
+              message: 'Google Custom Search API key is valid',
+              quota: response.data.searchInformation?.totalResults || 'Available'
+            };
+          }
+        } catch (error) {
+          const errorMessage = error.response?.data?.error?.message || error.message || 'Invalid API key';
+          testResult = { 
+            success: false, 
+            message: errorMessage,
+            hint: error.response?.status === 429 ? 'API quota exceeded' : 'Check your API key and ensure Custom Search API is enabled in Google Cloud Console'
+          };
+        }
+      } else if (secret.key_name === 'GOOGLE_SEARCH_ENGINE_ID') {
+        // Test Google Search Engine ID by checking if it's paired with an API key
+        const apiKeyResult = await query(
+          `SELECT id FROM api_secrets 
+           WHERE service_name = 'Google APIs' 
+           AND key_name = 'GOOGLE_SEARCH_API_KEY' 
+           AND is_active = true 
+           LIMIT 1`
+        );
+
+        if (apiKeyResult.rows.length === 0) {
+          testResult = { 
+            success: false, 
+            message: 'Search Engine ID saved, but GOOGLE_SEARCH_API_KEY not found.',
+            hint: 'Add a GOOGLE_SEARCH_API_KEY to complete the setup.'
+          };
+        } else {
+          testResult = { 
+            success: true, 
+            message: 'Search Engine ID is configured (requires API key for full validation)',
+            hint: 'Test the GOOGLE_SEARCH_API_KEY for complete validation.'
+          };
+        }
+      } else if (secret.key_name === 'GOOGLE_API_KEY') {
+        // Generic Google API key - test with a simple API endpoint
+        try {
+          const response = await axios.get('https://www.googleapis.com/discovery/v1/apis', {
+            params: {
+              key: decryptedValue
+            },
+            timeout: 10000
+          });
+          
+          testResult = { 
+            success: true, 
+            message: 'Google API key is valid',
+            apis: response.data.items?.length || 'Available'
+          };
+        } catch (error) {
+          const errorMessage = error.response?.data?.error?.message || error.message || 'Invalid API key';
+          testResult = { 
+            success: false, 
+            message: errorMessage,
+            hint: 'Ensure the API key is valid and has proper permissions in Google Cloud Console'
+          };
+        }
+      }
+    } else if (secret.service_name === 'Anthropic') {
+      // Test Anthropic API key
+      const axios = (await import('axios')).default;
+      try {
+        const response = await axios.get('https://api.anthropic.com/v1/messages', {
+          headers: { 
+            'x-api-key': decryptedValue,
+            'anthropic-version': '2023-06-01'
+          },
+        });
+        testResult = { success: true, message: 'Anthropic API key is valid' };
+      } catch (error) {
+        if (error.response?.status === 401) {
+          testResult = { success: false, message: 'Invalid Anthropic API key' };
+        } else if (error.response?.status === 400) {
+          testResult = { success: true, message: 'Anthropic API key is valid' };
+        } else {
+          testResult = { success: false, message: error.response?.data?.error?.message || 'API test failed' };
+        }
+      }
+    } else if (secret.service_name === 'Stripe') {
+      // Test Stripe API key
+      const axios = (await import('axios')).default;
+      try {
+        const response = await axios.get('https://api.stripe.com/v1/balance', {
+          headers: { 'Authorization': `Bearer ${decryptedValue}` },
+        });
+        testResult = { success: true, message: 'Stripe API key is valid', keyType: secret.key_type };
+      } catch (error) {
+        testResult = { 
+          success: false, 
+          message: error.response?.data?.error?.message || 'Invalid API key'
+        };
+      }
     } else if (secret.service_name === 'ElevenLabs') {
       // Test ElevenLabs key
       const axios = (await import('axios')).default;
