@@ -228,8 +228,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             
             const responseMessage = `✅ ${functionResult.message}`;
             
-            // Save assistant message
-            const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
+            // Save assistant message with search results in metadata if webSearch
+            const metadataObj = wasAutoSelected ? { autoSelected: true } : {};
+            if (functionCall.name === 'webSearch' && functionResult.data) {
+              metadataObj.searchResults = functionResult.data;
+            }
+            const metadata = JSON.stringify(metadataObj);
+            
             await query(
               `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
                VALUES ($1, $2, $3, $4, $5, $6)`,

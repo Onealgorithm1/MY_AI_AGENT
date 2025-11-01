@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
+import SearchResults from '../components/SearchResults';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -678,6 +679,10 @@ export default function ChatPage() {
                   >
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
+                  
+                  {message.role === 'assistant' && message.metadata?.searchResults && (
+                    <SearchResults results={message.metadata.searchResults} />
+                  )}
                   
                   {message.role === 'assistant' && (
                     <div className="flex items-center gap-3 mt-1.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
