@@ -1,10 +1,10 @@
 # My AI Agent - MVP
 
 ## Overview
-This project is a full-stack AI chat application, similar to ChatGPT, designed with a modern React frontend and a Node.js/Express backend. Its core purpose is to provide a real-time, voice-enabled AI conversational experience. Key capabilities include AI vision for file uploads, user authentication, an admin dashboard, and a sophisticated memory system that allows the AI to remember user-specific facts. A standout feature is the **UI-Aware AI Agent**, which understands the application's interface and can guide users through workflows and even execute UI actions directly. The project aims to offer a highly interactive, intelligent, and user-friendly AI chat environment.
+This project is a full-stack AI chat application designed to offer a real-time, voice-enabled AI conversational experience similar to ChatGPT. Key capabilities include AI vision for file uploads, robust user authentication, an administrative dashboard, and a sophisticated memory system enabling the AI to recall user-specific facts. A core innovation is the **UI-Aware AI Agent**, which understands and interacts with the application's user interface, guiding users through workflows and executing UI actions. The project aims to deliver a highly interactive, intelligent, and user-friendly AI chat environment with strong personalization features.
 
-## User Preferences System
-Comprehensive AI personalization system allowing users to customize how the AI communicates with them. The system includes:
+## User Preferences
+Users can customize how the AI communicates with them through a comprehensive personalization system, including:
 - **Response Style**: Casual, balanced, or professional communication
 - **Response Length**: Brief, medium, or detailed responses
 - **Tone**: Formal, friendly, or enthusiastic
@@ -15,136 +15,44 @@ Comprehensive AI personalization system allowing users to customize how the AI c
 - **Proactive Suggestions**: Enable/disable unsolicited helpful suggestions
 - **Code Format**: Minimal, readable, or detailed code comments
 
-Preferences are stored in the users.preferences JSONB column and automatically injected into AI system prompts for every conversation, ensuring the AI adapts its behavior to match user preferences in real-time.
+These preferences are stored and automatically injected into AI system prompts for every conversation, ensuring the AI adapts its behavior to match user choices.
 
 ## System Architecture
+The application employs a client-server architecture. The frontend is built with React and Vite, styled with TailwindCSS. The backend uses Node.js and Express, providing API endpoints and WebSocket support. PostgreSQL serves as the primary database.
 
-The application follows a client-server architecture:
-- **Frontend**: Built with React and Vite, utilizing TailwindCSS for styling.
-- **Backend**: Developed with Node.js and Express, providing API endpoints and WebSocket support for real-time features.
-- **Database**: PostgreSQL for data persistence.
-
-**UI-Aware AI Agent System**: This intelligent agent is central to the application's design, enabling the AI to interact directly with the user interface and discuss its own implementation.
-- **UI Schema Layer**: Provides structured metadata for all UI components, pages, and workflows, allowing the AI to understand the interface layout and capabilities.
-- **Context Engine**: Injects current UI state and available actions into AI prompts, ensuring the AI is always aware of the user's context.
-- **LLM Orchestrator**: Uses enhanced system prompts to leverage the AI's UI awareness for more intelligent interactions.
-- **Action Execution Layer**: Enables the AI to trigger specific UI commands via dedicated API endpoints. This includes actions like changing models, navigation, conversation management (create, switch, delete, pin, rename), file uploads, starting voice chats, and providing feedback.
-- **Bidirectional Event System**: Tracks user actions on the frontend and allows the AI to initiate real-time UI updates, creating a highly responsive and interactive experience.
-- **Code Awareness**: The AI is explicitly aware of and can discuss backend code (routes, services, middleware), frontend components, API endpoints, database schema, and implementation details when asked.
-- **User Awareness**: The AI has complete awareness of who it's chatting with, including name, email, role, phone, account creation date, last login, and user preferences. This enables highly personalized interactions where the AI can address users by name, acknowledge their role (especially admin privileges), and provide context-aware assistance.
-
-**Technical Implementations & Features**:
-- **Authentication**: JWT-based authentication with bcrypt hashing.
-- **User Profile Management**: Complete profile page with view/edit modes, profile picture upload with file validation (5MB max, images only), phone number validation and formatting, and enhanced password change form featuring:
-  - **Phone Number Field**: Auto-formatting to (XXX) XXX-XXXX format, prevents letter input, validates minimum 10 digits on save
-  - Real-time password strength indicator (Weak → Very Strong)
-  - Smart password match detection with visual feedback (green checkmark when matching, red X when not)
-  - Dynamic border colors (green/red/gray) based on validation state
-  - Intelligent submit button that only enables when all validation passes
-  - Show/hide toggles for all password fields
-  - Comprehensive validation with helpful error messages
-  - Profile updates preserve full user context including role and metadata
-- **Chat Interface**: Supports streaming responses, multiple conversations, and dynamic model selection.
-- **Voice Chat**: Real-time voice communication via WebSockets using OpenAI's Realtime API.
-- **File Upload**: Supports various file types (images, PDFs) with integrated AI vision capabilities.
-- **Memory System**: AI automatically extracts and stores facts about users to personalize interactions.
-- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences) and dedicated preferences page (/preferences). Users can customize 9 different aspects of AI communication including response style, length, tone, emojis, creativity level, explanation depth, examples preference, proactive suggestions, and code format. Preferences automatically injected into AI system prompts to adapt AI behavior to user's explicit choices. Accessible from profile page via "Manage Preferences" button.
-- **Automatic Chat Naming**: Intelligent conversation title generation based on content analysis. After 2-3 user messages, the system automatically analyzes the conversation using keyword extraction and frequency analysis to generate descriptive titles (e.g., "Business Description Refinement"). Features include:
-  - **Smart Keyword Extraction**: Filters stop words, ranks word frequency, and selects top 2-4 meaningful keywords
-  - **Auto-Trigger**: Fires asynchronously after 2nd or 3rd user message without blocking responses
-  - **User Override Protection**: Respects manually renamed conversations, only auto-names default titles ("New Conversation", "New Chat", "Untitled Chat")
-  - **Fallback Logic**: Returns "New Chat" for empty/stop-word-only messages, truncates long titles to 50 characters
-  - **Frontend Integration**: Conversation list refreshes every 5 seconds to display auto-generated titles
-  - **API Endpoint**: `POST /api/conversations/:id/auto-name` for manual triggering
-  - **AI Integration**: AI can create new chats with custom titles via `createNewChat` UI function (accepts optional `title` parameter)
-  - **Real-time UI Updates**: Frontend automatically detects and displays AI-created conversations with custom titles through action result handling
-- **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring. Features comprehensive API category management including:
-  - **Alphabetical Organization**: All API categories and keys automatically sorted alphabetically for easy navigation
-  - **Delete Entire Categories**: Remove all keys within a service category with confirmation dialog
-  - **Multi-Key Custom Category Creation**: Create custom API categories with multiple keys at once. Each key has individual configuration:
-    - Key Name (e.g., STRIPE_SECRET_KEY)
-    - Key Label (e.g., Production, Development)
-    - API Key Value
-    - Get API Key URL (individual docs_url per key)
-  - **Dynamic Key Management**: Add/remove keys during category creation with "Add Another Key" button
-  - **Add Keys to Existing Categories**: Easily add additional keys to both predefined and custom categories with full field collection (keyName, keyLabel, keyValue, docsUrl)
-  - **Smart Defaults**: Only the first key in each category is automatically set as default
-  - **Validation**: Required field validation prevents incomplete key configurations
-  - **Custom Category Badge**: Custom categories display with purple "Custom" badge and individual docs_url links per key
-  - **Consolidated API Organization**: All related services grouped under single categories (e.g., all Google APIs unified)
-- **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
-- **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
-- **Streaming Function Calling**: AI can execute UI actions in real-time during streaming conversations.
-- **Web Search Capability**: AI can search the web for current information using Google Custom Search API. The AI automatically detects when it needs real-time data (news, weather, recent events, live statistics) and calls the `webSearch` function. Search results are displayed inline with source citations, links, and snippets. All searches are tracked in the `search_history` table with full analytics available in the admin dashboard. Requires two API credentials: `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
+**Core Architectural Decisions & Features:**
+-   **UI-Aware AI Agent**: This agent understands the application's UI, enabling direct interaction and guidance.
+    -   **UI Schema Layer**: Provides structured metadata for UI components and workflows.
+    -   **Context Engine**: Injects current UI state and actions into AI prompts.
+    -   **LLM Orchestrator**: Uses enhanced system prompts for intelligent UI interactions.
+    -   **Action Execution Layer**: Allows the AI to trigger UI commands (e.g., navigation, conversation management, file uploads).
+    -   **Bidirectional Event System**: Tracks user actions and enables AI-initiated UI updates.
+    -   **Code Awareness**: The AI can discuss backend code, frontend components, APIs, and database schema.
+    -   **User Awareness**: The AI accesses user details (name, email, role, preferences) for personalized interactions.
+-   **Authentication**: JWT-based with bcrypt hashing.
+-   **User Profile Management**: Features profile editing, picture uploads, phone number validation, and an enhanced password change form with real-time strength indicators and validation.
+-   **Chat Interface**: Supports streaming responses, multiple conversations, and dynamic model selection.
+-   **Voice Chat**: Real-time communication via WebSockets using OpenAI's Realtime API.
+-   **File Upload**: Supports various file types with integrated AI vision.
+-   **Memory System**: AI extracts and stores user-specific facts for personalization, proactively using them in responses.
+-   **Automatic Chat Naming**: Intelligent conversation title generation based on content analysis, respecting user overrides.
+-   **Admin Dashboard**: Provides user management, API usage statistics, and comprehensive API key management, including creation of custom categories, dynamic key management, and secure metadata updates.
+-   **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password verification.
+-   **Intelligent Model Selection**: Dynamically selects optimal OpenAI models (e.g., `gpt-4o-mini`, `gpt-4o`) based on query complexity.
+-   **Streaming Function Calling**: AI can execute UI actions during streaming conversations.
+-   **Web Search Capability**: AI can perform web searches for current information using Google Custom Search, displaying results with citations.
+-   **Performance Optimizations**: Includes database indexing, backend query consolidation, connection pooling, asynchronous operations, frontend code splitting, and React Query for efficient caching.
+-   **Self-Awareness & Intelligence**: Includes an enhanced memory system with proactive usage, per-conversation analytics, and feedback-driven improvements for model performance tracking.
 
 **UI/UX Decisions**:
-- The application includes an "Auto 🤖" mode for model selection, which is the default, providing intelligent model switching.
-- The admin dashboard visually distinguishes API keys by type (project/admin/other) and allows for setting default keys.
-- User interactions and AI-triggered actions are confirmed with toast notifications.
-- Hover-based message controls (copy, feedback, model badge) appear below AI messages for a clean, modern interface.
-- Memory counter in sidebar shows how many facts the AI remembers about each user.
-- Conversation insights panel toggleable from chat header displays analytics and learning patterns.
-
-## Self-Awareness & Intelligence Features
-
-**Enhanced Memory System**:
-- **Proactive Memory Usage**: AI system prompts now explicitly encourage referencing stored facts to personalize responses
-- **Memory Counter**: Visual indicator shows users "AI remembers X facts about you" in the chat sidebar
-- **Smart Context**: Memory facts automatically retrieved and injected into every conversation with directive instructions to use them naturally
-
-**Conversation Analytics**:
-- **Per-Conversation Insights**: `/conversations/:id/analytics` endpoint provides comprehensive stats:
-  - Message counts (user vs AI)
-  - Models used and Auto mode selections
-  - Memory facts extracted during conversation
-  - Feedback ratings and satisfaction scores
-- **Visual Dashboard**: ConversationInsights component displays patterns, trends, and learning metrics
-- **Performance Optimized**: Single CTE-based query consolidates all analytics data
-
-**Feedback-Driven Improvements**:
-- **Model Performance Tracking**: `/admin/feedback-analytics` endpoint analyzes:
-  - Ratings by model with satisfaction rates
-  - Positive vs negative feedback counts
-  - Problem message detection for quality improvement
-  - Recent feedback trends over 30 days
-- **Real-time Feedback**: Thumbs up/down controls on all AI messages
-- **Quality Metrics**: Track which models perform best for continuous improvement
-
-**Session Context & Continuity**:
-- AI maintains awareness of conversation history and patterns
-- Memory facts ordered by recency for relevant context
-- Insights toggle allows users to see what the AI has learned
-- Conversation summaries show engagement and learning over time
-
-## Performance Optimizations
-
-The application has been comprehensively optimized for performance across all layers:
-
-**Database Layer:**
-- **Indexes**: 10+ targeted indexes on frequently queried columns (conversations, messages, memory_facts, error_logs, usage_tracking, API secrets, UI actions)
-- **Composite Indexes**: Multi-column indexes for common query patterns (user_id + date, conversation_id + created_at)
-- **Filtered Indexes**: Conditional indexes for boolean filters (approved=true, is_active=true) to reduce index size
-
-**Backend Optimizations:**
-- **Query Consolidation**: Admin stats endpoint consolidated from 8+ sequential queries to single CTE-based query (8x reduction in DB round-trips)
-- **Connection Pooling**: Optimized PostgreSQL pool (25 max, 5 min connections, keepalive enabled, 30s query timeout)
-- **Async Operations**: Image analysis runs asynchronously via setImmediate() to prevent blocking upload responses
-- **Smart Logging**: Query logging only for slow queries (>1000ms) to reduce console noise
-- **HTTP Caching**: Static endpoints (UI schema, secret definitions) use Cache-Control headers (5-10 min)
-
-**Frontend Optimizations:**
-- **Code Splitting**: Lazy loading for ChatPage and AdminPage using React.lazy() reduces initial bundle size
-- **React Query**: Optimized caching strategy (2min staleTime, 10min cacheTime, refetch on mount for freshness)
-- **Performance Utilities**: Custom hooks for debounce, throttle, and memoization to prevent unnecessary re-renders
-
-**Results:**
-- Faster admin dashboard load times (single query vs 8+ queries)
-- Improved upload responsiveness (async image analysis)
-- Reduced initial page load (code splitting)
-- Better data freshness (balanced React Query settings)
-- Slower query detection for proactive optimization
+-   "Auto 🤖" mode for intelligent model selection.
+-   Visual distinction of API keys in the admin dashboard.
+-   Toast notifications for user actions.
+-   Hover-based message controls for a clean interface.
+-   Memory counter in the sidebar and toggleable conversation insights panel.
 
 ## External Dependencies
-- **OpenAI API**: Utilized for GPT-4o (main chat, vision), Realtime API (voice), Whisper (speech-to-text), and TTS (text-to-speech).
-- **ElevenLabs API**: (Optional) For premium Text-to-Speech capabilities.
-- **PostgreSQL**: Used as the primary database for data persistence.
+-   **OpenAI API**: Used for GPT-4o (chat, vision), Realtime API (voice), Whisper (speech-to-text), and TTS (text-to-speech).
+-   **ElevenLabs API**: (Optional) For premium Text-to-Speech.
+-   **PostgreSQL**: Primary database.
+-   **Google Custom Search API**: For web search functionality, requiring `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
