@@ -337,13 +337,14 @@ export default function ChatPage() {
         if (action.result?.conversation) {
           const newConv = action.result.conversation;
           
-          // Add to conversations list
-          queryClient.setQueryData(['conversations'], (old = []) => {
-            return [newConv, ...old];
-          });
+          // Refresh conversations list from server to get the new chat
+          queryClient.invalidateQueries(['conversations']);
           
           // Switch to the new conversation
-          loadConversation(newConv.id);
+          setTimeout(() => {
+            loadConversation(newConv.id);
+          }, 100);
+          
           toast.success(`Created new chat: ${newConv.title}`);
         } else {
           // Fallback to creating new conversation
