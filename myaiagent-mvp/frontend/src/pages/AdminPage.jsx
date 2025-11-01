@@ -17,6 +17,8 @@ import {
   Eye,
   EyeOff,
   Save,
+  Edit,
+  Edit2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -36,6 +38,12 @@ export default function AdminPage() {
   const [customKeys, setCustomKeys] = useState([
     { keyName: '', keyLabel: '', keyValue: '', docsUrl: '' }
   ]);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryDescription, setEditCategoryDescription] = useState('');
+  const [editingKey, setEditingKey] = useState(null);
+  const [editKeyLabel, setEditKeyLabel] = useState('');
+  const [editKeyDocsUrl, setEditKeyDocsUrl] = useState('');
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -206,6 +214,65 @@ export default function AdminPage() {
       refetchSecrets();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to create custom category');
+    }
+  };
+
+  const handleEditCategory = (serviceName) => {
+    const firstKey = secretsList.find(s => s.service_name === serviceName);
+    setEditingCategory(serviceName);
+    setEditCategoryName(serviceName);
+    setEditCategoryDescription(firstKey?.description || '');
+  };
+
+  const handleSaveCategoryEdit = async () => {
+    if (!editCategoryName.trim()) {
+      toast.error('Category name cannot be empty');
+      return;
+    }
+
+    try {
+      // Use metadata-only update endpoint to avoid touching key values
+      await secrets.updateCategoryMetadata(editingCategory, {
+        newServiceName: editCategoryName,
+        description: editCategoryDescription,
+      });
+
+      toast.success('Category updated successfully');
+      setEditingCategory(null);
+      setEditCategoryName('');
+      setEditCategoryDescription('');
+      refetchSecrets();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update category');
+    }
+  };
+
+  const handleEditKey = (secret) => {
+    setEditingKey(secret.id);
+    setEditKeyLabel(secret.key_label || '');
+    setEditKeyDocsUrl(secret.docs_url || '');
+  };
+
+  const handleSaveKeyEdit = async (secret) => {
+    if (!editKeyLabel.trim()) {
+      toast.error('Key label is required');
+      return;
+    }
+
+    try {
+      // Use metadata-only update endpoint to avoid touching key value
+      await secrets.updateKeyMetadata(secret.id, {
+        keyLabel: editKeyLabel,
+        docsUrl: editKeyDocsUrl,
+      });
+
+      toast.success('Key metadata updated successfully');
+      setEditingKey(null);
+      setEditKeyLabel('');
+      setEditKeyDocsUrl('');
+      refetchSecrets();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update key metadata');
     }
   };
 
@@ -660,42 +727,94 @@ export default function AdminPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {serviceName}
-                            </h3>
-                            <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full">
-                              Custom
-                            </span>
-                            <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
-                              {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
-                            </span>
-                          </div>
-                          {firstKey?.description && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {firstKey.description}
-                            </p>
-                          )}
-                          {firstKey?.docs_url && (
-                            <a
-                              href={firstKey.docs_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
-                            >
-                              Get API key →
-                            </a>
+                          {editingCategory === serviceName ? (
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={editCategoryName}
+                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                placeholder="Category Name"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                              />
+                              <textarea
+                                value={editCategoryDescription}
+                                onChange={(e) => setEditCategoryDescription(e.target.value)}
+                                placeholder="Category Description (optional)"
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleSaveCategoryEdit}
+                                  className="px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200 flex items-center gap-1"
+                                >
+                                  <Save className="w-3 h-3" />
+                                  Save Changes
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingCategory(null);
+                                    setEditCategoryName('');
+                                    setEditCategoryDescription('');
+                                  }}
+                                  className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-3 mb-2">
+                                <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                                  {serviceName}
+                                </h3>
+                                <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full">
+                                  Custom
+                                </span>
+                                <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
+                                  {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
+                                </span>
+                              </div>
+                              {firstKey?.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {firstKey.description}
+                                </p>
+                              )}
+                              {firstKey?.docs_url && (
+                                <a
+                                  href={firstKey.docs_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
+                                >
+                                  Get API key →
+                                </a>
+                              )}
+                            </>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleDeleteCategory(serviceName)}
-                          className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
-                          title="Delete entire category"
-                        >
-                          <X className="w-3 h-3" />
-                          Delete Category
-                        </button>
+                        {editingCategory !== serviceName && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditCategory(serviceName)}
+                              className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                              title="Edit category"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(serviceName)}
+                              className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
+                              title="Delete entire category"
+                            >
+                              <X className="w-3 h-3" />
+                              Delete Category
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Existing Keys */}
@@ -705,58 +824,109 @@ export default function AdminPage() {
                             key={secret.id}
                             className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                           >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {secret.key_label || 'Unnamed Key'}
-                                </span>
-                                {secret.is_default && (
-                                  <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
-                                    Default
-                                  </span>
-                                )}
-                                {secret.docs_url && (
-                                  <a
-                                    href={secret.docs_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
-                                    title="Get API Key URL"
+                            {editingKey === secret.id ? (
+                              <div className="flex-1 space-y-2">
+                                <input
+                                  type="text"
+                                  value={editKeyLabel}
+                                  onChange={(e) => setEditKeyLabel(e.target.value)}
+                                  placeholder="Key Label (e.g., Production)"
+                                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={editKeyDocsUrl}
+                                  onChange={(e) => setEditKeyDocsUrl(e.target.value)}
+                                  placeholder="Documentation URL (optional)"
+                                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                                />
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Note: To change the API key value, delete and recreate the key.
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSaveKeyEdit(secret)}
+                                    className="px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200 flex items-center gap-1"
                                   >
-                                    🔗
-                                  </a>
-                                )}
+                                    <Save className="w-3 h-3" />
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingKey(null);
+                                      setEditKeyLabel('');
+                                      setEditKeyDocsUrl('');
+                                    }}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                ••••••••••••
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {!secret.is_default && (
-                                <button
-                                  onClick={() => handleSetDefault(secret.id)}
-                                  className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
-                                  title="Set as default"
-                                >
-                                  Set Default
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleTestSecret(secret.id)}
-                                className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
-                                title="Test key"
-                              >
-                                <TestTube className="w-3 h-3" />
-                                Test
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSecret(secret.id)}
-                                className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                                title="Delete key"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
+                            ) : (
+                              <>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {secret.key_label || 'Unnamed Key'}
+                                    </span>
+                                    {secret.is_default && (
+                                      <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                    {secret.docs_url && (
+                                      <a
+                                        href={secret.docs_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                        title="Get API Key URL"
+                                      >
+                                        🔗
+                                      </a>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                    ••••••••••••
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleEditKey(secret)}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                    title="Edit key"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                    Edit
+                                  </button>
+                                  {!secret.is_default && (
+                                    <button
+                                      onClick={() => handleSetDefault(secret.id)}
+                                      className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                                      title="Set as default"
+                                    >
+                                      Set Default
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleTestSecret(secret.id)}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                    title="Test key"
+                                  >
+                                    <TestTube className="w-3 h-3" />
+                                    Test
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSecret(secret.id)}
+                                    className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    title="Delete key"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>

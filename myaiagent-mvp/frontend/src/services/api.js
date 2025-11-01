@@ -192,6 +192,10 @@ export const secrets = {
     api.post(`/secrets/${id}/test`),
   setDefault: (id) =>
     api.put(`/secrets/${id}/set-default`),
+  updateCategoryMetadata: (serviceName, data) =>
+    api.patch(`/secrets/category/${encodeURIComponent(serviceName)}/metadata`, data),
+  updateKeyMetadata: (id, data) =>
+    api.patch(`/secrets/${id}/metadata`, data),
 };
 
 export default api;

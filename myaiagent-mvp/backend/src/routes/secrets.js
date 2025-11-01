@@ -297,6 +297,80 @@ router.put('/:id/set-default', async (req, res) => {
   }
 });
 
+// Update category metadata (name and description) without touching key values
+router.patch('/category/:serviceName/metadata', async (req, res) => {
+  try {
+    const { serviceName } = req.params;
+    const { newServiceName, description } = req.body;
+
+    if (!newServiceName || !newServiceName.trim()) {
+      return res.status(400).json({ error: 'New service name is required' });
+    }
+
+    // Check if the category exists
+    const existingKeys = await query(
+      'SELECT id FROM api_secrets WHERE service_name = $1',
+      [serviceName]
+    );
+
+    if (existingKeys.rows.length === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Update all keys in this category with new service name and description
+    await query(
+      `UPDATE api_secrets 
+       SET service_name = $1, 
+           description = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE service_name = $3`,
+      [newServiceName, description || '', serviceName]
+    );
+
+    res.json({ 
+      message: 'Category metadata updated successfully',
+      updatedCount: existingKeys.rows.length 
+    });
+  } catch (error) {
+    console.error('Update category metadata error:', error);
+    res.status(500).json({ error: 'Failed to update category metadata' });
+  }
+});
+
+// Update individual key metadata (label, docs_url) without touching key value
+router.patch('/:id/metadata', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { keyLabel, docsUrl } = req.body;
+
+    if (!keyLabel || !keyLabel.trim()) {
+      return res.status(400).json({ error: 'Key label is required' });
+    }
+
+    const result = await query(
+      `UPDATE api_secrets 
+       SET key_label = $1,
+           docs_url = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING id, service_name, key_label, docs_url`,
+      [keyLabel, docsUrl || '', id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Secret not found' });
+    }
+
+    res.json({ 
+      message: 'Key metadata updated successfully',
+      secret: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update key metadata error:', error);
+    res.status(500).json({ error: 'Failed to update key metadata' });
+  }
+});
+
 // Delete entire category (all keys in a service)
 router.delete('/category/:serviceName', async (req, res) => {
   try {
