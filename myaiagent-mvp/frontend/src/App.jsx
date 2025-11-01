@@ -6,6 +6,7 @@ import SignupPage from './pages/SignupPage';
 
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 
 function LoadingFallback() {
   return (
@@ -44,6 +45,22 @@ function App() {
           element={
             <PrivateRoute>
               <ChatPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <PrivateRoute>
+              <ChatPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <UserProfilePage />
             </PrivateRoute>
           }
         />

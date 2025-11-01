@@ -48,6 +48,14 @@ export const auth = {
     api.put('/auth/settings', { settings, preferences }),
   logout: () =>
     api.post('/auth/logout'),
+  getProfile: () =>
+    api.get('/auth/profile'),
+  updateProfile: (fullName, email, phone) =>
+    api.put('/auth/profile', { fullName, email, phone }),
+  updateProfileImage: (profileImage) =>
+    api.put('/auth/profile/image', { profileImage }),
+  changePassword: (currentPassword, newPassword) =>
+    api.put('/auth/profile/password', { currentPassword, newPassword }),
 };
 
 // Conversation endpoints

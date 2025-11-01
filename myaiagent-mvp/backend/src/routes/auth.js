@@ -224,4 +224,181 @@ router.post('/logout', authenticate, async (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// Get full user profile
+router.get('/profile', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, email, full_name, phone, profile_image, role, created_at, last_login_at 
+       FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      phone: user.phone,
+      profileImage: user.profile_image,
+      role: user.role,
+      createdAt: user.created_at,
+      lastLoginAt: user.last_login_at,
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const { fullName, email, phone } = req.body;
+
+    // Validate input
+    if (!fullName || fullName.trim().length === 0) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    if (!email || email.trim().length === 0) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if email is already taken by another user
+    if (email !== req.user.email) {
+      const existingUser = await query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, req.user.id]
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already in use' });
+      }
+    }
+
+    // Phone validation (optional field)
+    if (phone && phone.length > 50) {
+      return res.status(400).json({ error: 'Phone number too long' });
+    }
+
+    // Update user
+    const result = await query(
+      `UPDATE users 
+       SET full_name = $1, email = $2, phone = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4 
+       RETURNING id, email, full_name, phone, profile_image, role, created_at, last_login_at, settings, preferences`,
+      [fullName.trim(), email.trim(), phone?.trim() || null, req.user.id]
+    );
+
+    const user = result.rows[0];
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        phone: user.phone,
+        profileImage: user.profile_image,
+        role: user.role,
+        createdAt: user.created_at,
+        lastLoginAt: user.last_login_at,
+        settings: user.settings,
+        preferences: user.preferences,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Update profile image
+router.put('/profile/image', authenticate, async (req, res) => {
+  try {
+    const { profileImage } = req.body;
+
+    if (!profileImage || profileImage.trim().length === 0) {
+      return res.status(400).json({ error: 'Profile image URL is required' });
+    }
+
+    // URL validation
+    try {
+      new URL(profileImage);
+    } catch {
+      return res.status(400).json({ error: 'Invalid image URL' });
+    }
+
+    await query(
+      'UPDATE users SET profile_image = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [profileImage.trim(), req.user.id]
+    );
+
+    res.json({
+      message: 'Profile image updated successfully',
+      profileImage: profileImage.trim(),
+    });
+  } catch (error) {
+    console.error('Update profile image error:', error);
+    res.status(500).json({ error: 'Failed to update profile image' });
+  }
+});
+
+// Change password
+router.put('/profile/password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new passwords are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    // Get current password hash
+    const result = await query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+
+    // Verify current password
+    const isValid = await verifyPassword(currentPassword, user.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Update password
+    await query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newPasswordHash, req.user.id]
+    );
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 export default router;

@@ -510,6 +510,13 @@ export default function ChatPage() {
                 {user?.fullName}
               </p>
             </div>
+            <button
+              onClick={() => navigate('/profile')}
+              className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              title="Profile Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
             {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button
                 onClick={() => navigate('/admin')}
