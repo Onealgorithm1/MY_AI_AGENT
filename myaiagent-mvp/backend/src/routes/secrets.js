@@ -64,22 +64,27 @@ router.get('/definitions', cacheControl(600), async (req, res) => {
   }
 });
 
-// Get all configured secrets (masked)
+// Get all configured secrets (masked - show last 4 characters)
 router.get('/', async (req, res) => {
   try {
     const result = await query(
       `SELECT id, key_name, service_name, key_label, key_type, is_default, 
-              description, docs_url, is_active, created_at, updated_at, last_used_at, metadata
+              description, docs_url, is_active, created_at, updated_at, last_used_at, metadata, key_value
        FROM api_secrets 
        ORDER BY service_name, is_default DESC, key_label`
     );
 
-    // Add masked values and definitions
+    // Add masked values showing last 4 characters
     const secrets = result.rows.map(secret => {
       const definition = SECRET_DEFINITIONS[secret.key_name] || {};
+      const decryptedValue = decryptSecret(secret.key_value);
+      const last4 = decryptedValue.length >= 4 ? decryptedValue.slice(-4) : '••••';
+      
       return {
         ...secret,
-        maskedValue: '••••••••••••',
+        key_value: undefined, // Remove encrypted value from response
+        maskedValue: `••••${last4}`,
+        last4Characters: last4,
         definition,
       };
     });
@@ -331,37 +336,82 @@ router.patch('/category/:serviceName/metadata', async (req, res) => {
   }
 });
 
-// Update individual key metadata (label, docs_url) without touching key value
+// Update individual key (label, docs_url, and optionally key value)
 router.patch('/:id/metadata', async (req, res) => {
   try {
     const { id } = req.params;
-    const { keyLabel, docsUrl } = req.body;
+    const { keyLabel, docsUrl, keyValue } = req.body;
 
     if (!keyLabel || !keyLabel.trim()) {
       return res.status(400).json({ error: 'Key label is required' });
     }
 
-    const result = await query(
-      `UPDATE api_secrets 
-       SET key_label = $1,
-           docs_url = $2,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
-       RETURNING id, service_name, key_label, docs_url`,
-      [keyLabel, docsUrl || '', id]
-    );
+    // If keyValue is provided, validate and encrypt it
+    if (keyValue) {
+      // Get the existing secret to get key_name for validation
+      const existingSecret = await query(
+        'SELECT key_name, key_type FROM api_secrets WHERE id = $1',
+        [id]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Secret not found' });
+      if (existingSecret.rows.length === 0) {
+        return res.status(404).json({ error: 'Secret not found' });
+      }
+
+      const keyName = existingSecret.rows[0].key_name;
+      
+      // Validate key format if it's a predefined type
+      if (keyName && !validateApiKey(keyName, keyValue)) {
+        return res.status(400).json({ 
+          error: 'Invalid API key format',
+          hint: SECRET_DEFINITIONS[keyName]?.placeholder,
+        });
+      }
+
+      const encryptedValue = encryptSecret(keyValue);
+      const keyType = detectKeyType(keyValue);
+
+      // Update with new key value
+      const result = await query(
+        `UPDATE api_secrets 
+         SET key_label = $1,
+             docs_url = $2,
+             key_value = $3,
+             key_type = $4,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $5
+         RETURNING id, service_name, key_label, docs_url, key_type`,
+        [keyLabel, docsUrl || '', encryptedValue, keyType, id]
+      );
+
+      res.json({ 
+        message: 'API key updated successfully',
+        secret: result.rows[0]
+      });
+    } else {
+      // Update only metadata without touching key value
+      const result = await query(
+        `UPDATE api_secrets 
+         SET key_label = $1,
+             docs_url = $2,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING id, service_name, key_label, docs_url`,
+        [keyLabel, docsUrl || '', id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Secret not found' });
+      }
+
+      res.json({ 
+        message: 'Key metadata updated successfully',
+        secret: result.rows[0]
+      });
     }
-
-    res.json({ 
-      message: 'Key metadata updated successfully',
-      secret: result.rows[0]
-    });
   } catch (error) {
-    console.error('Update key metadata error:', error);
-    res.status(500).json({ error: 'Failed to update key metadata' });
+    console.error('Update key error:', error);
+    res.status(500).json({ error: 'Failed to update key' });
   }
 });
 

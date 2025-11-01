@@ -44,6 +44,8 @@ export default function AdminPage() {
   const [editingKey, setEditingKey] = useState(null);
   const [editKeyLabel, setEditKeyLabel] = useState('');
   const [editKeyDocsUrl, setEditKeyDocsUrl] = useState('');
+  const [editKeyValue, setEditKeyValue] = useState('');
+  const [editKeyLast4, setEditKeyLast4] = useState('');
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -251,6 +253,8 @@ export default function AdminPage() {
     setEditingKey(secret.id);
     setEditKeyLabel(secret.key_label || '');
     setEditKeyDocsUrl(secret.docs_url || '');
+    setEditKeyValue(''); // Start empty - user can optionally enter new value
+    setEditKeyLast4(secret.last4Characters || secret.maskedValue?.slice(-4) || '');
   };
 
   const handleSaveKeyEdit = async (secret) => {
@@ -260,19 +264,27 @@ export default function AdminPage() {
     }
 
     try {
-      // Use metadata-only update endpoint to avoid touching key value
-      await secrets.updateKeyMetadata(secret.id, {
+      // Send keyValue only if user entered a new value
+      const payload = {
         keyLabel: editKeyLabel,
         docsUrl: editKeyDocsUrl,
-      });
+      };
+      
+      if (editKeyValue.trim()) {
+        payload.keyValue = editKeyValue;
+      }
 
-      toast.success('Key metadata updated successfully');
+      await secrets.updateKeyMetadata(secret.id, payload);
+
+      toast.success(editKeyValue.trim() ? 'API key updated successfully' : 'Key metadata updated successfully');
       setEditingKey(null);
       setEditKeyLabel('');
       setEditKeyDocsUrl('');
+      setEditKeyValue('');
+      setEditKeyLast4('');
       refetchSecrets();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to update key metadata');
+      toast.error(error.response?.data?.error || 'Failed to update API key');
     }
   };
 
@@ -846,9 +858,21 @@ export default function AdminPage() {
                                   placeholder="Documentation URL (optional)"
                                   className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                                 />
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Note: To change the API key value, delete and recreate the key.
-                                </p>
+                                <div>
+                                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                    API Key Value (current: ••••{editKeyLast4})
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editKeyValue}
+                                    onChange={(e) => setEditKeyValue(e.target.value)}
+                                    placeholder="Enter new API key value (leave empty to keep current)"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
+                                  />
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Leave blank to keep the current API key value
+                                  </p>
+                                </div>
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => handleSaveKeyEdit(secret)}
@@ -862,6 +886,8 @@ export default function AdminPage() {
                                       setEditingKey(null);
                                       setEditKeyLabel('');
                                       setEditKeyDocsUrl('');
+                                      setEditKeyValue('');
+                                      setEditKeyLast4('');
                                     }}
                                     className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
                                   >
@@ -894,7 +920,7 @@ export default function AdminPage() {
                                     )}
                                   </div>
                                   <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                    ••••••••••••
+                                    ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
