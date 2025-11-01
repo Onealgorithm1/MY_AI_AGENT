@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -24,6 +24,8 @@ import {
   Check,
   X,
   Copy,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -107,8 +109,11 @@ export default function ChatPage() {
     setStreamingMessage('●●●');
 
     try {
+      // Get API base URL with fallback
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      
       // Send message with streaming
-      const response = await fetch(import.meta.env.VITE_API_URL + '/messages', {
+      const response = await fetch(`${apiUrl}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,14 +166,10 @@ export default function ChatPage() {
               }
               
               if (data.done) {
-                addMessage({
-                  id: Date.now(),
-                  role: 'assistant',
-                  content: fullResponse,
-                  model: selectedModel,
-                  created_at: new Date().toISOString(),
-                });
                 setStreamingMessage('');
+                
+                // Reload conversation to get the actual message with server-issued ID
+                await loadConversation(conversationId);
                 
                 // Handle UI actions from AI
                 if (data.action) {
@@ -203,6 +204,28 @@ export default function ChatPage() {
       toast.success('Copied to clipboard');
     } catch (error) {
       toast.error('Failed to copy');
+    }
+  };
+
+  // Submit feedback
+  const submitFeedback = async (messageId, rating) => {
+    try {
+      // Only allow feedback on messages with valid server IDs (not temporary client-side IDs)
+      if (!messageId || typeof messageId === 'number') {
+        toast.error('Cannot rate this message yet');
+        return;
+      }
+
+      await feedbackApi.submit({
+        messageId,
+        conversationId: currentConversation?.id,
+        rating,
+      });
+
+      toast.success(rating === 1 ? 'Thanks for the positive feedback!' : 'Thanks for your feedback!');
+    } catch (error) {
+      console.error('Feedback error:', error);
+      toast.error('Failed to submit feedback');
     }
   };
 
@@ -528,7 +551,7 @@ export default function ChatPage() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-4 ${
+                className={`group flex gap-4 ${
                   message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
@@ -538,25 +561,44 @@ export default function ChatPage() {
                   </div>
                 )}
 
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 pt-3 pb-2 ${
-                    message.role === 'user'
-                      ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap mb-1">{message.content}</div>
+                <div className="max-w-[80%]">
+                  <div
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                  </div>
+                  
                   {message.role === 'assistant' && (
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mt-1.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
                         onClick={() => copyToClipboard(message.content)}
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                         title="Copy message"
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                        {message.model === 'auto' ? 'Auto 🤖' : message.model}
+                      <button
+                        onClick={() => submitFeedback(message.id, 1)}
+                        className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                        title="Good response"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => submitFeedback(message.id, -1)}
+                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        title="Bad response"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 font-medium ml-auto">
+                        {message.metadata?.autoSelected 
+                          ? `Auto 🤖 (${message.model})` 
+                          : message.model}
                       </span>
                     </div>
                   )}

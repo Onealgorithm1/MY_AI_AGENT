@@ -34,9 +34,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     const conversation = convCheck.rows[0];
     let selectedModel = model || conversation.model;
+    let wasAutoSelected = false;
     
     // Auto model selection
     if (selectedModel === 'auto') {
+      wasAutoSelected = true;
       // Get conversation history for context
       const historyForSelection = await query(
         `SELECT role, content FROM messages 
@@ -187,10 +189,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             const responseMessage = `✅ ${functionResult.message}`;
             
             // Save assistant message
+            const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
             await query(
-              `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [conversationId, 'assistant', responseMessage, selectedModel, tokensUsed]
+              `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [conversationId, 'assistant', responseMessage, selectedModel, tokensUsed, metadata]
             );
             
             // Update usage tracking
@@ -218,10 +221,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             console.error('Function execution error:', error);
             const errorMessage = `❌ Failed to ${functionCall.name}: ${error.message}`;
             
+            const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
             await query(
-              `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed]
+              `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed, metadata]
             );
             
             res.write(`data: ${JSON.stringify({ 
@@ -235,10 +239,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         }
         
         // Regular text response (no function call)
+        const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
         await query(
-          `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [conversationId, 'assistant', fullResponse, selectedModel, tokensUsed]
+          `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [conversationId, 'assistant', fullResponse, selectedModel, tokensUsed, metadata]
         );
 
         // Update usage tracking
@@ -284,11 +289,12 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           const aiResponse = `✅ ${functionResult.message}`;
           
           // Save assistant message
+          const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
           await query(
-            `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [conversationId, 'assistant', aiResponse, selectedModel, tokensUsed]
+            [conversationId, 'assistant', aiResponse, selectedModel, tokensUsed, metadata]
           );
           
           // Update usage tracking
@@ -313,10 +319,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           console.error('Function execution error:', error);
           const errorMessage = `❌ Failed to ${functionName}: ${error.message}`;
           
+          const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
           await query(
-            `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed]
+            `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed, metadata]
           );
           
           res.json({
@@ -335,11 +342,12 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       const aiResponse = responseMessage.content;
 
       // Save assistant message
+      const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
       const assistantMessage = await query(
-        `INSERT INTO messages (conversation_id, role, content, model, tokens_used)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [conversationId, 'assistant', aiResponse, selectedModel, tokensUsed]
+        [conversationId, 'assistant', aiResponse, selectedModel, tokensUsed, metadata]
       );
 
       // Update usage tracking
