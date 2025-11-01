@@ -517,6 +517,7 @@ router.post('/:id/test', async (req, res) => {
           );
 
           if (engineIdResult.rows.length === 0) {
+            console.log('❌ Google Search Engine ID not found');
             testResult = { 
               success: false, 
               message: 'GOOGLE_SEARCH_ENGINE_ID not found. Both API Key and Engine ID are required for Custom Search.',
@@ -524,6 +525,7 @@ router.post('/:id/test', async (req, res) => {
             };
           } else {
             const engineId = decryptSecret(engineIdResult.rows[0].key_value);
+            console.log('🔍 Testing Google Custom Search with Engine ID:', engineId.substring(0, 8) + '...');
             
             const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
               params: {
@@ -535,6 +537,7 @@ router.post('/:id/test', async (req, res) => {
               timeout: 10000
             });
             
+            console.log('✅ Google Custom Search test successful');
             testResult = { 
               success: true, 
               message: 'Google Custom Search API key is valid',
@@ -542,6 +545,7 @@ router.post('/:id/test', async (req, res) => {
             };
           }
         } catch (error) {
+          console.error('❌ Google Custom Search test failed:', error.response?.data || error.message);
           const errorMessage = error.response?.data?.error?.message || error.message || 'Invalid API key';
           testResult = { 
             success: false, 
