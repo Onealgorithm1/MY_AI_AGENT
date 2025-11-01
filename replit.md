@@ -3,8 +3,19 @@
 ## Overview
 This project is a full-stack AI chat application, similar to ChatGPT, designed with a modern React frontend and a Node.js/Express backend. Its core purpose is to provide a real-time, voice-enabled AI conversational experience. Key capabilities include AI vision for file uploads, user authentication, an admin dashboard, and a sophisticated memory system that allows the AI to remember user-specific facts. A standout feature is the **UI-Aware AI Agent**, which understands the application's interface and can guide users through workflows and even execute UI actions directly. The project aims to offer a highly interactive, intelligent, and user-friendly AI chat environment.
 
-## User Preferences
-Not yet configured - will be updated as preferences are learned.
+## User Preferences System
+Comprehensive AI personalization system allowing users to customize how the AI communicates with them. The system includes:
+- **Response Style**: Casual, balanced, or professional communication
+- **Response Length**: Brief, medium, or detailed responses
+- **Tone**: Formal, friendly, or enthusiastic
+- **Use Emojis**: Toggle emoji usage in responses
+- **Creativity Level**: Conservative, balanced, or creative AI behavior
+- **Explanation Depth**: Simple, medium, or technical explanations
+- **Examples Preference**: Include or skip practical examples
+- **Proactive Suggestions**: Enable/disable unsolicited helpful suggestions
+- **Code Format**: Minimal, readable, or detailed code comments
+
+Preferences are stored in the users.preferences JSONB column and automatically injected into AI system prompts for every conversation, ensuring the AI adapts its behavior to match user preferences in real-time.
 
 ## System Architecture
 
@@ -37,6 +48,7 @@ The application follows a client-server architecture:
 - **Voice Chat**: Real-time voice communication via WebSockets using OpenAI's Realtime API.
 - **File Upload**: Supports various file types (images, PDFs) with integrated AI vision capabilities.
 - **Memory System**: AI automatically extracts and stores facts about users to personalize interactions.
+- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences) and PreferencesPanel UI component integrated into profile page. Preferences automatically injected into AI system prompts to adapt response style, tone, length, creativity, and other behaviors to user's explicit choices.
 - **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring.
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
