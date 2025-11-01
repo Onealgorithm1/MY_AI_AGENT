@@ -26,6 +26,8 @@ export default function AdminPage() {
   const [editingSecret, setEditingSecret] = useState(null);
   const [secretValue, setSecretValue] = useState('');
   const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newDocsUrl, setNewDocsUrl] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
@@ -63,19 +65,38 @@ export default function AdminPage() {
     },
   });
 
-  const handleSaveSecret = async (serviceName, keyName) => {
+  const handleSaveSecret = async (serviceName, keyName, docsUrl = null) => {
     try {
+      // Check if this is the first key for this service (to set as default)
+      const existingKeys = secretsList.filter(s => s.service_name === serviceName);
+      
+      // For existing custom categories (adding another key), validate required fields
+      const isCustomCategory = !definitions.find(d => d.service_name === serviceName);
+      if (isCustomCategory && existingKeys.length > 0) {
+        if (!newKeyName || !newKeyName.trim()) {
+          toast.error('Key Name is required when adding to custom categories');
+          return;
+        }
+        if (!newDocsUrl || !newDocsUrl.trim()) {
+          toast.error('Get API Key URL is required when adding to custom categories');
+          return;
+        }
+      }
+      
       await secrets.save({
         serviceName,
-        keyName,
+        keyName: newKeyName || keyName,
         keyValue: secretValue,
         keyLabel: newKeyLabel || `${serviceName} Key`,
-        isDefault: isAddingNew, // New keys default to being the default
+        docsUrl: newDocsUrl || docsUrl || null,
+        isDefault: existingKeys.length === 0, // Only first key is default
       });
       toast.success('API key saved successfully');
       setEditingSecret(null);
       setSecretValue('');
       setNewKeyLabel('');
+      setNewKeyName('');
+      setNewDocsUrl('');
       setIsAddingNew(false);
       setSelectedService(null);
       refetchSecrets();
@@ -456,6 +477,8 @@ export default function AdminPage() {
                               setSelectedService(null);
                               setSecretValue('');
                               setNewKeyLabel('');
+                              setNewKeyName('');
+                              setNewDocsUrl('');
                             }}
                             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
                           >
@@ -602,6 +625,13 @@ export default function AdminPage() {
                         <div className="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                           <input
                             type="text"
+                            value={newKeyName}
+                            onChange={(e) => setNewKeyName(e.target.value)}
+                            placeholder="Key Name (e.g., STRIPE_SECRET_KEY)"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          />
+                          <input
+                            type="text"
                             value={newKeyLabel}
                             onChange={(e) => setNewKeyLabel(e.target.value)}
                             placeholder="Key label (e.g., Production, Development)"
@@ -614,9 +644,16 @@ export default function AdminPage() {
                             placeholder="API Key Value"
                             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
                           />
+                          <input
+                            type="url"
+                            value={newDocsUrl}
+                            onChange={(e) => setNewDocsUrl(e.target.value)}
+                            placeholder="Get API Key URL (e.g., https://dashboard.stripe.com/apikeys)"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleSaveSecret(serviceName, firstKey.key_name)}
+                              onClick={() => handleSaveSecret(serviceName, firstKey.key_name, firstKey.docs_url)}
                               className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm flex items-center gap-2"
                             >
                               <Save className="w-4 h-4" />
@@ -628,6 +665,8 @@ export default function AdminPage() {
                                 setSelectedService(null);
                                 setSecretValue('');
                                 setNewKeyLabel('');
+                                setNewKeyName('');
+                                setNewDocsUrl('');
                               }}
                               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
                             >

@@ -60,7 +60,16 @@ The application follows a client-server architecture:
   - **Real-time UI Updates**: Frontend automatically detects and displays AI-created conversations with custom titles through action result handling
 - **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring. Features comprehensive API category management including:
   - **Delete Entire Categories**: Remove all keys within a service category with confirmation dialog
-  - **Custom Category Creation**: Create custom API categories for third-party services (Stripe, Twilio, etc.) with custom key names, labels, and descriptions
+  - **Multi-Key Custom Category Creation**: Create custom API categories with multiple keys at once. Each key has individual configuration:
+    - Key Name (e.g., STRIPE_SECRET_KEY)
+    - Key Label (e.g., Production, Development)
+    - API Key Value
+    - Get API Key URL (individual docs_url per key)
+  - **Dynamic Key Management**: Add/remove keys during category creation with "Add Another Key" button
+  - **Add Keys to Existing Categories**: Easily add additional keys to both predefined and custom categories with full field collection (keyName, keyLabel, keyValue, docsUrl)
+  - **Smart Defaults**: Only the first key in each category is automatically set as default
+  - **Validation**: Required field validation prevents incomplete key configurations
+  - **Custom Category Badge**: Custom categories display with purple "Custom" badge and individual docs_url links per key
   - **Consolidated API Organization**: All related services grouped under single categories (e.g., all Google APIs unified)
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
