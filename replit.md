@@ -24,7 +24,14 @@ The application follows a client-server architecture:
 
 **Technical Implementations & Features**:
 - **Authentication**: JWT-based authentication with bcrypt hashing.
-- **User Profile Management**: Complete profile page with view/edit modes, profile picture upload, password change with strength indicator, and comprehensive validation. Profile updates preserve full user context including role and metadata.
+- **User Profile Management**: Complete profile page with view/edit modes, profile picture upload with file validation (5MB max, images only), and enhanced password change form featuring:
+  - Real-time password strength indicator (Weak → Very Strong)
+  - Smart password match detection with visual feedback (green checkmark when matching, red X when not)
+  - Dynamic border colors (green/red/gray) based on validation state
+  - Intelligent submit button that only enables when all validation passes
+  - Show/hide toggles for all password fields
+  - Comprehensive validation with helpful error messages
+  - Profile updates preserve full user context including role and metadata
 - **Chat Interface**: Supports streaming responses, multiple conversations, and dynamic model selection.
 - **Voice Chat**: Real-time voice communication via WebSockets using OpenAI's Realtime API.
 - **File Upload**: Supports various file types (images, PDFs) with integrated AI vision capabilities.
