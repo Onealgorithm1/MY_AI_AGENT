@@ -60,3 +60,5 @@ The application employs a client-server architecture. The frontend is built with
 ## Recent Changes (November 2025)
 -   **Security Enhancement**: Fixed API key exposure in error logs. Error logging in `openai.js` and `elevenlabs.js` now only logs safe error information (status, message, data) and excludes headers containing API keys.
 -   **Admin Dashboard**: Verified and confirmed full functionality of the API secrets management system, including ability to add, edit, test, and delete API keys for multiple services.
+-   **API Key Management Enhancement**: Updated `getApiKey()` function to fall back to environment variables when no key is found in the database. The system now checks database first, then falls back to `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, etc. from environment secrets.
+-   **Admin Access**: Fixed admin user role assignment - `admin@myaiagent.com` now has 'admin' role and can access Admin Dashboard (🛡️ shield icon in sidebar).
