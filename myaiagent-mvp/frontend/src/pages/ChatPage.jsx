@@ -80,13 +80,14 @@ export default function ChatPage() {
 
   const memoryFactsCount = memoryData?.length || 0;
 
-  // Get conversations
+  // Get conversations with auto-refetch to catch auto-generated titles
   const { data: conversationsData } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
       const response = await conversationsApi.list(20);
       return response.data.conversations;
     },
+    refetchInterval: 5000, // Refetch every 5 seconds to catch auto-generated titles
   });
 
   const conversations = conversationsData || [];
