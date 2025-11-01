@@ -64,6 +64,12 @@ export const auth = {
   },
   changePassword: (currentPassword, newPassword) =>
     api.put('/auth/profile/password', { currentPassword, newPassword }),
+  getPreferences: () =>
+    api.get('/auth/preferences'),
+  updatePreferences: (preferences) =>
+    api.put('/auth/preferences', { preferences }),
+  resetPreferences: () =>
+    api.delete('/auth/preferences'),
 };
 
 // Conversation endpoints

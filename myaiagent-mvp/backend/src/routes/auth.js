@@ -503,4 +503,99 @@ router.post('/profile/upload-picture', authenticate, upload.single('profilePictu
   }
 });
 
+// ============================================
+// User Preferences Management
+// ============================================
+
+// Get user preferences
+router.get('/preferences', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT preferences FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const preferences = result.rows[0]?.preferences || {};
+
+    res.json({ preferences });
+  } catch (error) {
+    console.error('Get preferences error:', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+// Update user preferences
+router.put('/preferences', authenticate, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+
+    if (!preferences || typeof preferences !== 'object') {
+      return res.status(400).json({ error: 'Invalid preferences format' });
+    }
+
+    // Get current preferences
+    const currentResult = await query(
+      'SELECT preferences FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const currentPreferences = currentResult.rows[0]?.preferences || {};
+    
+    // Merge new preferences with existing ones
+    const mergedPreferences = { ...currentPreferences, ...preferences };
+
+    // Update preferences
+    const result = await query(
+      `UPDATE users 
+       SET preferences = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 
+       RETURNING id, email, full_name, phone, profile_image, role, created_at, last_login_at, settings, preferences`,
+      [JSON.stringify(mergedPreferences), req.user.id]
+    );
+
+    const user = result.rows[0];
+
+    res.json({
+      message: 'Preferences updated successfully',
+      preferences: user.preferences,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        phone: user.phone,
+        profileImage: user.profile_image,
+        role: user.role,
+        createdAt: user.created_at,
+        lastLoginAt: user.last_login_at,
+        settings: user.settings,
+        preferences: user.preferences,
+      },
+    });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+// Reset preferences to defaults
+router.delete('/preferences', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `UPDATE users 
+       SET preferences = '{}', updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1 
+       RETURNING preferences`,
+      [req.user.id]
+    );
+
+    res.json({
+      message: 'Preferences reset successfully',
+      preferences: result.rows[0].preferences,
+    });
+  } catch (error) {
+    console.error('Reset preferences error:', error);
+    res.status(500).json({ error: 'Failed to reset preferences' });
+  }
+});
+
 export default router;
