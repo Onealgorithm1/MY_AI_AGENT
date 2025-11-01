@@ -30,9 +30,10 @@ export default function AdminPage() {
   const [selectedService, setSelectedService] = useState(null);
   const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState('');
-  const [customKeyName, setCustomKeyName] = useState('');
   const [customDescription, setCustomDescription] = useState('');
-  const [customDocsUrl, setCustomDocsUrl] = useState('');
+  const [customKeys, setCustomKeys] = useState([
+    { keyName: '', keyLabel: '', keyValue: '', docsUrl: '' }
+  ]);
 
   // Get stats
   const { data: statsData } = useQuery({
@@ -128,30 +129,59 @@ export default function AdminPage() {
     }
   };
 
+  const addCustomKey = () => {
+    setCustomKeys([...customKeys, { keyName: '', keyLabel: '', keyValue: '', docsUrl: '' }]);
+  };
+
+  const removeCustomKey = (index) => {
+    if (customKeys.length === 1) {
+      toast.error('You must have at least one key');
+      return;
+    }
+    setCustomKeys(customKeys.filter((_, i) => i !== index));
+  };
+
+  const updateCustomKey = (index, field, value) => {
+    const updated = [...customKeys];
+    updated[index][field] = value;
+    setCustomKeys(updated);
+  };
+
   const handleSaveCustomCategory = async () => {
-    if (!customCategoryName || !customKeyName || !secretValue || !customDocsUrl) {
-      toast.error('Please fill in all required fields (Category Name, Key Name, API Key Value, and Docs URL)');
+    if (!customCategoryName.trim()) {
+      toast.error('Please enter a category name');
       return;
     }
 
+    // Validate all keys
+    for (let i = 0; i < customKeys.length; i++) {
+      const key = customKeys[i];
+      if (!key.keyName || !key.keyLabel || !key.keyValue || !key.docsUrl) {
+        toast.error(`Please fill in all required fields for key ${i + 1}`);
+        return;
+      }
+    }
+
     try {
-      await secrets.save({
-        serviceName: customCategoryName,
-        keyName: customKeyName,
-        keyValue: secretValue,
-        keyLabel: newKeyLabel || `${customCategoryName} Key`,
-        description: customDescription,
-        docsUrl: customDocsUrl,
-        isDefault: true,
-      });
-      toast.success('Custom category created successfully');
+      // Save all keys sequentially
+      for (let i = 0; i < customKeys.length; i++) {
+        const key = customKeys[i];
+        await secrets.save({
+          serviceName: customCategoryName,
+          keyName: key.keyName,
+          keyValue: key.keyValue,
+          keyLabel: key.keyLabel,
+          description: customDescription,
+          docsUrl: key.docsUrl,
+          isDefault: i === 0, // First key is default
+        });
+      }
+      
+      toast.success(`Custom category created with ${customKeys.length} key${customKeys.length > 1 ? 's' : ''}`);
       setIsAddingCustomCategory(false);
       setCustomCategoryName('');
-      setCustomKeyName('');
       setCustomDescription('');
-      setCustomDocsUrl('');
-      setSecretValue('');
-      setNewKeyLabel('');
+      setCustomKeys([{ keyName: '', keyLabel: '', keyValue: '', docsUrl: '' }]);
       refetchSecrets();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to create custom category');
@@ -450,69 +480,119 @@ export default function AdminPage() {
               {/* Custom Category Creation */}
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
                 {isAddingCustomCategory ? (
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
                       Create Custom API Category
                     </h3>
-                    <input
-                      type="text"
-                      value={customCategoryName}
-                      onChange={(e) => setCustomCategoryName(e.target.value)}
-                      placeholder="Category Name (e.g., Stripe, Twilio, SendGrid)"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    />
-                    <input
-                      type="text"
-                      value={customKeyName}
-                      onChange={(e) => setCustomKeyName(e.target.value)}
-                      placeholder="Key Name (e.g., STRIPE_API_KEY, TWILIO_AUTH_TOKEN)"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
-                    />
-                    <input
-                      type="text"
-                      value={newKeyLabel}
-                      onChange={(e) => setNewKeyLabel(e.target.value)}
-                      placeholder="Key Label (e.g., Production Key)"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    />
-                    <input
-                      type="text"
-                      value={secretValue}
-                      onChange={(e) => setSecretValue(e.target.value)}
-                      placeholder="API Key Value"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                    />
-                    <input
-                      type="url"
-                      value={customDocsUrl}
-                      onChange={(e) => setCustomDocsUrl(e.target.value)}
-                      placeholder="Get API Key URL (e.g., https://dashboard.stripe.com/apikeys)"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    />
-                    <textarea
-                      value={customDescription}
-                      onChange={(e) => setCustomDescription(e.target.value)}
-                      placeholder="Description (optional)"
-                      rows={2}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    />
-                    <div className="flex gap-2">
+                    
+                    {/* Category Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Category Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={customCategoryName}
+                        onChange={(e) => setCustomCategoryName(e.target.value)}
+                        placeholder="e.g., Stripe, Twilio, SendGrid"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Description (optional)
+                      </label>
+                      <textarea
+                        value={customDescription}
+                        onChange={(e) => setCustomDescription(e.target.value)}
+                        placeholder="Brief description of this API service"
+                        rows={2}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+
+                    {/* API Keys */}
+                    <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          API Keys ({customKeys.length})
+                        </label>
+                        <button
+                          onClick={addCustomKey}
+                          className="px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200"
+                        >
+                          + Add Another Key
+                        </button>
+                      </div>
+
+                      {customKeys.map((key, index) => (
+                        <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 bg-gray-50 dark:bg-gray-900/50">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Key #{index + 1}
+                            </span>
+                            {customKeys.length > 1 && (
+                              <button
+                                onClick={() => removeCustomKey(index)}
+                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                                title="Remove this key"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                          
+                          <input
+                            type="text"
+                            value={key.keyName}
+                            onChange={(e) => updateCustomKey(index, 'keyName', e.target.value)}
+                            placeholder="Key Name (e.g., STRIPE_API_KEY) *"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
+                          />
+                          
+                          <input
+                            type="text"
+                            value={key.keyLabel}
+                            onChange={(e) => updateCustomKey(index, 'keyLabel', e.target.value)}
+                            placeholder="Key Label (e.g., Production Key) *"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                          
+                          <input
+                            type="text"
+                            value={key.keyValue}
+                            onChange={(e) => updateCustomKey(index, 'keyValue', e.target.value)}
+                            placeholder="API Key Value *"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          />
+                          
+                          <input
+                            type="url"
+                            value={key.docsUrl}
+                            onChange={(e) => updateCustomKey(index, 'docsUrl', e.target.value)}
+                            placeholder="Get API Key URL (e.g., https://dashboard.stripe.com/apikeys) *"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
                       <button
                         onClick={handleSaveCustomCategory}
                         className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm flex items-center gap-2"
                       >
                         <Save className="w-4 h-4" />
-                        Create Category
+                        Create Category with {customKeys.length} Key{customKeys.length > 1 ? 's' : ''}
                       </button>
                       <button
                         onClick={() => {
                           setIsAddingCustomCategory(false);
                           setCustomCategoryName('');
-                          setCustomKeyName('');
                           setCustomDescription('');
-                          setCustomDocsUrl('');
-                          setSecretValue('');
-                          setNewKeyLabel('');
+                          setCustomKeys([{ keyName: '', keyLabel: '', keyValue: '', docsUrl: '' }]);
                         }}
                         className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
                       >
