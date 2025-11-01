@@ -16,7 +16,7 @@ async function getElevenLabsKey() {
     
     return decryptSecret(result.rows[0].key_value);
   } catch (error) {
-    console.error('Get ElevenLabs key error:', error);
+    console.error('Get ElevenLabs key error:', error.message);
     return null;
   }
 }

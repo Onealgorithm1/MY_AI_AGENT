@@ -41,7 +41,12 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
 
     return response.data;
   } catch (error) {
-    console.error('OpenAI chat error:', error.response || error.message);
+    console.error('OpenAI chat error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
     throw new Error(error.message || 'Failed to get AI response');
   }
 }
