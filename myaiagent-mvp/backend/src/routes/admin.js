@@ -364,4 +364,72 @@ router.post('/api-keys', async (req, res) => {
   }
 });
 
+// Get feedback analytics - model performance and ratings
+router.get('/feedback-analytics', async (req, res) => {
+  try {
+    const analyticsResult = await query(`
+      WITH feedback_by_model AS (
+        SELECT 
+          m.model,
+          COUNT(*) as total_ratings,
+          COUNT(*) FILTER (WHERE f.rating = 1) as positive_count,
+          COUNT(*) FILTER (WHERE f.rating = -1) as negative_count,
+          ROUND(AVG(f.rating)::numeric, 2) as avg_rating,
+          ROUND((COUNT(*) FILTER (WHERE f.rating = 1)::float / NULLIF(COUNT(*), 0) * 100), 1) as satisfaction_rate
+        FROM feedback f
+        JOIN messages m ON f.message_id = m.id
+        WHERE f.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY m.model
+      ),
+      recent_feedback AS (
+        SELECT 
+          f.id,
+          f.rating,
+          f.comment,
+          f.created_at,
+          m.model,
+          m.content as message_content,
+          u.full_name as user_name
+        FROM feedback f
+        JOIN messages m ON f.message_id = m.id
+        JOIN users u ON f.user_id = u.id
+        ORDER BY f.created_at DESC
+        LIMIT 20
+      ),
+      problem_messages AS (
+        SELECT 
+          m.id,
+          m.content,
+          m.model,
+          f.comment,
+          u.full_name as user_name,
+          f.created_at
+        FROM feedback f
+        JOIN messages m ON f.message_id = m.id
+        JOIN users u ON f.user_id = u.id
+        WHERE f.rating = -1 AND f.created_at > NOW() - INTERVAL '7 days'
+        ORDER BY f.created_at DESC
+        LIMIT 10
+      )
+      SELECT 
+        json_build_object(
+          'by_model', (SELECT json_agg(row_to_json(fbm)) FROM feedback_by_model fbm),
+          'recent_feedback', (SELECT json_agg(row_to_json(rf)) FROM recent_feedback rf),
+          'problem_messages', (SELECT json_agg(row_to_json(pm)) FROM problem_messages pm)
+        ) as analytics
+    `);
+
+    const analytics = analyticsResult.rows[0]?.analytics || {
+      by_model: [],
+      recent_feedback: [],
+      problem_messages: []
+    };
+
+    res.json(analytics);
+  } catch (error) {
+    console.error('Feedback analytics error:', error);
+    res.status(500).json({ error: 'Failed to get feedback analytics' });
+  }
+});
+
 export default router;

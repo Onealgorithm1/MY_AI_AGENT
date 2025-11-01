@@ -181,4 +181,71 @@ router.get('/:id/messages', authenticate, async (req, res) => {
   }
 });
 
+// Get conversation analytics/insights
+router.get('/:id/analytics', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const check = await query(
+      'SELECT id, created_at FROM conversations WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Get comprehensive analytics in a single query
+    const analytics = await query(
+      `WITH message_stats AS (
+        SELECT 
+          COUNT(*) FILTER (WHERE role = 'user') as user_messages,
+          COUNT(*) FILTER (WHERE role = 'assistant') as ai_messages,
+          COUNT(DISTINCT model) as models_used,
+          array_agg(DISTINCT model) FILTER (WHERE model IS NOT NULL) as models_list,
+          COUNT(*) FILTER (WHERE metadata->>'autoSelected' = 'true') as auto_selections
+        FROM messages
+        WHERE conversation_id = $1
+      ),
+      memory_stats AS (
+        SELECT COUNT(*) as facts_extracted
+        FROM memory_facts
+        WHERE conversation_id = $1
+      ),
+      feedback_stats AS (
+        SELECT 
+          COUNT(*) FILTER (WHERE rating = 1) as positive_feedback,
+          COUNT(*) FILTER (WHERE rating = -1) as negative_feedback,
+          ROUND(AVG(rating)::numeric, 2) as avg_rating
+        FROM feedback
+        WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = $1)
+      )
+      SELECT 
+        ms.user_messages,
+        ms.ai_messages,
+        ms.models_used,
+        ms.models_list,
+        ms.auto_selections,
+        COALESCE(mem.facts_extracted, 0) as facts_extracted,
+        COALESCE(fb.positive_feedback, 0) as positive_feedback,
+        COALESCE(fb.negative_feedback, 0) as negative_feedback,
+        fb.avg_rating
+      FROM message_stats ms
+      CROSS JOIN memory_stats mem
+      CROSS JOIN feedback_stats fb`,
+      [id]
+    );
+
+    res.json({
+      conversationId: id,
+      createdAt: check.rows[0].created_at,
+      analytics: analytics.rows[0]
+    });
+  } catch (error) {
+    console.error('Get conversation analytics error:', error);
+    res.status(500).json({ error: 'Failed to get conversation analytics' });
+  }
+});
+
 export default router;

@@ -64,6 +64,8 @@ export const conversations = {
     api.delete(`/conversations/${id}`),
   getMessages: (id, limit = 50, offset = 0) =>
     api.get(`/conversations/${id}/messages`, { params: { limit, offset } }),
+  analytics: (id) =>
+    api.get(`/conversations/${id}/analytics`),
 };
 
 // Message endpoints

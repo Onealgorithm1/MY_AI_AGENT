@@ -214,7 +214,13 @@ export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gpt-
   let systemContent = uiAwarePrompt || `You are a helpful AI assistant powered by OpenAI's ${modelName} model.`;
   
   if (memoryContext) {
-    systemContent += `\n\n## WHAT YOU REMEMBER ABOUT THIS USER:\n\n- ${memoryContext}\n\nUse this context naturally in your responses when relevant.`;
+    systemContent += `\n\n## WHAT YOU REMEMBER ABOUT THIS USER:\n\n- ${memoryContext}\n\n**IMPORTANT**: You have ${memoryFacts.length} fact${memoryFacts.length !== 1 ? 's' : ''} about this user stored in your memory system. Proactively reference relevant facts when appropriate to personalize responses and demonstrate continuity. For example:
+- Mention their preferences when making recommendations
+- Recall their previous interests or work
+- Reference past conversations naturally
+- Build on what you know about them
+
+Your memory makes conversations feel more natural and personalized. Use it to create a better user experience!`;
   }
 
   const systemMessage = {

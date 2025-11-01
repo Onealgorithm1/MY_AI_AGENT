@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -26,8 +26,11 @@ import {
   Copy,
   ThumbsUp,
   ThumbsDown,
+  Brain,
+  BarChart3,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ConversationInsights from '../components/ConversationInsights';
 
 export default function ChatPage() {
   const navigate = useNavigate();
@@ -52,6 +55,23 @@ export default function ChatPage() {
   const [editingTitle, setEditingTitle] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [showInsights, setShowInsights] = useState(false);
+
+  // Get memory facts count
+  const { data: memoryData } = useQuery({
+    queryKey: ['memory', 'approved'],
+    queryFn: async () => {
+      try {
+        const response = await memoryApi.list(null, true);
+        return response.data.facts || [];
+      } catch (error) {
+        console.error('Failed to fetch memory facts:', error);
+        return [];
+      }
+    },
+  });
+
+  const memoryFactsCount = memoryData?.length || 0;
 
   // Get conversations
   const { data: conversationsData } = useQuery({
@@ -467,6 +487,18 @@ export default function ChatPage() {
           ))}
         </div>
 
+        {/* Memory Counter */}
+        {memoryFactsCount > 0 && (
+          <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm">
+              <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-gray-700 dark:text-gray-300">
+                AI remembers <span className="font-semibold text-purple-600 dark:text-purple-400">{memoryFactsCount} facts</span> about you
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* User Menu */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
@@ -516,18 +548,40 @@ export default function ChatPage() {
             </select>
           </div>
 
-          <button
-            onClick={() => setIsVoiceActive(!isVoiceActive)}
-            className={`p-2 rounded-lg transition-colors ${
-              isVoiceActive
-                ? 'bg-red-500 text-white'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Voice Mode"
-          >
-            {isVoiceActive ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            {currentConversation && (
+              <button
+                onClick={() => setShowInsights(!showInsights)}
+                className={`p-2 rounded-lg transition-colors ${
+                  showInsights
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title="Conversation Insights"
+              >
+                <BarChart3 className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsVoiceActive(!isVoiceActive)}
+              className={`p-2 rounded-lg transition-colors ${
+                isVoiceActive
+                  ? 'bg-red-500 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title="Voice Mode"
+            >
+              {isVoiceActive ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
+
+        {/* Conversation Insights */}
+        {showInsights && currentConversation && (
+          <div className="px-4 pt-4">
+            <ConversationInsights conversationId={currentConversation.id} />
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
