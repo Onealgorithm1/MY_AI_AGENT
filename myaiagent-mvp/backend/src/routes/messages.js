@@ -10,8 +10,62 @@ import {
 } from '../services/openai.js';
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
+import axios from 'axios';
 
 const router = express.Router();
+
+// Helper function to trigger auto-naming after a few messages
+async function triggerAutoNaming(conversationId, userId) {
+  try {
+    // Count user messages in this conversation
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM messages WHERE conversation_id = $1 AND role = $2',
+      [conversationId, 'user']
+    );
+    
+    const userMessageCount = parseInt(countResult.rows[0].count);
+    
+    // Trigger auto-naming after 2-3 user messages
+    if (userMessageCount === 2 || userMessageCount === 3) {
+      // Call auto-naming endpoint asynchronously (don't await)
+      setImmediate(async () => {
+        try {
+          // Make internal API call to auto-naming endpoint
+          const API_BASE = process.env.API_URL || 'http://localhost:3000/api';
+          const token = generateInternalToken(userId);
+          
+          await axios.post(
+            `${API_BASE}/conversations/${conversationId}/auto-name`,
+            {},
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          console.log(`📝 Auto-named conversation ${conversationId} after ${userMessageCount} messages`);
+        } catch (error) {
+          // Silently fail - auto-naming is not critical
+          console.error('Auto-naming failed (non-critical):', error.message);
+        }
+      });
+    }
+  } catch (error) {
+    // Silently fail - don't disrupt message flow
+    console.error('Auto-naming trigger error:', error);
+  }
+}
+
+// Simple internal token generator (for internal API calls)
+function generateInternalToken(userId) {
+  // For internal calls, we can use the JWT secret to generate a token
+  // This is a simple implementation - in production, use a proper JWT library
+  const jwt = require('jsonwebtoken');
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  return jwt.sign({ id: userId, internal: true }, secret, { expiresIn: '1m' });
+}
 
 // Send message and get AI response
 router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res) => {
@@ -262,6 +316,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           [tokensUsed, req.user.id]
         );
 
+        // Trigger auto-naming if appropriate
+        triggerAutoNaming(conversationId, req.user.id);
+
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         res.end();
       });
@@ -312,6 +369,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
              WHERE user_id = $2 AND date = CURRENT_DATE`,
             [tokensUsed, req.user.id]
           );
+          
+          // Trigger auto-naming if appropriate
+          triggerAutoNaming(conversationId, req.user.id);
           
           res.json({
             message: aiResponse,
@@ -365,6 +425,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
          WHERE user_id = $2 AND date = CURRENT_DATE`,
         [tokensUsed, req.user.id]
       );
+
+      // Trigger auto-naming if appropriate
+      triggerAutoNaming(conversationId, req.user.id);
 
       res.json({
         message: assistantMessage.rows[0],
