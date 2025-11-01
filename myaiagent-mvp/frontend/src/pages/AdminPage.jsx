@@ -315,6 +315,7 @@ export default function AdminPage() {
 
             {/* Services with Keys */}
             <div className="grid gap-4">
+              {/* Predefined Services */}
               {definitions.map((def) => {
                 const serviceKeys = secretsList.filter((s) => s.service_name === def.service_name);
                 const isAddingToService = isAddingNew && selectedService === def.service_name;
@@ -476,6 +477,179 @@ export default function AdminPage() {
                   </div>
                 );
               })}
+
+              {/* Custom Categories (not in predefined definitions) */}
+              {(() => {
+                const definedServices = new Set(definitions.map(d => d.service_name));
+                const customServices = [...new Set(secretsList.map(s => s.service_name))]
+                  .filter(serviceName => !definedServices.has(serviceName));
+
+                return customServices.map((serviceName) => {
+                  const serviceKeys = secretsList.filter((s) => s.service_name === serviceName);
+                  const isAddingToService = isAddingNew && selectedService === serviceName;
+                  const firstKey = serviceKeys[0];
+
+                  return (
+                    <div
+                      key={serviceName}
+                      className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                              {serviceName}
+                            </h3>
+                            <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full">
+                              Custom
+                            </span>
+                            <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
+                              {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
+                            </span>
+                          </div>
+                          {firstKey?.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {firstKey.description}
+                            </p>
+                          )}
+                          {firstKey?.docs_url && (
+                            <a
+                              href={firstKey.docs_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
+                            >
+                              Get API key →
+                            </a>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCategory(serviceName)}
+                          className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
+                          title="Delete entire category"
+                        >
+                          <X className="w-3 h-3" />
+                          Delete Category
+                        </button>
+                      </div>
+
+                      {/* Existing Keys */}
+                      <div className="space-y-2 mb-4">
+                        {serviceKeys.map((secret) => (
+                          <div
+                            key={secret.id}
+                            className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {secret.key_label || 'Unnamed Key'}
+                                </span>
+                                {secret.is_default && (
+                                  <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
+                                    Default
+                                  </span>
+                                )}
+                                {secret.docs_url && (
+                                  <a
+                                    href={secret.docs_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                    title="Get API Key URL"
+                                  >
+                                    🔗
+                                  </a>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                ••••••••••••
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!secret.is_default && (
+                                <button
+                                  onClick={() => handleSetDefault(secret.id)}
+                                  className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                                  title="Set as default"
+                                >
+                                  Set Default
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleTestSecret(secret.id)}
+                                className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                title="Test key"
+                              >
+                                <TestTube className="w-3 h-3" />
+                                Test
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSecret(secret.id)}
+                                className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title="Delete key"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add New Key Form for Custom Category */}
+                      {isAddingToService ? (
+                        <div className="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+                          <input
+                            type="text"
+                            value={newKeyLabel}
+                            onChange={(e) => setNewKeyLabel(e.target.value)}
+                            placeholder="Key label (e.g., Production, Development)"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={secretValue}
+                            onChange={(e) => setSecretValue(e.target.value)}
+                            placeholder="API Key Value"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSaveSecret(serviceName, firstKey.key_name)}
+                              className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 text-sm flex items-center gap-2"
+                            >
+                              <Save className="w-4 h-4" />
+                              Save Key
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsAddingNew(false);
+                                setSelectedService(null);
+                                setSecretValue('');
+                                setNewKeyLabel('');
+                              }}
+                              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setIsAddingNew(true);
+                            setSelectedService(serviceName);
+                          }}
+                          className="w-full px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white text-sm"
+                        >
+                          + Add Another {serviceName} Key
+                        </button>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
 
               {/* Custom Category Creation */}
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
