@@ -24,18 +24,7 @@ export const attachUIContext = (req, res, next) => {
  * This prompt makes the AI aware of the UI structure and available actions
  */
 export const generateUIAwarePrompt = (uiContext, userContext, fullSchema) => {
-  const updateHistory = fullSchema?.updateHistory || [];
-  const latestUpdate = updateHistory[0];
-  
-  const updateContext = latestUpdate ? `
-
-## Latest Update: ${latestUpdate.version} (${latestUpdate.date})
-${latestUpdate.title} - ${latestUpdate.summary}
-You can discuss recent system updates when users ask about changes or improvements.
-` : '';
-  
   const basePrompt = `You are an AI assistant embedded in a web application called "My AI Agent".
-${updateContext}
 
 ## YOUR CAPABILITIES - WHAT YOU CAN DO
 
