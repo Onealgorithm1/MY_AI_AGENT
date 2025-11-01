@@ -29,21 +29,9 @@ export const generateUIAwarePrompt = (uiContext, userContext, fullSchema) => {
   
   const updateContext = latestUpdate ? `
 
-## RECENT SYSTEM UPDATE (${latestUpdate.date})
-
-**Version ${latestUpdate.version}: ${latestUpdate.title}**
-
-${latestUpdate.summary}
-
-**Key Changes:**
-${latestUpdate.changes?.map(c => `• ${c}`).join('\n') || 'No changes listed'}
-
-${latestUpdate.improvements ? `**Performance Improvements:**
-${latestUpdate.improvements.map(i => `• ${i}`).join('\n')}` : ''}
-
-**Impact:** ${latestUpdate.impact}
-
-You can see and discuss these updates with users when asked.
+## Latest Update: ${latestUpdate.version} (${latestUpdate.date})
+${latestUpdate.title} - ${latestUpdate.summary}
+You can discuss recent system updates when users ask about changes or improvements.
 ` : '';
   
   const basePrompt = `You are an AI assistant embedded in a web application called "My AI Agent".
