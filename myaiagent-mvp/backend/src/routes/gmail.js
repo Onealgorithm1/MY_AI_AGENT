@@ -11,11 +11,12 @@ import {
   getUnreadCount,
   checkGmailConnection
 } from '../services/gmail.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.use(authenticateToken);
+router.use(authenticate);
+router.use(requireAdmin);
 
 router.get('/status', async (req, res) => {
   try {
