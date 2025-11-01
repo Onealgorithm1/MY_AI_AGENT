@@ -41,6 +41,13 @@ router.get('/stats', async (req, res) => {
           COALESCE(SUM(tokens_consumed), 0) as total_tokens,
           COALESCE(SUM(voice_minutes_used), 0) as total_voice_minutes
         FROM usage_tracking
+      ),
+      search_stats AS (
+        SELECT
+          COUNT(*) as total_searches,
+          COUNT(DISTINCT user_id) as unique_searchers,
+          (SELECT COUNT(*) FROM search_history WHERE DATE(searched_at) = CURRENT_DATE) as searches_today
+        FROM search_history
       )
       SELECT 
         s.*,
@@ -49,10 +56,14 @@ router.get('/stats', async (req, res) => {
         t.tokens_today,
         t.files_today,
         tu.total_tokens,
-        tu.total_voice_minutes
+        tu.total_voice_minutes,
+        ss.total_searches,
+        ss.unique_searchers,
+        ss.searches_today
       FROM stats s
       CROSS JOIN today_usage t
       CROSS JOIN total_usage tu
+      CROSS JOIN search_stats ss
     `);
 
     const stats = statsResult.rows[0];
@@ -84,6 +95,11 @@ router.get('/stats', async (req, res) => {
       files: {
         today: parseInt(stats.files_today),
         total: parseInt(stats.total_files),
+      },
+      searches: {
+        total: parseInt(stats.total_searches),
+        today: parseInt(stats.searches_today),
+        uniqueUsers: parseInt(stats.unique_searchers),
       },
       system: {
         recentErrors: parseInt(stats.recent_errors),

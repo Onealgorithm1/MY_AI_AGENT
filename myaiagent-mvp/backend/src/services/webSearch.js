@@ -71,12 +71,12 @@ export async function performWebSearch(searchQuery, numResults = 5) {
   }
 }
 
-export async function logSearchUsage(userId, query, resultsCount, conversationId = null) {
+export async function logSearchUsage(userId, searchQuery, resultsCount, conversationId = null) {
   try {
     await query(
       `INSERT INTO search_history (user_id, query, results_count, conversation_id, searched_at)
        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-      [userId, query, resultsCount, conversationId]
+      [userId, searchQuery, resultsCount, conversationId]
     );
   } catch (error) {
     console.error('Failed to log search usage:', error);

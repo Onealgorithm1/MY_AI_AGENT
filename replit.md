@@ -62,6 +62,7 @@ The application follows a client-server architecture:
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
 - **Streaming Function Calling**: AI can execute UI actions in real-time during streaming conversations.
+- **Web Search Capability**: AI can search the web for current information using Google Custom Search API. The AI automatically detects when it needs real-time data (news, weather, recent events, live statistics) and calls the `webSearch` function. Search results are displayed inline with source citations, links, and snippets. All searches are tracked in the `search_history` table with full analytics available in the admin dashboard. Requires two API credentials: `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
 
 **UI/UX Decisions**:
 - The application includes an "Auto 🤖" mode for model selection, which is the default, providing intelligent model switching.
