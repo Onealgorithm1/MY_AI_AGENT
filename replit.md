@@ -48,7 +48,7 @@ The application follows a client-server architecture:
 - **Voice Chat**: Real-time voice communication via WebSockets using OpenAI's Realtime API.
 - **File Upload**: Supports various file types (images, PDFs) with integrated AI vision capabilities.
 - **Memory System**: AI automatically extracts and stores facts about users to personalize interactions.
-- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences). Preferences automatically injected into AI system prompts to adapt response style, tone, length, creativity, and other behaviors to user's explicit choices.
+- **User Preferences**: Comprehensive personalization system with API endpoints (GET/PUT/DELETE /auth/preferences) and dedicated preferences page (/preferences). Users can customize 9 different aspects of AI communication including response style, length, tone, emojis, creativity level, explanation depth, examples preference, proactive suggestions, and code format. Preferences automatically injected into AI system prompts to adapt AI behavior to user's explicit choices. Accessible from profile page via "Manage Preferences" button.
 - **Automatic Chat Naming**: Intelligent conversation title generation based on content analysis. After 2-3 user messages, the system automatically analyzes the conversation using keyword extraction and frequency analysis to generate descriptive titles (e.g., "Business Description Refinement"). Features include:
   - **Smart Keyword Extraction**: Filters stop words, ranks word frequency, and selects top 2-4 meaningful keywords
   - **Auto-Trigger**: Fires asynchronously after 2nd or 3rd user message without blocking responses
