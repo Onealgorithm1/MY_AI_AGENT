@@ -26,6 +26,7 @@ import secretsRoutes from './routes/secrets.js';
 import uiSchemaRoutes from './routes/ui-schema.js';
 import uiActionsRoutes from './routes/ui-actions.js';
 import eventsRoutes from './routes/events.js';
+import toolsRoutes from './routes/tools.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -116,6 +117,7 @@ app.use('/api/secrets', secretsRoutes);
 app.use('/api/ui-schema', uiSchemaRoutes);
 app.use('/api/ui-actions', uiActionsRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/tools', toolsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
