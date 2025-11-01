@@ -13,12 +13,13 @@ The application follows a client-server architecture:
 - **Backend**: Developed with Node.js and Express, providing API endpoints and WebSocket support for real-time features.
 - **Database**: PostgreSQL for data persistence.
 
-**UI-Aware AI Agent System**: This intelligent agent is central to the application's design, enabling the AI to interact directly with the user interface.
+**UI-Aware AI Agent System**: This intelligent agent is central to the application's design, enabling the AI to interact directly with the user interface and discuss its own implementation.
 - **UI Schema Layer**: Provides structured metadata for all UI components, pages, and workflows, allowing the AI to understand the interface layout and capabilities.
 - **Context Engine**: Injects current UI state and available actions into AI prompts, ensuring the AI is always aware of the user's context.
 - **LLM Orchestrator**: Uses enhanced system prompts to leverage the AI's UI awareness for more intelligent interactions.
 - **Action Execution Layer**: Enables the AI to trigger specific UI commands via dedicated API endpoints. This includes actions like changing models, navigation, conversation management (create, switch, delete, pin, rename), file uploads, starting voice chats, and providing feedback.
 - **Bidirectional Event System**: Tracks user actions on the frontend and allows the AI to initiate real-time UI updates, creating a highly responsive and interactive experience.
+- **Code Awareness**: The AI is explicitly aware of and can discuss backend code (routes, services, middleware), frontend components, API endpoints, database schema, and implementation details when asked.
 
 **Technical Implementations & Features**:
 - **Authentication**: JWT-based authentication with bcrypt hashing.
