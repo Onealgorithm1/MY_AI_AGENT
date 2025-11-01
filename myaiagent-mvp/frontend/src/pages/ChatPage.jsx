@@ -109,11 +109,11 @@ export default function ChatPage() {
     setStreamingMessage('●●●');
 
     try {
-      // Get API base URL with fallback
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      // Get API base URL with fallback (includes /api path)
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       
       // Send message with streaming
-      const response = await fetch(`${apiUrl}/api/messages`, {
+      const response = await fetch(`${apiUrl}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
