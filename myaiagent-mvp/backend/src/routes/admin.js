@@ -7,95 +7,87 @@ const router = express.Router();
 // All routes require admin
 router.use(authenticate, requireAdmin);
 
-// Dashboard statistics
+// Dashboard statistics - Optimized single query
 router.get('/stats', async (req, res) => {
   try {
-    // Total users
-    const usersResult = await query('SELECT COUNT(*) FROM users');
-    const totalUsers = parseInt(usersResult.rows[0].count);
+    const statsResult = await query(`
+      WITH stats AS (
+        SELECT
+          (SELECT COUNT(*) FROM users) as total_users,
+          (SELECT COUNT(*) FROM users WHERE last_login_at > NOW() - INTERVAL '7 days') as active_users,
+          (SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURRENT_DATE) as new_users_today,
+          (SELECT COUNT(*) FROM conversations) as total_conversations,
+          (SELECT COUNT(*) FROM conversations WHERE DATE(created_at) = CURRENT_DATE) as conversations_today,
+          (SELECT COUNT(*) FROM messages) as total_messages,
+          (SELECT COUNT(*) FROM attachments) as total_files,
+          (SELECT COUNT(*) FROM error_logs WHERE created_at > NOW() - INTERVAL '24 hours' AND resolved = false) as recent_errors,
+          (SELECT COALESCE(AVG(duration_ms), 0) FROM (
+            SELECT duration_ms FROM performance_metrics 
+            WHERE created_at > NOW() - INTERVAL '1 hour' AND duration_ms IS NOT NULL
+            ORDER BY created_at DESC LIMIT 100
+          ) recent_perf) as avg_response_time
+      ),
+      today_usage AS (
+        SELECT 
+          COALESCE(SUM(messages_sent), 0) as messages_today,
+          COALESCE(SUM(voice_minutes_used), 0) as voice_minutes_today,
+          COALESCE(SUM(tokens_consumed), 0) as tokens_today,
+          COALESCE(SUM(files_uploaded), 0) as files_today
+        FROM usage_tracking 
+        WHERE date = CURRENT_DATE
+      ),
+      total_usage AS (
+        SELECT 
+          COALESCE(SUM(tokens_consumed), 0) as total_tokens,
+          COALESCE(SUM(voice_minutes_used), 0) as total_voice_minutes
+        FROM usage_tracking
+      )
+      SELECT 
+        s.*,
+        t.messages_today,
+        t.voice_minutes_today,
+        t.tokens_today,
+        t.files_today,
+        tu.total_tokens,
+        tu.total_voice_minutes
+      FROM stats s
+      CROSS JOIN today_usage t
+      CROSS JOIN total_usage tu
+    `);
 
-    // Active users (logged in last 7 days)
-    const activeUsersResult = await query(
-      `SELECT COUNT(*) FROM users 
-       WHERE last_login_at > NOW() - INTERVAL '7 days'`
-    );
-    const activeUsers = parseInt(activeUsersResult.rows[0].count);
-
-    // Total conversations
-    const conversationsResult = await query('SELECT COUNT(*) FROM conversations');
-    const totalConversations = parseInt(conversationsResult.rows[0].count);
-
-    // Total messages
-    const messagesResult = await query('SELECT COUNT(*) FROM messages');
-    const totalMessages = parseInt(messagesResult.rows[0].count);
-
-    // Today's usage
-    const todayUsageResult = await query(
-      `SELECT 
-         SUM(messages_sent) as messages_today,
-         SUM(voice_minutes_used) as voice_minutes_today,
-         SUM(tokens_consumed) as tokens_today,
-         SUM(files_uploaded) as files_today
-       FROM usage_tracking 
-       WHERE date = CURRENT_DATE`
-    );
-    const todayUsage = todayUsageResult.rows[0];
-
-    // Total tokens used (all time)
-    const totalTokensResult = await query(
-      'SELECT SUM(tokens_consumed) as total_tokens FROM usage_tracking'
-    );
-    const totalTokens = parseInt(totalTokensResult.rows[0].total_tokens) || 0;
-
-    // Estimated cost (rough: $0.01 per 1000 tokens)
-    const estimatedCost = (totalTokens / 1000) * 0.01;
-
-    // Error count (last 24 hours)
-    const errorsResult = await query(
-      `SELECT COUNT(*) FROM error_logs 
-       WHERE created_at > NOW() - INTERVAL '24 hours' AND resolved = false`
-    );
-    const recentErrors = parseInt(errorsResult.rows[0].count);
-
-    // Average response time (last 100 requests)
-    const perfResult = await query(
-      `SELECT AVG(duration_ms) as avg_duration 
-       FROM performance_metrics 
-       WHERE created_at > NOW() - INTERVAL '1 hour'
-       LIMIT 100`
-    );
-    const avgResponseTime = Math.round(perfResult.rows[0].avg_duration) || 0;
+    const stats = statsResult.rows[0];
+    const estimatedCost = (parseInt(stats.total_tokens) / 1000) * 0.01;
 
     res.json({
       users: {
-        total: totalUsers,
-        active: activeUsers,
-        newToday: 0, // TODO: Calculate
+        total: parseInt(stats.total_users),
+        active: parseInt(stats.active_users),
+        newToday: parseInt(stats.new_users_today),
       },
       conversations: {
-        total: totalConversations,
-        todayCount: 0, // TODO: Calculate
+        total: parseInt(stats.total_conversations),
+        todayCount: parseInt(stats.conversations_today),
       },
       messages: {
-        total: totalMessages,
-        today: parseInt(todayUsage.messages_today) || 0,
+        total: parseInt(stats.total_messages),
+        today: parseInt(stats.messages_today),
       },
       voice: {
-        minutesToday: parseFloat(todayUsage.voice_minutes_today) || 0,
-        minutesTotal: 0, // TODO: Calculate
+        minutesToday: parseFloat(stats.voice_minutes_today),
+        minutesTotal: parseFloat(stats.total_voice_minutes),
       },
       tokens: {
-        total: totalTokens,
-        today: parseInt(todayUsage.tokens_today) || 0,
+        total: parseInt(stats.total_tokens),
+        today: parseInt(stats.tokens_today),
         estimatedCost: estimatedCost.toFixed(2),
       },
       files: {
-        today: parseInt(todayUsage.files_today) || 0,
-        total: 0, // TODO: Calculate
+        today: parseInt(stats.files_today),
+        total: parseInt(stats.total_files),
       },
       system: {
-        recentErrors,
-        avgResponseTime,
+        recentErrors: parseInt(stats.recent_errors),
+        avgResponseTime: Math.round(parseFloat(stats.avg_response_time)),
       },
     });
   } catch (error) {

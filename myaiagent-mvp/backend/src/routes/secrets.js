@@ -2,6 +2,7 @@ import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { encryptSecret, decryptSecret, maskSecret, validateApiKey } from '../services/secrets.js';
+import { cacheControl } from '../middleware/cache.js';
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ const SECRET_DEFINITIONS = {
 };
 
 // Get all available secret definitions
-router.get('/definitions', async (req, res) => {
+router.get('/definitions', cacheControl(600), async (req, res) => {
   try {
     res.json({
       secrets: Object.entries(SECRET_DEFINITIONS).map(([key, value]) => ({

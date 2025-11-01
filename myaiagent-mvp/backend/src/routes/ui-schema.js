@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { cacheControl } from '../middleware/cache.js';
 import { uiSchema, getUISchemaForContext } from '../schemas/uiSchema.js';
 
 const router = express.Router();
@@ -8,7 +9,7 @@ const router = express.Router();
  * GET /api/ui-schema
  * Returns the complete UI schema
  */
-router.get('/', authenticate, (req, res) => {
+router.get('/', authenticate, cacheControl(300), (req, res) => {
   try {
     res.json({
       success: true,
@@ -49,7 +50,7 @@ router.get('/context', authenticate, (req, res) => {
  * GET /api/ui-schema/workflows
  * Returns available workflows
  */
-router.get('/workflows', authenticate, (req, res) => {
+router.get('/workflows', authenticate, cacheControl(300), (req, res) => {
   try {
     res.json({
       success: true,

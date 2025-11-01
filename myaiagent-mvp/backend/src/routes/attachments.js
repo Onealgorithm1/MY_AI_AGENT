@@ -89,33 +89,36 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
     // Increment file upload count
     await incrementFileCount(req.user.id);
 
-    // Auto-analyze images
+    // Auto-analyze images asynchronously (non-blocking)
     if (req.file.mimetype.startsWith('image/')) {
-      try {
-        // Convert file path to base64 data URL for OpenAI
-        const imageBuffer = fs.readFileSync(req.file.path);
-        const base64Image = imageBuffer.toString('base64');
-        const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+      setImmediate(async () => {
+        try {
+          // Convert file path to base64 data URL for OpenAI
+          const imageBuffer = fs.readFileSync(req.file.path);
+          const base64Image = imageBuffer.toString('base64');
+          const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
 
-        const analysis = await analyzeImage(dataUrl);
+          const analysis = await analyzeImage(dataUrl);
 
-        // Update attachment with analysis
-        await query(
-          `UPDATE attachments 
-           SET analysis_result = $1, status = 'completed'
-           WHERE id = $2`,
-          [JSON.stringify({ description: analysis }), attachment.id]
-        );
+          // Update attachment with analysis
+          await query(
+            `UPDATE attachments 
+             SET analysis_result = $1, status = 'completed'
+             WHERE id = $2`,
+            [JSON.stringify({ description: analysis }), attachment.id]
+          );
 
-        attachment.analysis_result = { description: analysis };
-        attachment.status = 'completed';
-      } catch (error) {
-        console.error('Image analysis error:', error);
-        await query(
-          `UPDATE attachments SET status = 'failed' WHERE id = $1`,
-          [attachment.id]
-        );
-      }
+          console.log(`✅ Image analysis completed for attachment ${attachment.id}`);
+        } catch (error) {
+          console.error('Image analysis error:', error);
+          await query(
+            `UPDATE attachments SET status = 'failed' WHERE id = $1`,
+            [attachment.id]
+          );
+        }
+      });
+
+      attachment.status = 'processing';
     }
 
     res.status(201).json({
