@@ -634,9 +634,18 @@ export default function AdminPage() {
                                   {secret.key_type}
                                 </span>
                               </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                ••••••••••••
-                              </span>
+                              <div className="space-y-0.5">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono block">
+                                  ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
+                                </span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                  Added {new Date(secret.created_at).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric' 
+                                  })}
+                                </span>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               {!secret.is_default && (
@@ -919,9 +928,18 @@ export default function AdminPage() {
                                       </a>
                                     )}
                                   </div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                                    ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
-                                  </span>
+                                  <div className="space-y-0.5">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono block">
+                                      ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
+                                    </span>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      Added {new Date(secret.created_at).toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric', 
+                                        year: 'numeric' 
+                                      })}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <button
