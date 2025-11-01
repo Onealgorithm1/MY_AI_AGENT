@@ -54,6 +54,14 @@ export const auth = {
     api.put('/auth/profile', { fullName, email, phone }),
   updateProfileImage: (profileImage) =>
     api.put('/auth/profile/image', { profileImage }),
+  uploadProfilePicture: (file) => {
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    
+    return api.post('/auth/profile/upload-picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   changePassword: (currentPassword, newPassword) =>
     api.put('/auth/profile/password', { currentPassword, newPassword }),
 };

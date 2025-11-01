@@ -32,6 +32,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 
+// Helper function to get base URL for serving uploaded files
+const getBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  // Remove /api suffix if present to get base URL
+  return apiUrl.replace(/\/api$/, '');
+};
+
 export default function ChatPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -502,7 +509,23 @@ export default function ChatPage() {
         {/* User Menu */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center">
+            {user?.profileImage ? (
+              <img
+                src={
+                  user.profileImage.startsWith('http')
+                    ? user.profileImage
+                    : `${getBaseUrl()}${user.profileImage}`
+                }
+                alt={user?.fullName}
+                className="w-8 h-8 rounded-full object-cover"
+                onError={(e) => {
+                  // Fallback to default icon if image fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div className={`w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center ${user?.profileImage ? 'hidden' : ''}`}>
               <User className="w-4 h-4 text-white dark:text-gray-900" />
             </div>
             <div className="flex-1 min-w-0">

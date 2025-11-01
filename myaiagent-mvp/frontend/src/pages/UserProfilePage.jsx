@@ -19,6 +19,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Helper function to get base URL for serving uploaded files
+const getBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  // Remove /api suffix if present to get base URL
+  return apiUrl.replace(/\/api$/, '');
+};
+
 export default function UserProfilePage() {
   const navigate = useNavigate();
   const { user: currentUser, setUser } = useAuthStore();
@@ -35,6 +42,8 @@ export default function UserProfilePage() {
   // Profile image state
   const [imageUrl, setImageUrl] = useState('');
   const [showImageInput, setShowImageInput] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   // Password change state
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -94,6 +103,22 @@ export default function UserProfilePage() {
     },
     onError: (error) => {
       toast.error(error.response?.data?.error || 'Failed to update image');
+    },
+  });
+
+  // Upload profile picture mutation
+  const uploadPictureMutation = useMutation({
+    mutationFn: (file) => authApi.uploadProfilePicture(file),
+    onSuccess: (response) => {
+      toast.success('Profile picture uploaded successfully');
+      queryClient.invalidateQueries(['userProfile']);
+      setUser(response.data.user);
+      setShowImageInput(false);
+      setSelectedFile(null);
+      setPreviewUrl(null);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Failed to upload picture');
     },
   });
 
@@ -157,6 +182,47 @@ export default function UserProfilePage() {
       return;
     }
     updateImageMutation.mutate(imageUrl);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadPicture = () => {
+    if (!selectedFile) {
+      toast.error('Please select a file first');
+      return;
+    }
+    uploadPictureMutation.mutate(selectedFile);
+  };
+
+  const handleCancelUpload = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setImageUrl(profile?.profileImage || '');
+    setShowImageInput(false);
   };
 
   const handleChangePassword = () => {
@@ -229,9 +295,18 @@ export default function UserProfilePage() {
             <div className="relative">
               {profile?.profileImage || imageUrl ? (
                 <img
-                  src={profile?.profileImage || imageUrl}
+                  src={
+                    (profile?.profileImage || imageUrl).startsWith('http')
+                      ? profile?.profileImage || imageUrl
+                      : `${getBaseUrl()}${profile?.profileImage || imageUrl}`
+                  }
                   alt="Profile"
                   className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '';
+                    e.target.style.display = 'none';
+                  }}
                 />
               ) : (
                 <div className="w-24 h-24 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center border-4 border-gray-200 dark:border-gray-700">
@@ -255,33 +330,96 @@ export default function UserProfilePage() {
                   Change Picture
                 </button>
               ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Enter image URL"
-                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
-                  />
-                  <button
-                    onClick={handleUpdateImage}
-                    disabled={updateImageMutation.isPending}
-                    className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {updateImageMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
+                <div className="space-y-3">
+                  {/* File Upload Option */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Upload Image File
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="profile-picture-upload"
+                      />
+                      <label
+                        htmlFor="profile-picture-upload"
+                        className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                      >
+                        Choose File
+                      </label>
+                      {selectedFile && (
+                        <>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {selectedFile.name}
+                          </span>
+                          <button
+                            onClick={handleUploadPicture}
+                            disabled={uploadPictureMutation.isPending}
+                            className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {uploadPictureMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {previewUrl && (
+                      <div className="mt-2">
+                        <img
+                          src={previewUrl}
+                          alt="Preview"
+                          className="w-20 h-20 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
+                        />
+                      </div>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Or divider */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">or</span>
+                    <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
+                  </div>
+
+                  {/* URL Input Option */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Enter Image URL
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+                      />
+                      <button
+                        onClick={handleUpdateImage}
+                        disabled={updateImageMutation.isPending}
+                        className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {updateImageMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cancel button */}
                   <button
-                    onClick={() => {
-                      setShowImageInput(false);
-                      setImageUrl(profile?.profileImage || '');
-                    }}
-                    className="p-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+                    onClick={handleCancelUpload}
+                    className="w-full px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
                   >
-                    <X className="w-4 h-4" />
+                    Cancel
                   </button>
                 </div>
               )}
