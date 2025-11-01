@@ -157,6 +157,35 @@ export default function UserProfilePage() {
 
   const passwordStrength = getPasswordStrength(passwordData.newPassword);
 
+  // Phone number formatter
+  const formatPhoneNumber = (value) => {
+    // Remove all non-numeric characters
+    const phoneNumber = value.replace(/\D/g, '');
+    
+    // Limit to 11 digits (1 for country code + 10 for US number)
+    const limitedNumber = phoneNumber.slice(0, 11);
+    
+    // Format as: (XXX) XXX-XXXX or +1 (XXX) XXX-XXXX
+    if (limitedNumber.length === 0) return '';
+    if (limitedNumber.length <= 3) return limitedNumber;
+    if (limitedNumber.length <= 6) {
+      return `(${limitedNumber.slice(0, 3)}) ${limitedNumber.slice(3)}`;
+    }
+    if (limitedNumber.length <= 10) {
+      return `(${limitedNumber.slice(0, 3)}) ${limitedNumber.slice(3, 6)}-${limitedNumber.slice(6)}`;
+    }
+    // If 11 digits (with country code)
+    return `+${limitedNumber.slice(0, 1)} (${limitedNumber.slice(1, 4)}) ${limitedNumber.slice(4, 7)}-${limitedNumber.slice(7)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const input = e.target.value;
+    // Only allow numbers, spaces, parentheses, hyphens, and plus sign
+    const filtered = input.replace(/[^\d\s()+-]/g, '');
+    const formatted = formatPhoneNumber(filtered);
+    setFormData({ ...formData, phone: formatted });
+  };
+
   const handleSaveProfile = () => {
     if (!formData.fullName.trim()) {
       toast.error('Full name is required');
@@ -165,6 +194,14 @@ export default function UserProfilePage() {
     if (!formData.email.trim()) {
       toast.error('Email is required');
       return;
+    }
+    // Validate phone number format if provided
+    if (formData.phone) {
+      const digitsOnly = formData.phone.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        toast.error('Phone number must be at least 10 digits');
+        return;
+      }
     }
     updateProfileMutation.mutate();
   };
@@ -477,13 +514,18 @@ export default function UserProfilePage() {
                 Phone Number (Optional)
               </label>
               {isEditing ? (
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Enter phone number"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
-                />
+                <div>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    placeholder="(555) 123-4567"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Format: (XXX) XXX-XXXX
+                  </p>
+                </div>
               ) : (
                 <p className="text-gray-900 dark:text-white px-4 py-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   {profile?.phone || 'Not provided'}
