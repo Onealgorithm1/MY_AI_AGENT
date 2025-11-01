@@ -36,6 +36,34 @@ The application follows a client-server architecture:
 - The admin dashboard visually distinguishes API keys by type (project/admin/other) and allows for setting default keys.
 - User interactions and AI-triggered actions are confirmed with toast notifications.
 
+## Performance Optimizations
+
+The application has been comprehensively optimized for performance across all layers:
+
+**Database Layer:**
+- **Indexes**: 10+ targeted indexes on frequently queried columns (conversations, messages, memory_facts, error_logs, usage_tracking, API secrets, UI actions)
+- **Composite Indexes**: Multi-column indexes for common query patterns (user_id + date, conversation_id + created_at)
+- **Filtered Indexes**: Conditional indexes for boolean filters (approved=true, is_active=true) to reduce index size
+
+**Backend Optimizations:**
+- **Query Consolidation**: Admin stats endpoint consolidated from 8+ sequential queries to single CTE-based query (8x reduction in DB round-trips)
+- **Connection Pooling**: Optimized PostgreSQL pool (25 max, 5 min connections, keepalive enabled, 30s query timeout)
+- **Async Operations**: Image analysis runs asynchronously via setImmediate() to prevent blocking upload responses
+- **Smart Logging**: Query logging only for slow queries (>1000ms) to reduce console noise
+- **HTTP Caching**: Static endpoints (UI schema, secret definitions) use Cache-Control headers (5-10 min)
+
+**Frontend Optimizations:**
+- **Code Splitting**: Lazy loading for ChatPage and AdminPage using React.lazy() reduces initial bundle size
+- **React Query**: Optimized caching strategy (2min staleTime, 10min cacheTime, refetch on mount for freshness)
+- **Performance Utilities**: Custom hooks for debounce, throttle, and memoization to prevent unnecessary re-renders
+
+**Results:**
+- Faster admin dashboard load times (single query vs 8+ queries)
+- Improved upload responsiveness (async image analysis)
+- Reduced initial page load (code splitting)
+- Better data freshness (balanced React Query settings)
+- Slower query detection for proactive optimization
+
 ## External Dependencies
 - **OpenAI API**: Utilized for GPT-4o (main chat, vision), Realtime API (voice), Whisper (speech-to-text), and TTS (text-to-speech).
 - **ElevenLabs API**: (Optional) For premium Text-to-Speech capabilities.
