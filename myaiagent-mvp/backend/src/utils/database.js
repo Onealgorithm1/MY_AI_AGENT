@@ -26,7 +26,10 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Database error:', err);
+  // Only log unexpected errors (not connection terminations from pool management)
+  if (err.code !== '57P01' && err.code !== 'ECONNRESET') {
+    console.error('❌ Database error:', err);
+  }
 });
 
 // Query helper with optimized logging
