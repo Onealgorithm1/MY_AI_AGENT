@@ -116,7 +116,22 @@ export async function getApiKey(provider, keyType = 'project') {
       );
     }
     
+    // If no key found in database, fall back to environment variable
     if (result.rows.length === 0) {
+      const envKeyMap = {
+        'openai': 'OPENAI_API_KEY',
+        'elevenlabs': 'ELEVENLABS_API_KEY',
+        'anthropic': 'ANTHROPIC_API_KEY',
+        'google': 'GOOGLE_API_KEY',
+        'stripe': 'STRIPE_SECRET_KEY'
+      };
+      
+      const envKey = envKeyMap[provider.toLowerCase()];
+      if (envKey && process.env[envKey]) {
+        console.log(`Using ${provider} API key from environment variable`);
+        return process.env[envKey];
+      }
+      
       return null;
     }
     
