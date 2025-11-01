@@ -24,7 +24,8 @@ The application follows a client-server architecture:
 
 **Technical Implementations & Features**:
 - **Authentication**: JWT-based authentication with bcrypt hashing.
-- **User Profile Management**: Complete profile page with view/edit modes, profile picture upload with file validation (5MB max, images only), and enhanced password change form featuring:
+- **User Profile Management**: Complete profile page with view/edit modes, profile picture upload with file validation (5MB max, images only), phone number validation and formatting, and enhanced password change form featuring:
+  - **Phone Number Field**: Auto-formatting to (XXX) XXX-XXXX format, prevents letter input, validates minimum 10 digits on save
   - Real-time password strength indicator (Weak → Very Strong)
   - Smart password match detection with visual feedback (green checkmark when matching, red X when not)
   - Dynamic border colors (green/red/gray) based on validation state
