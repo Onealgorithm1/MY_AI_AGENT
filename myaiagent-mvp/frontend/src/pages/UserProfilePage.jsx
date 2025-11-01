@@ -20,7 +20,6 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import PreferencesPanel from '../components/PreferencesPanel';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -758,11 +757,6 @@ export default function UserProfilePage() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* AI Preferences Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <PreferencesPanel />
         </div>
       </div>
     </div>
