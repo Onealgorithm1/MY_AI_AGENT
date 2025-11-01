@@ -87,10 +87,17 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     const memoryFacts = memoryResult.rows;
 
-    // Build UI-aware context
+    // Build UI-aware context with complete user information
     const uiAwareSystemPrompt = generateUIAwarePrompt(req.uiContext, {
-      fullName: req.user.fullName,
-      role: req.user.role
+      fullName: req.user.full_name,
+      email: req.user.email,
+      role: req.user.role,
+      phone: req.user.phone,
+      profileImage: req.user.profile_image,
+      createdAt: req.user.created_at,
+      lastLoginAt: req.user.last_login_at,
+      settings: req.user.settings,
+      preferences: req.user.preferences
     }, req.fullUISchema);
 
     // Build messages with memory context and UI awareness
