@@ -327,7 +327,22 @@ export default function ChatPage() {
         break;
         
       case 'createNewChat':
-        createConversation.mutate();
+        // AI already created the conversation, use it from action.result
+        if (action.result?.conversation) {
+          const newConv = action.result.conversation;
+          
+          // Add to conversations list
+          queryClient.setQueryData(['conversations'], (old = []) => {
+            return [newConv, ...old];
+          });
+          
+          // Switch to the new conversation
+          loadConversation(newConv.id);
+          toast.success(`Created new chat: ${newConv.title}`);
+        } else {
+          // Fallback to creating new conversation
+          createConversation.mutate();
+        }
         break;
         
       case 'deleteConversation':

@@ -57,6 +57,7 @@ The application follows a client-server architecture:
   - **Frontend Integration**: Conversation list refreshes every 5 seconds to display auto-generated titles
   - **API Endpoint**: `POST /api/conversations/:id/auto-name` for manual triggering
   - **AI Integration**: AI can create new chats with custom titles via `createNewChat` UI function (accepts optional `title` parameter)
+  - **Real-time UI Updates**: Frontend automatically detects and displays AI-created conversations with custom titles through action result handling
 - **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring.
 - **Security**: Implements Helmet middleware, CORS, encrypted storage for API secrets, and secure password change with current password verification.
 - **Intelligent Model Selection**: The AI dynamically selects the optimal OpenAI model (e.g., `gpt-4o-mini`, `gpt-4o`, `o1-preview`) based on query complexity and task type for cost efficiency and performance.
