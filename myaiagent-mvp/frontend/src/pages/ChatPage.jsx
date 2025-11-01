@@ -23,6 +23,7 @@ import {
   Edit2,
   Check,
   X,
+  Copy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -193,6 +194,16 @@ export default function ChatPage() {
     const response = await conversationsApi.create('New Chat', selectedModel);
     queryClient.invalidateQueries(['conversations']);
     return response.data.conversation.id;
+  };
+
+  // Copy message to clipboard
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy');
+    }
   };
 
   // Rename conversation
@@ -528,13 +539,27 @@ export default function ChatPage() {
                 )}
 
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  className={`max-w-[80%] rounded-2xl px-4 pt-3 pb-2 ${
                     message.role === 'user'
                       ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="whitespace-pre-wrap mb-1">{message.content}</div>
+                  {message.role === 'assistant' && (
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        onClick={() => copyToClipboard(message.content)}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        title="Copy message"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        {message.model === 'auto' ? 'Auto 🤖' : message.model}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {message.role === 'user' && (
