@@ -614,65 +614,130 @@ export default function AdminPage() {
                             key={secret.id}
                             className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                           >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {secret.key_label || 'Unnamed Key'}
-                                </span>
-                                {secret.is_default && (
-                                  <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
-                                    Default
-                                  </span>
-                                )}
-                                <span className={`px-2 py-0.5 text-xs rounded-full ${
-                                  secret.key_type === 'project' 
-                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
-                                    : secret.key_type === 'admin'
-                                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
-                                }`}>
-                                  {secret.key_type}
-                                </span>
+                            {editingKey === secret.id ? (
+                              <div className="flex-1 space-y-2">
+                                <input
+                                  type="text"
+                                  value={editKeyLabel}
+                                  onChange={(e) => setEditKeyLabel(e.target.value)}
+                                  placeholder="Key Label (e.g., Production)"
+                                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={editKeyDocsUrl}
+                                  onChange={(e) => setEditKeyDocsUrl(e.target.value)}
+                                  placeholder="Documentation URL (optional)"
+                                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                                />
+                                <div>
+                                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                    API Key Value (current: ••••{editKeyLast4})
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editKeyValue}
+                                    onChange={(e) => setEditKeyValue(e.target.value)}
+                                    placeholder="Enter new API key value (leave empty to keep current)"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-mono"
+                                  />
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Leave blank to keep the current API key value
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSaveKeyEdit(secret)}
+                                    className="px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200 flex items-center gap-1"
+                                  >
+                                    <Save className="w-3 h-3" />
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingKey(null);
+                                      setEditKeyLabel('');
+                                      setEditKeyDocsUrl('');
+                                      setEditKeyValue('');
+                                      setEditKeyLast4('');
+                                    }}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                              <div className="space-y-0.5">
-                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono block">
-                                  ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
-                                </span>
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                  Added {new Date(secret.created_at).toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric' 
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {!secret.is_default && (
-                                <button
-                                  onClick={() => handleSetDefault(secret.id)}
-                                  className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
-                                  title="Set as default"
-                                >
-                                  Set Default
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleTestSecret(secret.id)}
-                                className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
-                                title="Test key"
-                              >
-                                <TestTube className="w-3 h-3" />
-                                Test
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSecret(secret.id)}
-                                className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                                title="Delete key"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
+                            ) : (
+                              <>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {secret.key_label || 'Unnamed Key'}
+                                    </span>
+                                    {secret.is_default && (
+                                      <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                    <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                      secret.key_type === 'project' 
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                                        : secret.key_type === 'admin'
+                                        ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
+                                    }`}>
+                                      {secret.key_type}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono block">
+                                      ••••{secret.last4Characters || secret.maskedValue?.slice(-4) || '••••'}
+                                    </span>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      Added {new Date(secret.created_at).toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric', 
+                                        year: 'numeric' 
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleEditKey(secret)}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                    title="Edit key"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                    Edit
+                                  </button>
+                                  {!secret.is_default && (
+                                    <button
+                                      onClick={() => handleSetDefault(secret.id)}
+                                      className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                                      title="Set as default"
+                                    >
+                                      Set Default
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleTestSecret(secret.id)}
+                                    className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                                    title="Test key"
+                                  >
+                                    <TestTube className="w-3 h-3" />
+                                    Test
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSecret(secret.id)}
+                                    className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    title="Delete key"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
