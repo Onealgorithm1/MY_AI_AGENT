@@ -211,7 +211,7 @@ router.get('/:id/analytics', authenticate, async (req, res) => {
       memory_stats AS (
         SELECT COUNT(*) as facts_extracted
         FROM memory_facts
-        WHERE conversation_id = $1
+        WHERE source_conversation_id = $1
       ),
       feedback_stats AS (
         SELECT 
