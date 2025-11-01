@@ -59,6 +59,7 @@ The application follows a client-server architecture:
   - **AI Integration**: AI can create new chats with custom titles via `createNewChat` UI function (accepts optional `title` parameter)
   - **Real-time UI Updates**: Frontend automatically detects and displays AI-created conversations with custom titles through action result handling
 - **Admin Dashboard**: Provides tools for user management, API usage statistics, and system monitoring. Features comprehensive API category management including:
+  - **Alphabetical Organization**: All API categories and keys automatically sorted alphabetically for easy navigation
   - **Delete Entire Categories**: Remove all keys within a service category with confirmation dialog
   - **Multi-Key Custom Category Creation**: Create custom API categories with multiple keys at once. Each key has individual configuration:
     - Key Name (e.g., STRIPE_SECRET_KEY)

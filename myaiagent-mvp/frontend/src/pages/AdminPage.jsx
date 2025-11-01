@@ -218,7 +218,10 @@ export default function AdminPage() {
   };
 
   const secretsList = secretsData || [];
-  const definitions = definitionsData || [];
+  // Sort definitions alphabetically by service name
+  const definitions = (definitionsData || []).sort((a, b) => 
+    (a.serviceName || '').localeCompare(b.serviceName || '')
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -338,7 +341,9 @@ export default function AdminPage() {
             <div className="grid gap-4">
               {/* Predefined Services */}
               {definitions.map((def) => {
-                const serviceKeys = secretsList.filter((s) => s.service_name === def.service_name);
+                const serviceKeys = secretsList
+                  .filter((s) => s.service_name === def.service_name)
+                  .sort((a, b) => (a.key_label || '').localeCompare(b.key_label || '')); // Sort keys alphabetically
                 const isAddingToService = isAddingNew && selectedService === def.service_name;
 
                 return (
@@ -505,10 +510,13 @@ export default function AdminPage() {
               {(() => {
                 const definedServices = new Set(definitions.map(d => d.service_name));
                 const customServices = [...new Set(secretsList.map(s => s.service_name))]
-                  .filter(serviceName => !definedServices.has(serviceName));
+                  .filter(serviceName => !definedServices.has(serviceName))
+                  .sort((a, b) => a.localeCompare(b)); // Sort alphabetically
 
                 return customServices.map((serviceName) => {
-                  const serviceKeys = secretsList.filter((s) => s.service_name === serviceName);
+                  const serviceKeys = secretsList
+                    .filter((s) => s.service_name === serviceName)
+                    .sort((a, b) => (a.key_label || '').localeCompare(b.key_label || '')); // Sort keys alphabetically
                   const isAddingToService = isAddingNew && selectedService === serviceName;
                   const firstKey = serviceKeys[0];
 
