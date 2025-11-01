@@ -35,6 +35,18 @@ const SECRET_DEFINITIONS = {
     placeholder: 'AIza...',
     docs_url: 'https://console.cloud.google.com/apis/credentials',
   },
+  GOOGLE_SEARCH_API_KEY: {
+    service_name: 'Google Custom Search',
+    description: 'Google API key for Custom Search API (for AI web search)',
+    placeholder: 'AIza...',
+    docs_url: 'https://developers.google.com/custom-search/v1/overview',
+  },
+  GOOGLE_SEARCH_ENGINE_ID: {
+    service_name: 'Google Custom Search',
+    description: 'Google Custom Search Engine ID (CX parameter)',
+    placeholder: 'a1b2c3d4e5f6g7h8i...',
+    docs_url: 'https://programmablesearchengine.google.com/',
+  },
   STRIPE_SECRET_KEY: {
     service_name: 'Stripe',
     description: 'Stripe secret key for payment processing',
