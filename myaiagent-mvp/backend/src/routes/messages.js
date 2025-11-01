@@ -156,7 +156,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'pin', 'unpin', // pinning
       'navigate', 'go to', 'open', // navigation
       'upload', 'attach', 'file', // file upload
-      'voice', 'call', 'speak' // voice
+      'voice', 'call', 'speak', // voice
+      'email', 'mail', 'inbox', 'send', 'read', 'search', 'archive', 'message' // gmail
     ];
     const lowercaseContent = content.toLowerCase();
     const isLikelyAction = actionKeywords.some(keyword => lowercaseContent.includes(keyword));

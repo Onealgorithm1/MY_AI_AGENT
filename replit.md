@@ -41,6 +41,7 @@ The application employs a client-server architecture. The frontend is built with
 -   **Intelligent Model Selection**: Dynamically selects optimal OpenAI models (e.g., `gpt-4o-mini`, `gpt-4o`) based on query complexity.
 -   **Streaming Function Calling**: AI can execute UI actions during streaming conversations.
 -   **Web Search Capability**: AI can perform web searches for current information using Google Custom Search, displaying results with citations.
+-   **Gmail Integration**: Full email management via Replit's Gmail OAuth connector, enabling admin users to read, send, search, archive, delete, and manage emails through natural language commands. Security enforced via admin role requirement on both API routes and function calling.
 -   **Performance Optimizations**: Includes database indexing, backend query consolidation, connection pooling, asynchronous operations, frontend code splitting, and React Query for efficient caching.
 -   **Self-Awareness & Intelligence**: Includes an enhanced memory system with proactive usage, per-conversation analytics, and feedback-driven improvements for model performance tracking.
 
@@ -58,6 +59,7 @@ The application employs a client-server architecture. The frontend is built with
 -   **Google Custom Search API**: For web search functionality, requiring `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
 
 ## Recent Changes (November 2025)
+-   **Gmail Integration Complete**: Full Gmail functionality added via Replit OAuth connector. Admin users can read, send, search, archive, delete, and manage emails through natural language AI commands. Security hardened with admin-only access controls on both API routes (requireAdmin middleware) and function calling (context.user verification). Fixed privilege escalation vulnerability by using authenticated user context instead of spoofable userId parameter.
 -   **Security Enhancement**: Fixed API key exposure in error logs. Error logging in `openai.js` and `elevenlabs.js` now only logs safe error information (status, message, data) and excludes headers containing API keys.
 -   **Admin Dashboard**: Verified and confirmed full functionality of the API secrets management system, including ability to add, edit, test, and delete API keys for multiple services.
 -   **API Key Management Enhancement**: Updated `getApiKey()` function to fall back to environment variables when no key is found in the database. The system now checks database first, then falls back to `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, etc. from environment secrets.
