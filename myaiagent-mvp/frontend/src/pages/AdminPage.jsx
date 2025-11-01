@@ -571,38 +571,88 @@ export default function AdminPage() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {def.serviceName}
-                          </h3>
-                          {serviceKeys.length > 0 && (
-                            <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
-                              {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {def.description}
-                        </p>
-                        <a
-                          href={def.docs_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
-                        >
-                          Get API key →
-                        </a>
+                        {editingCategory === def.service_name ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editCategoryName}
+                              onChange={(e) => setEditCategoryName(e.target.value)}
+                              placeholder="Category Name"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                            />
+                            <textarea
+                              value={editCategoryDescription}
+                              onChange={(e) => setEditCategoryDescription(e.target.value)}
+                              placeholder="Category Description (optional)"
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveCategoryEdit}
+                                className="px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200 flex items-center gap-1"
+                              >
+                                <Save className="w-3 h-3" />
+                                Save Changes
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingCategory(null);
+                                  setEditCategoryName('');
+                                  setEditCategoryDescription('');
+                                }}
+                                className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 mb-2">
+                              <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                              <h3 className="font-semibold text-gray-900 dark:text-white">
+                                {def.serviceName}
+                              </h3>
+                              {serviceKeys.length > 0 && (
+                                <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
+                                  {serviceKeys.length} {serviceKeys.length === 1 ? 'key' : 'keys'}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {def.description}
+                            </p>
+                            <a
+                              href={def.docs_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
+                            >
+                              Get API key →
+                            </a>
+                          </>
+                        )}
                       </div>
-                      {serviceKeys.length > 0 && (
-                        <button
-                          onClick={() => handleDeleteCategory(def.service_name)}
-                          className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
-                          title="Delete entire category"
-                        >
-                          <X className="w-3 h-3" />
-                          Delete Category
-                        </button>
+                      {editingCategory !== def.service_name && serviceKeys.length > 0 && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditCategory(def.service_name)}
+                            className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                            title="Edit category"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(def.service_name)}
+                            className="px-3 py-1.5 text-xs border border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1"
+                            title="Delete entire category"
+                          >
+                            <X className="w-3 h-3" />
+                            Delete Category
+                          </button>
+                        </div>
                       )}
                     </div>
 
