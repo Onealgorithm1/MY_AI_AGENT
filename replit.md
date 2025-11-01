@@ -56,3 +56,7 @@ The application employs a client-server architecture. The frontend is built with
 -   **ElevenLabs API**: (Optional) For premium Text-to-Speech.
 -   **PostgreSQL**: Primary database.
 -   **Google Custom Search API**: For web search functionality, requiring `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
+
+## Recent Changes (November 2025)
+-   **Security Enhancement**: Fixed API key exposure in error logs. Error logging in `openai.js` and `elevenlabs.js` now only logs safe error information (status, message, data) and excludes headers containing API keys.
+-   **Admin Dashboard**: Verified and confirmed full functionality of the API secrets management system, including ability to add, edit, test, and delete API keys for multiple services.
