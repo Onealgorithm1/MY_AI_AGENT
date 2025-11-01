@@ -248,4 +248,151 @@ router.get('/:id/analytics', authenticate, async (req, res) => {
   }
 });
 
+// Helper function to extract keywords and generate title
+function generateTitleFromMessages(messages) {
+  // Common stop words to filter out
+  const stopWords = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
+    'to', 'was', 'will', 'with', 'what', 'when', 'where', 'who', 'why',
+    'how', 'can', 'could', 'should', 'would', 'i', 'you', 'we', 'they',
+    'my', 'your', 'me', 'this', 'these', 'those', 'do', 'does', 'did',
+    'have', 'had', 'been', 'being', 'but', 'or', 'if', 'then', 'than',
+    'so', 'just', 'now', 'any', 'some', 'all', 'get', 'make', 'go',
+    'want', 'need', 'like', 'know', 'think', 'see', 'use', 'help',
+    'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+  ]);
+
+  // Combine all user message content
+  const allText = messages
+    .filter(m => m.role === 'user')
+    .map(m => m.content)
+    .join(' ');
+
+  if (!allText || allText.trim().length === 0) {
+    return 'New Chat';
+  }
+
+  // Tokenize: lowercase, remove punctuation, split on whitespace
+  const words = allText
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word));
+
+  if (words.length === 0) {
+    return 'New Chat';
+  }
+
+  // Count word frequency
+  const wordFreq = {};
+  words.forEach(word => {
+    wordFreq[word] = (wordFreq[word] || 0) + 1;
+  });
+
+  // Sort by frequency, then alphabetically
+  const sortedWords = Object.entries(wordFreq)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1]; // Sort by frequency descending
+      return a[0].localeCompare(b[0]); // Then alphabetically
+    })
+    .map(([word]) => word);
+
+  // Take top 2-4 words and capitalize them
+  const keyWords = sortedWords.slice(0, 4).map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  );
+
+  // Construct title
+  let title = keyWords.join(' ');
+
+  // If title is too short, try to add more context
+  if (title.length < 10 && keyWords.length < 4) {
+    const additionalWords = sortedWords.slice(keyWords.length, 6).map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    );
+    title = [...keyWords, ...additionalWords].slice(0, 4).join(' ');
+  }
+
+  // Truncate if too long (max 50 characters)
+  if (title.length > 50) {
+    title = title.substring(0, 47) + '...';
+  }
+
+  // Fallback if still empty or too short
+  if (!title || title.length < 3) {
+    return 'New Chat';
+  }
+
+  return title;
+}
+
+// Auto-generate conversation title based on content
+router.post('/:id/auto-name', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const check = await query(
+      'SELECT id, title FROM conversations WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const currentTitle = check.rows[0].title;
+
+    // Don't auto-rename if user has manually changed the title
+    // (We'll consider it manual if it's not a default title)
+    const defaultTitles = ['New Conversation', 'New Chat', 'Untitled Chat'];
+    if (!defaultTitles.includes(currentTitle)) {
+      return res.json({ 
+        message: 'Conversation already has a custom title',
+        title: currentTitle,
+        renamed: false
+      });
+    }
+
+    // Get first 3 user messages
+    const messages = await query(
+      `SELECT role, content FROM messages 
+       WHERE conversation_id = $1 
+       ORDER BY created_at ASC
+       LIMIT 5`,
+      [id]
+    );
+
+    if (messages.rows.length === 0) {
+      return res.json({ 
+        message: 'No messages found to generate title',
+        title: currentTitle,
+        renamed: false
+      });
+    }
+
+    // Generate title from messages
+    const newTitle = generateTitleFromMessages(messages.rows);
+
+    // Update conversation title
+    const result = await query(
+      `UPDATE conversations 
+       SET title = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 AND user_id = $3 
+       RETURNING id, title`,
+      [newTitle, id, req.user.id]
+    );
+
+    res.json({
+      message: 'Conversation title auto-generated',
+      title: result.rows[0].title,
+      renamed: true
+    });
+  } catch (error) {
+    console.error('Auto-name conversation error:', error);
+    res.status(500).json({ error: 'Failed to auto-name conversation' });
+  }
+});
+
 export default router;
