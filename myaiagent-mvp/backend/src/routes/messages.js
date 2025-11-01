@@ -222,6 +222,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           try {
             const parsedArgs = JSON.parse(functionCall.arguments);
             const functionResult = await executeUIFunction(functionCall.name, parsedArgs, {
+              user: req.user,
               userId: req.user.id,
               conversationId,
             });
@@ -329,6 +330,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         try {
           // Execute the UI function
           const functionResult = await executeUIFunction(functionName, functionArgs, {
+            user: req.user,
             userId: req.user.id,
             conversationId,
           });

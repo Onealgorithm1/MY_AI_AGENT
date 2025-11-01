@@ -242,6 +242,17 @@ export async function executeUIFunction(functionName, args, context) {
     }
   }
   
+  const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail'];
+  if (gmailFunctions.includes(functionName)) {
+    if (!context.user || (context.user.role !== 'admin' && context.user.role !== 'superadmin')) {
+      return {
+        success: false,
+        message: 'Gmail access is restricted to administrators only',
+        data: null,
+      };
+    }
+  }
+  
   if (functionName === 'readEmails' || functionName === 'searchEmails') {
     const { listEmails, searchEmails } = await import('./gmail.js');
     
