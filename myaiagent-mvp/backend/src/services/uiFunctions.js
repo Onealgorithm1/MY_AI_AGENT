@@ -258,8 +258,8 @@ export async function executeUIFunction(functionName, args, context) {
     
     try {
       const emails = functionName === 'readEmails' 
-        ? await listEmails({ maxResults: args.maxResults || 10, query: args.query || '' })
-        : await searchEmails(args.query, args.maxResults || 10);
+        ? await listEmails(context.user.id, { maxResults: args.maxResults || 10, query: args.query || '' })
+        : await searchEmails(context.user.id, args.query, args.maxResults || 10);
       
       return {
         success: true,
@@ -279,7 +279,7 @@ export async function executeUIFunction(functionName, args, context) {
     const { sendEmail } = await import('./gmail.js');
     
     try {
-      const result = await sendEmail(args);
+      const result = await sendEmail(context.user.id, args);
       
       return {
         success: true,
@@ -299,7 +299,7 @@ export async function executeUIFunction(functionName, args, context) {
     const { markAsRead } = await import('./gmail.js');
     
     try {
-      await markAsRead(args.emailId);
+      await markAsRead(context.user.id, args.emailId);
       
       return {
         success: true,
@@ -319,7 +319,7 @@ export async function executeUIFunction(functionName, args, context) {
     const { archiveEmail } = await import('./gmail.js');
     
     try {
-      await archiveEmail(args.emailId);
+      await archiveEmail(context.user.id, args.emailId);
       
       return {
         success: true,
@@ -339,7 +339,7 @@ export async function executeUIFunction(functionName, args, context) {
     const { deleteEmail } = await import('./gmail.js');
     
     try {
-      await deleteEmail(args.emailId);
+      await deleteEmail(context.user.id, args.emailId);
       
       return {
         success: true,

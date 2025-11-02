@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import googleAuthRoutes from './routes/google-auth.js';
 import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
 import memoryRoutes from './routes/memory.js';
@@ -108,6 +109,7 @@ app.use('/uploads', express.static(uploadsPath));
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleAuthRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memory', memoryRoutes);

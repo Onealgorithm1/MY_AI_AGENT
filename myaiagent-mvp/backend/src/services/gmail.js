@@ -1,43 +1,16 @@
 import { google } from 'googleapis';
+import tokenManager from './tokenManager.js';
 
-let connectionSettings = null;
-
-async function getAccessToken() {
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+export async function getGmailClient(userId) {
+  if (!userId) {
+    throw new Error('User ID is required for Gmail access');
   }
+
+  const accessToken = await tokenManager.getValidToken(userId, 'google');
   
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('Gmail connection not available - X_REPLIT_TOKEN not found');
+  if (!accessToken) {
+    throw new Error('Gmail not connected. Please connect your Google account in Settings.');
   }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-mail',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('Gmail not connected. Please connect your Gmail account.');
-  }
-  return accessToken;
-}
-
-export async function getGmailClient() {
-  const accessToken = await getAccessToken();
 
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
@@ -69,9 +42,9 @@ function parseEmailBody(payload) {
   return body;
 }
 
-export async function listEmails(options = {}) {
+export async function listEmails(userId, options = {}) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
     const {
       maxResults = 20,
       query = '',
@@ -90,7 +63,7 @@ export async function listEmails(options = {}) {
     const emailDetails = await Promise.all(
       messages.map(async (msg) => {
         try {
-          return await getEmailDetails(msg.id);
+          return await getEmailDetails(userId, msg.id);
         } catch (error) {
           console.error(`Error fetching email ${msg.id}:`, error.message);
           return null;
@@ -105,9 +78,9 @@ export async function listEmails(options = {}) {
   }
 }
 
-export async function getEmailDetails(messageId) {
+export async function getEmailDetails(userId, messageId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     const response = await gmail.users.messages.get({
       userId: 'me',
@@ -142,9 +115,9 @@ export async function getEmailDetails(messageId) {
   }
 }
 
-export async function sendEmail(options) {
+export async function sendEmail(userId, options) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
     const { to, subject, body, html } = options;
 
     if (!to || !subject) {
@@ -184,9 +157,9 @@ export async function sendEmail(options) {
   }
 }
 
-export async function markAsRead(messageId) {
+export async function markAsRead(userId, messageId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     await gmail.users.messages.modify({
       userId: 'me',
@@ -203,9 +176,9 @@ export async function markAsRead(messageId) {
   }
 }
 
-export async function markAsUnread(messageId) {
+export async function markAsUnread(userId, messageId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     await gmail.users.messages.modify({
       userId: 'me',
@@ -222,9 +195,9 @@ export async function markAsUnread(messageId) {
   }
 }
 
-export async function archiveEmail(messageId) {
+export async function archiveEmail(userId, messageId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     await gmail.users.messages.modify({
       userId: 'me',
@@ -241,9 +214,9 @@ export async function archiveEmail(messageId) {
   }
 }
 
-export async function deleteEmail(messageId) {
+export async function deleteEmail(userId, messageId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     await gmail.users.messages.delete({
       userId: 'me',
@@ -257,13 +230,13 @@ export async function deleteEmail(messageId) {
   }
 }
 
-export async function searchEmails(query, maxResults = 20) {
-  return await listEmails({ query, maxResults });
+export async function searchEmails(userId, query, maxResults = 20) {
+  return await listEmails(userId, { query, maxResults });
 }
 
-export async function getUnreadCount() {
+export async function getUnreadCount(userId) {
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(userId);
 
     const response = await gmail.users.labels.get({
       userId: 'me',
@@ -280,10 +253,10 @@ export async function getUnreadCount() {
   }
 }
 
-export async function checkGmailConnection() {
+export async function checkGmailConnection(userId) {
   try {
-    await getAccessToken();
-    return { connected: true };
+    const hasToken = await tokenManager.hasValidToken(userId, 'google');
+    return { connected: hasToken };
   } catch (error) {
     return { connected: false, error: error.message };
   }

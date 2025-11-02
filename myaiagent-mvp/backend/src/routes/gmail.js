@@ -20,7 +20,7 @@ router.use(requireAdmin);
 
 router.get('/status', async (req, res) => {
   try {
-    const status = await checkGmailConnection();
+    const status = await checkGmailConnection(req.user.id);
     res.json(status);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -37,7 +37,7 @@ router.get('/emails', async (req, res) => {
       labelIds: labelIds ? labelIds.split(',') : ['INBOX']
     };
 
-    const emails = await listEmails(options);
+    const emails = await listEmails(req.user.id, options);
     res.json({ emails, count: emails.length });
   } catch (error) {
     console.error('GET /api/gmail/emails error:', error);
@@ -48,7 +48,7 @@ router.get('/emails', async (req, res) => {
 router.get('/emails/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const email = await getEmailDetails(id);
+    const email = await getEmailDetails(req.user.id, id);
     res.json(email);
   } catch (error) {
     console.error(`GET /api/gmail/emails/${req.params.id} error:`, error);
@@ -64,7 +64,7 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Search query (q) is required' });
     }
 
-    const emails = await searchEmails(q, maxResults ? parseInt(maxResults) : 20);
+    const emails = await searchEmails(req.user.id, q, maxResults ? parseInt(maxResults) : 20);
     res.json({ emails, count: emails.length, query: q });
   } catch (error) {
     console.error('GET /api/gmail/search error:', error);
@@ -80,7 +80,7 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ error: 'to and subject are required' });
     }
 
-    const result = await sendEmail({ to, subject, body, html });
+    const result = await sendEmail(req.user.id, { to, subject, body, html });
     res.json(result);
   } catch (error) {
     console.error('POST /api/gmail/send error:', error);
@@ -91,7 +91,7 @@ router.post('/send', async (req, res) => {
 router.put('/emails/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await markAsRead(id);
+    const result = await markAsRead(req.user.id, id);
     res.json(result);
   } catch (error) {
     console.error(`PUT /api/gmail/emails/${req.params.id}/read error:`, error);
@@ -102,7 +102,7 @@ router.put('/emails/:id/read', async (req, res) => {
 router.put('/emails/:id/unread', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await markAsUnread(id);
+    const result = await markAsUnread(req.user.id, id);
     res.json(result);
   } catch (error) {
     console.error(`PUT /api/gmail/emails/${req.params.id}/unread error:`, error);
@@ -113,7 +113,7 @@ router.put('/emails/:id/unread', async (req, res) => {
 router.put('/emails/:id/archive', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await archiveEmail(id);
+    const result = await archiveEmail(req.user.id, id);
     res.json(result);
   } catch (error) {
     console.error(`PUT /api/gmail/emails/${req.params.id}/archive error:`, error);
@@ -124,7 +124,7 @@ router.put('/emails/:id/archive', async (req, res) => {
 router.delete('/emails/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await deleteEmail(id);
+    const result = await deleteEmail(req.user.id, id);
     res.json(result);
   } catch (error) {
     console.error(`DELETE /api/gmail/emails/${req.params.id} error:`, error);
@@ -134,7 +134,7 @@ router.delete('/emails/:id', async (req, res) => {
 
 router.get('/unread-count', async (req, res) => {
   try {
-    const counts = await getUnreadCount();
+    const counts = await getUnreadCount(req.user.id);
     res.json(counts);
   } catch (error) {
     console.error('GET /api/gmail/unread-count error:', error);
