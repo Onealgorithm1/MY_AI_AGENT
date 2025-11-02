@@ -41,7 +41,13 @@ The application employs a client-server architecture. The frontend is built with
 -   **Intelligent Model Selection**: Dynamically selects optimal OpenAI models (e.g., `gpt-4o-mini`, `gpt-4o`) based on query complexity.
 -   **Streaming Function Calling**: AI can execute UI actions during streaming conversations.
 -   **Web Search Capability**: AI can perform web searches for current information using Google Custom Search, displaying results with citations.
--   **Gmail Integration**: Full email management via Replit's Gmail OAuth connector, enabling admin users to read, send, search, archive, delete, and manage emails through natural language commands. Security enforced via admin role requirement on both API routes and function calling.
+-   **Google Services Integration**: Complete suite of Google services via custom OAuth 2.0:
+    -   **Gmail**: Read, send, search, archive, delete emails (admin-only for security)
+    -   **Calendar**: List events, create events, delete events with timezone preservation
+    -   **Drive**: List files, search files, share files, delete files with query injection protection
+    -   **Docs**: Create documents, read documents, append content to documents
+    -   **Sheets**: Create spreadsheets, read data, update cells, append rows
+    -   All services use per-user OAuth tokens with automatic refresh and comprehensive error handling
 -   **Performance Optimizations**: Includes database indexing, backend query consolidation, connection pooling, asynchronous operations, frontend code splitting, and React Query for efficient caching.
 -   **Self-Awareness & Intelligence**: Includes an enhanced memory system with proactive usage, per-conversation analytics, and feedback-driven improvements for model performance tracking.
 
@@ -74,6 +80,14 @@ The application employs a client-server architecture. The frontend is built with
     -   Per-user token isolation (users can only access their own Google data)
     -   Automatic token refresh prevents expired credentials
     -   Admin-only Gmail routes maintained for security
+-   **Google Services Expansion (November 2, 2025)**: 
+    -   Added Calendar integration: List/create/delete events with proper timezone handling
+    -   Added Drive integration: List/search/share/delete files with query injection protection
+    -   Added Docs integration: Create/read/update documents with full text extraction
+    -   Added Sheets integration: Create/read/update spreadsheets with cell operations
+    -   Comprehensive error handling across all services with user-friendly messages
+    -   Enhanced action keywords to trigger Google functions: calendar, drive, docs, sheets terms
+    -   Updated UI awareness to expose all Google capabilities to the AI agent
 -   **Gmail Service Overhaul**: Migrated from Replit Gmail connector to custom per-user OAuth implementation. Each user's Gmail operations now use their own authenticated Google account instead of shared service account.
 -   **Gmail Integration Complete**: Full Gmail functionality added via custom OAuth. Admin users can read, send, search, archive, delete, and manage emails through natural language AI commands. Security hardened with admin-only access controls on both API routes (requireAdmin middleware) and function calling (context.user verification). Fixed privilege escalation vulnerability by using authenticated user context instead of spoofable userId parameter.
 -   **Security Enhancement**: Fixed API key exposure in error logs. Error logging in `openai.js` and `elevenlabs.js` now only logs safe error information (status, message, data) and excludes headers containing API keys.
