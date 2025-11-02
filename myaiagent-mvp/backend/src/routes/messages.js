@@ -170,6 +170,14 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     
     // Only pass functions if it's truly an action command
     const functionsToPass = isActionCommand ? UI_FUNCTIONS : null;
+    
+    // Debug logging for function calling
+    console.log('📋 Action Detection:', {
+      query: content.substring(0, 50),
+      isAction: isActionCommand,
+      functionsCount: functionsToPass ? functionsToPass.length : 0,
+      hasGoogleId: !!req.user.google_id
+    });
 
     if (stream) {
       // Streaming response
