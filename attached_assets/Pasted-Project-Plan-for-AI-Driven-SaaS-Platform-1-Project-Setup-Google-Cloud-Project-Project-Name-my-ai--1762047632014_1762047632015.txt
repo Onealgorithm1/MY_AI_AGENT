@@ -1,0 +1,263 @@
+Project Plan for AI-Driven SaaS Platform
+1. Project Setup
+Google Cloud Project
+
+Project Name: my-ai-agent-476119 (example)
+
+Enable all required APIs:
+
+Core AI/ML/Data APIs:
+
+BigQuery, BigQuery Storage, BigQuery Data Transfer, Vertex AI, Dataflow, Dataplex, Document AI
+
+Cloud Infrastructure:
+
+Compute Engine, Cloud Run, Cloud Functions, Cloud Storage, Cloud SQL, Cloud Tasks, Pub/Sub, Cloud Deploy
+
+Logging & Monitoring:
+
+Cloud Logging, Cloud Monitoring, Cloud Trace
+
+Security:
+
+Cloud KMS, Secret Manager, IAM, Cloud Resource Manager
+
+Productivity & User Data:
+
+Gmail, Calendar, Drive, Docs, Sheets, Slides, Keep, People API
+
+Marketing & Analytics:
+
+Google Ads API, Google Analytics Data & Admin API, Business Profile Performance API, Search Console API
+
+Maps & Geo:
+
+Distance Matrix API, Maps Embed API, Maps Static API, Time Zone API
+
+Firebase:
+
+Firebase AI Logic, App Check, App Distribution, App Testers, Cloud Messaging, Crashlytics, Data Connect, Extensions, Hosting, Realtime DB, Remote Config, ML
+
+Video:
+
+YouTube Analytics API
+
+Make sure scopes are correctly set for each API:
+
+Read/write, read-only, or admin as needed.
+
+Include sensitive and restricted scopes if required.
+
+Create service accounts for:
+
+AI agent automation
+
+Backend API calls
+
+Create OAuth 2.0 Client IDs for web login and internal service calls.
+
+2. Authentication & User Accounts
+Google Sign-In
+
+Use OAuth 2.0 for new users.
+
+Flow:
+
+User clicks “Sign in with Google”.
+
+Redirect to Google consent screen (request required scopes).
+
+Exchange authorization code for:
+
+Access token (API calls)
+
+Refresh token (long-term access)
+
+ID token (user profile info)
+
+Map user email to internal user ID in your database.
+
+Native SaaS Sign-In
+
+Implement traditional email/password login.
+
+Store credentials securely (hashed + salted).
+
+Allow users to link Google account to their existing internal account.
+
+Account Linking & Management
+
+Single internal user ID per person.
+
+Handle:
+
+Linking multiple login methods
+
+Unlinking accounts
+
+Permission updates
+
+Store tokens securely (Secret Manager or database encrypted).
+
+3. Backend Architecture
+AI Agent Core
+
+Responsible for:
+
+Analyzing SaaS usage, user activity, and company data
+
+Executing automated tasks (marketing, analytics, logistics)
+
+Improving itself (self-aware logic for dev support)
+
+Needs access to:
+
+All Google APIs
+
+Internal databases
+
+Optional 3rd-party integrations (CRM, ERP, etc.)
+
+Data Pipeline
+
+Use Pub/Sub + Dataflow for real-time data ingestion.
+
+Use BigQuery as the central analytics store.
+
+Use Vertex AI for training predictive models.
+
+Cloud Storage for raw data backups and logs.
+
+Service Layer
+
+REST API layer that:
+
+Exposes endpoints for frontend to call
+
+Handles token management
+
+Ensures proper authorization for API requests
+
+4. Frontend Architecture
+
+Login page supporting:
+
+Google OAuth sign-in
+
+Native SaaS login
+
+Dashboard for:
+
+AI recommendations
+
+Analytics overview
+
+Marketing campaign management
+
+Business operations insights
+
+Admin panel for:
+
+Managing users and permissions
+
+Linking/unlinking Google accounts
+
+Monitoring AI activity
+
+5. Token & Credential Management
+
+Service accounts:
+
+Store JSON files securely
+
+Used for automated API access
+
+OAuth 2.0 tokens:
+
+Refresh and store securely for each user
+
+Secret Manager:
+
+Use for database credentials, API keys, and sensitive tokens
+
+6. API Integration Details
+
+User-facing APIs:
+
+Gmail, Calendar, Drive, Docs, Sheets, Slides, Keep, Maps, People API
+
+Business/Analytics APIs:
+
+Google Ads, Analytics, Search Console, Business Profile
+
+AI & ML APIs:
+
+Vertex AI, Firebase AI Logic, BigQuery
+
+Infrastructure APIs:
+
+Cloud Run, Functions, Storage, Compute, Cloud SQL
+
+Security & Management APIs:
+
+IAM, Cloud KMS, Cloud Resource Manager
+
+7. Testing & QA
+
+Test OAuth login flows for multiple scenarios.
+
+Test API access for each enabled scope.
+
+Test AI agent operations with mock company data.
+
+Test frontend dashboard with linked Google accounts.
+
+Validate secure token storage and refresh mechanisms.
+
+Include unit and integration tests for all major modules.
+
+8. Deployment & Monitoring
+
+Deploy backend services on Cloud Run or App Engine.
+
+Deploy frontend as React/Vue/Next.js on Firebase Hosting or Cloud Storage + CDN.
+
+Enable logging and monitoring:
+
+Cloud Logging for backend
+
+Cloud Monitoring dashboards for AI agent activity
+
+Track:
+
+API usage
+
+Latency
+
+Error rates
+
+9. Optional Enhancements
+
+Geolocation tracking for user/logistics insights
+
+Automated marketing campaigns via AI agent
+
+Real-time analytics dashboards
+
+Integration with external business tools (CRM, ERP)
+
+AI self-improvement logs and recommendations
+
+✅ Deliverables for Dev Team
+
+Backend with OAuth + API integration.
+
+Frontend dashboard with multi-login support.
+
+AI agent module with access to all relevant APIs.
+
+Data pipelines (Pub/Sub + Dataflow + BigQuery).
+
+Token/secret management.
+
+Logging, monitoring, and QA.

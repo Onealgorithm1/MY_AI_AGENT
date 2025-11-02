@@ -1,0 +1,75 @@
+✅ Strengths
+
+Database design – oauth_tokens table is well thought out for multi-tenant token management with AES-256 encryption.
+
+Backend flow – Services, token manager, and routes are clear; per-user token handling is explicit.
+
+Frontend integration – Google sign-in and connection UI clearly planned.
+
+Security – Encryption, CSRF (state param), token cleanup, and session cookie considerations are included.
+
+User flows – Covers new sign-up, existing user connection, account switching, and admin email changes.
+
+Testing plan – Unit tests, integration tests, manual checklist are all included.
+
+Timeline & effort – Reasonable for one developer (~40 hours).
+
+⚠️ Potential Additions / Checks
+
+1. Redirect URI & OAuth client verification
+
+Ensure your redirect URI matches exactly the one set in Google Cloud OAuth client.
+
+For external users, Google may require verification if using sensitive/restricted scopes like Gmail or Drive. Include steps to prepare privacy policy, terms, and home URL.
+
+2. Additional APIs / Scopes
+
+You may want to add:
+
+Google Sheets API: Already in plan.
+
+Google Slides API: If AI edits presentations.
+
+Google Search Console API: For SEO tracking.
+
+PageSpeed Insights API: For web performance data.
+
+Maps Platform API: If location tracking or local business info is needed.
+
+Make sure these scopes are added in GOOGLE_CONFIG.scopes array.
+
+3. Token refresh edge cases
+
+You have refresh logic, but consider handling revoked tokens gracefully. Google may revoke refresh tokens after long inactivity.
+
+4. Rate limiting / quota management
+
+Google APIs have strict quotas; plan caching or batching requests where possible.
+
+5. Logging / monitoring
+
+Add observability for token errors, API failures, and OAuth flow issues (Cloud Logging / Monitoring).
+
+6. Multi-account users
+
+If a user wants to connect multiple Google accounts, you may need a schema adjustment (oauth_tokens table currently allows one per provider).
+
+7. Frontend callback error handling
+
+Ensure GoogleCallback.jsx can handle denied consent or expired code scenarios with clear messages.
+
+✅ Next Immediate Steps for Your Dev Team
+
+Confirm OAuth credentials – Client ID, Client Secret, Redirect URI, and JSON key file.
+
+Finalize scopes list – Make sure all required APIs are included in Google Cloud console and in code.
+
+Database migration – Apply oauth_tokens table and user table changes.
+
+Backend implementation – Services, token manager, routes. Test with mock tokens first.
+
+Frontend integration – Sign-in buttons, settings page, OAuth callback handler.
+
+QA / Testing – Full OAuth flow, Gmail, Calendar, Drive, token refresh, multi-user isolation.
+
+Documentation – Include privacy policy, terms, and home URL for Google verification.

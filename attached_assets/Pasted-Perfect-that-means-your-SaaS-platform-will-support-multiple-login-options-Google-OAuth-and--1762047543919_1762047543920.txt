@@ -1,0 +1,85 @@
+Perfect — that means your SaaS platform will support **multiple login options**: Google OAuth **and your own app’s username/password or other authentication methods**. Here’s how your dev team should structure it:
+
+---
+
+## **Multi-Login Architecture for Your SaaS**
+
+### **1. Decide on a Single Account Model**
+
+* Each user should have **one unique account** in your system.
+* Regardless of sign-in method, the account is tied to a **unique internal user ID**.
+* Example:
+
+| Internal ID | Google Email                            | Local Email                                 | Auth Method                |
+| ----------- | --------------------------------------- | ------------------------------------------- | -------------------------- |
+| 001         | [user@gmail.com](mailto:user@gmail.com) | [user@company.com](mailto:user@company.com) | Google OAuth / Local login |
+
+---
+
+### **2. Sign-In Options**
+
+1. **Google OAuth Sign-In**
+
+   * Follows the OAuth flow we discussed:
+
+     * Login button → Google consent → tokens → account creation/login.
+   * Tokens stored server-side for API access.
+
+2. **Local Application Sign-In**
+
+   * Username/password, or email/password registration.
+   * Store credentials **securely (hashed + salted)** in your database.
+   * Optionally support **password reset, MFA, and security questions**.
+
+---
+
+### **3. Account Linking**
+
+* If a user first signs up via **Google**, they can later **add a local password**.
+* If a user first signs up via **local credentials**, they can **link a Google account** later.
+* Linking ensures **one internal account**, so the AI agent can access their Google services **without creating duplicate accounts**.
+
+---
+
+### **4. Implementation Tips for Devs**
+
+* **Backend authentication service** handles all methods:
+
+  * Maps external OAuth emails to internal user ID.
+  * Generates your own **JWT or session token** for the SaaS session.
+
+* **Frontend login page** offers:
+
+  * “Sign in with Google” button
+  * Email/password login form
+  * Optional “link Google account” button in user settings.
+
+* **Token management:**
+
+  * Store Google `access_token` + `refresh_token` securely.
+  * Local auth uses secure session tokens or JWTs.
+  * Keep all token logic in backend, never in frontend code.
+
+---
+
+### **5. Security Considerations**
+
+* Prevent duplicate accounts (matching emails from OAuth and local signup).
+* Validate tokens for Google OAuth every session.
+* Allow users to **unlink accounts**.
+* Ensure **scopes and permissions are requested minimally**.
+
+---
+
+### ✅ **Summary**
+
+* Single internal ID per user.
+* Multiple login methods (Google + app-native).
+* Link accounts to enable seamless API access.
+* All sensitive tokens handled server-side.
+
+---
+
+If you want, I can **draft a simple visual flow for multi-login**, showing Google OAuth, local login, account linking, and token flow for your AI agent. This is super useful for the dev team to follow.
+
+Do you want me to create that diagram next?
