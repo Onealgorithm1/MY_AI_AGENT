@@ -104,9 +104,14 @@ router.get('/google/callback', async (req, res) => {
       
       return res.redirect(`${FRONTEND_URL}/auth/google/success?token=${jwtToken}`);
     } else if (action === 'connect') {
+      console.log('🔗 Google connect action triggered, userId:', userId);
+      
       if (!userId) {
+        console.log('❌ No userId in state');
         return res.redirect(`${FRONTEND_URL}/auth/google/error?error=invalid_state`);
       }
+      
+      console.log('👤 User info from Google:', userInfo);
       
       const existingGoogleUser = await query(
         'SELECT id FROM users WHERE google_id = $1 AND id != $2',
@@ -114,15 +119,20 @@ router.get('/google/callback', async (req, res) => {
       );
       
       if (existingGoogleUser.rows.length > 0) {
+        console.log('❌ Google account already linked to another user');
         return res.redirect(`${FRONTEND_URL}/settings?error=google_account_already_linked`);
       }
       
-      await query(
-        'UPDATE users SET google_id = $1, profile_picture = $2 WHERE id = $3',
+      console.log('💾 Updating user google_id and profile_picture for userId:', userId);
+      const updateResult = await query(
+        'UPDATE users SET google_id = $1, profile_picture = $2 WHERE id = $3 RETURNING *',
         [userInfo.googleId, userInfo.picture, userId]
       );
+      console.log('✅ User updated:', updateResult.rows[0]);
       
+      console.log('🔑 Storing OAuth tokens for userId:', userId);
       await tokenManager.storeTokens(userId, tokens);
+      console.log('✅ Tokens stored successfully');
       
       return res.redirect(`${FRONTEND_URL}/settings?success=google_connected`);
     }
