@@ -148,27 +148,28 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       );
     }
 
-    // Detect if message is an action request (only pass functions if likely)
-    const actionKeywords = [
-      'switch', 'change', 'use', 'select', 'set', // model selection  
-      'create', 'new', 'start', 'make', // creation
-      'delete', 'remove', 'clear', 'trash', // deletion
-      'rename', 'call', 'name', // renaming
-      'pin', 'unpin', // pinning
-      'navigate', 'go to', 'open', // navigation
-      'upload', 'attach', 'file', // file upload
-      'voice', 'call', 'speak', // voice
-      'email', 'mail', 'inbox', 'send', 'read', 'search', 'archive', 'message', // gmail
-      'calendar', 'event', 'schedule', 'meeting', 'appointment', // calendar
-      'drive', 'files', 'folder', 'document', 'share', 'storage', // drive
-      'doc', 'docs', 'write', 'edit', 'text', // docs
-      'sheet', 'sheets', 'spreadsheet', 'table', 'data', 'row', 'column', 'cell' // sheets
+    // Detect if message is an ACTION COMMAND (not just mentions features)
+    const actionVerbs = [
+      'switch to', 'change to', 'use ', 'select ', 'set model', // model selection  
+      'create a', 'create new', 'make a', 'make new', 'start a', // creation
+      'delete ', 'remove ', 'clear ', 'trash ', // deletion
+      'rename ', // renaming
+      'pin ', 'unpin ', // pinning
+      'navigate to', 'go to', 'open ', // navigation
+      'upload ', 'attach ', // file upload
+      'call ', 'dial ', // voice
+      'send email', 'send a', 'compose', 'write email', 'email ', // gmail send
+      'read my', 'show my', 'list my', 'get my', 'check my', // gmail/calendar/drive read
+      'search for', 'find ', 'look for', // search
+      'schedule ', 'book ', 'add event', 'add to calendar', // calendar
+      'share ', 'give access', // drive share
     ];
-    const lowercaseContent = content.toLowerCase();
-    const isLikelyAction = actionKeywords.some(keyword => lowercaseContent.includes(keyword));
     
-    // Only pass functions if message likely contains an action request
-    const functionsToPass = isLikelyAction ? UI_FUNCTIONS : null;
+    const lowercaseContent = content.toLowerCase();
+    const isActionCommand = actionVerbs.some(verb => lowercaseContent.includes(verb));
+    
+    // Only pass functions if it's truly an action command
+    const functionsToPass = isActionCommand ? UI_FUNCTIONS : null;
 
     if (stream) {
       // Streaming response
