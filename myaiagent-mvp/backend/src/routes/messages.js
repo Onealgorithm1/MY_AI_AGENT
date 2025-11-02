@@ -158,36 +158,17 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'navigate', 'go to', 'open', // navigation
       'upload', 'attach', 'file', // file upload
       'voice', 'call', 'speak', // voice
-    ];
-    
-    const googleKeywords = [
       'email', 'mail', 'inbox', 'send', 'read', 'search', 'archive', 'message', // gmail
       'calendar', 'event', 'schedule', 'meeting', 'appointment', // calendar
       'drive', 'files', 'folder', 'document', 'share', 'storage', // drive
       'doc', 'docs', 'write', 'edit', 'text', // docs
       'sheet', 'sheets', 'spreadsheet', 'table', 'data', 'row', 'column', 'cell' // sheets
     ];
-    
     const lowercaseContent = content.toLowerCase();
     const isLikelyAction = actionKeywords.some(keyword => lowercaseContent.includes(keyword));
-    const isGoogleAction = googleKeywords.some(keyword => lowercaseContent.includes(keyword));
-    const hasGoogleConnected = !!req.user.google_id;
     
-    // Filter functions based on context
-    let functionsToPass = null;
-    if (isLikelyAction || isGoogleAction) {
-      // Start with base UI functions
-      functionsToPass = UI_FUNCTIONS.filter(fn => !fn.name.includes('Email') && !fn.name.includes('Calendar') && !fn.name.includes('Drive') && !fn.name.includes('Doc') && !fn.name.includes('Sheet'));
-      
-      // Add Google functions only if user has Google connected and likely needs them
-      if (hasGoogleConnected && isGoogleAction) {
-        const googleFunctions = UI_FUNCTIONS.filter(fn => 
-          fn.name.includes('Email') || fn.name.includes('Calendar') || 
-          fn.name.includes('Drive') || fn.name.includes('Doc') || fn.name.includes('Sheet')
-        );
-        functionsToPass = [...functionsToPass, ...googleFunctions];
-      }
-    }
+    // Only pass functions if message likely contains an action request
+    const functionsToPass = isLikelyAction ? UI_FUNCTIONS : null;
 
     if (stream) {
       // Streaming response
