@@ -299,7 +299,7 @@ export default function AdminPage() {
   const secretsList = secretsData || [];
   // Sort definitions alphabetically by service name
   const definitions = (definitionsData || []).sort((a, b) => 
-    (a.serviceName || '').localeCompare(b.serviceName || '')
+    (a.service_name || '').localeCompare(b.service_name || '')
   );
 
   return (
@@ -612,7 +612,7 @@ export default function AdminPage() {
                             <div className="flex items-center gap-3 mb-2">
                               <Key className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                               <h3 className="font-semibold text-gray-900 dark:text-white">
-                                {def.serviceName}
+                                {def.service_name}
                               </h3>
                               {serviceKeys.length > 0 && (
                                 <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
