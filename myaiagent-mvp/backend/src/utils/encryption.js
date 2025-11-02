@@ -3,7 +3,7 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
-const KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'base64');
+const KEY = Buffer.from(process.env.ENCRYPTION_KEY.substring(0, 64), 'hex');
 
 export function encrypt(text) {
   if (!text) return null;
