@@ -7,6 +7,11 @@ import tokenManager from '../services/tokenManager.js';
 
 const router = express.Router();
 
+// Get frontend URL (works in both dev and prod)
+const FRONTEND_URL = process.env.REPLIT_DEV_DOMAIN 
+  ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+  : (process.env.FRONTEND_URL || 'http://localhost:5000');
+
 // Start Google OAuth flow (for signup/login)
 router.get('/google/login', async (req, res) => {
   try {
@@ -39,11 +44,11 @@ router.get('/google/callback', async (req, res) => {
     const { code, state, error } = req.query;
     
     if (error) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/error?error=${encodeURIComponent(error)}`);
+      return res.redirect(`${FRONTEND_URL}/auth/google/error?error=${encodeURIComponent(error)}`);
     }
     
     if (!code || !state) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/error?error=missing_parameters`);
+      return res.redirect(`${FRONTEND_URL}/auth/google/error?error=missing_parameters`);
     }
     
     const stateData = googleOAuthService.parseStateToken(state);
@@ -97,10 +102,10 @@ router.get('/google/callback', async (req, res) => {
       
       const jwtToken = generateToken(currentUser);
       
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/success?token=${jwtToken}`);
+      return res.redirect(`${FRONTEND_URL}/auth/google/success?token=${jwtToken}`);
     } else if (action === 'connect') {
       if (!userId) {
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/error?error=invalid_state`);
+        return res.redirect(`${FRONTEND_URL}/auth/google/error?error=invalid_state`);
       }
       
       const existingGoogleUser = await query(
@@ -109,7 +114,7 @@ router.get('/google/callback', async (req, res) => {
       );
       
       if (existingGoogleUser.rows.length > 0) {
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/settings?error=google_account_already_linked`);
+        return res.redirect(`${FRONTEND_URL}/settings?error=google_account_already_linked`);
       }
       
       await query(
@@ -119,13 +124,13 @@ router.get('/google/callback', async (req, res) => {
       
       await tokenManager.storeTokens(userId, tokens);
       
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/settings?success=google_connected`);
+      return res.redirect(`${FRONTEND_URL}/settings?success=google_connected`);
     }
     
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/error?error=invalid_action`);
+    res.redirect(`${FRONTEND_URL}/auth/google/error?error=invalid_action`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/google/error?error=callback_failed`);
+    res.redirect(`${FRONTEND_URL}/auth/google/error?error=callback_failed`);
   }
 });
 
