@@ -151,14 +151,18 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Detect if message is an action request (only pass functions if likely)
     const actionKeywords = [
       'switch', 'change', 'use', 'select', 'set', // model selection  
-      'create', 'new', 'start', // creation
-      'delete', 'remove', 'clear', // deletion
+      'create', 'new', 'start', 'make', // creation
+      'delete', 'remove', 'clear', 'trash', // deletion
       'rename', 'call', 'name', // renaming
       'pin', 'unpin', // pinning
       'navigate', 'go to', 'open', // navigation
       'upload', 'attach', 'file', // file upload
       'voice', 'call', 'speak', // voice
-      'email', 'mail', 'inbox', 'send', 'read', 'search', 'archive', 'message' // gmail
+      'email', 'mail', 'inbox', 'send', 'read', 'search', 'archive', 'message', // gmail
+      'calendar', 'event', 'schedule', 'meeting', 'appointment', // calendar
+      'drive', 'files', 'folder', 'document', 'share', 'storage', // drive
+      'doc', 'docs', 'write', 'edit', 'text', // docs
+      'sheet', 'sheets', 'spreadsheet', 'table', 'data', 'row', 'column', 'cell' // sheets
     ];
     const lowercaseContent = content.toLowerCase();
     const isLikelyAction = actionKeywords.some(keyword => lowercaseContent.includes(keyword));
