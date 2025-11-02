@@ -179,7 +179,8 @@ export const buildEnhancedContext = (req) => {
       createdAt: req.user?.created_at,
       lastLoginAt: req.user?.last_login_at,
       settings: req.user?.settings,
-      preferences: req.user?.preferences
+      preferences: req.user?.preferences,
+      googleId: req.user?.google_id
     },
     timestamp: new Date().toISOString(),
     features: req.fullUISchema?.features || {}

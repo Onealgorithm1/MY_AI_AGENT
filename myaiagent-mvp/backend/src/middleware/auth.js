@@ -15,7 +15,7 @@ export async function authenticate(req, res, next) {
     // Get user from database with complete profile information
     const result = await query(
       `SELECT id, email, full_name, role, is_active, phone, profile_image, 
-              created_at, last_login_at, settings, preferences 
+              created_at, last_login_at, settings, preferences, google_id 
        FROM users WHERE id = $1`,
       [decoded.id]
     );
@@ -54,7 +54,7 @@ export async function optionalAuth(req, res, next) {
       const decoded = verifyToken(token);
       const result = await query(
         `SELECT id, email, full_name, role, phone, profile_image, 
-                created_at, last_login_at, settings, preferences 
+                created_at, last_login_at, settings, preferences, google_id 
          FROM users WHERE id = $1`,
         [decoded.id]
       );
