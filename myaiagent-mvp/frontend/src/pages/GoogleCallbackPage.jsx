@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { useAuthStore } from '../store/authStore';
+import { auth as authApi } from '../services/api';
 
 const GoogleCallbackPage = () => {
   const navigate = useNavigate();
@@ -14,12 +16,31 @@ const GoogleCallbackPage = () => {
     const error = params.get('error');
 
     if (token) {
+      // Save token to localStorage
       localStorage.setItem('token', token);
-      setStatus('success');
-      setMessage('Successfully signed in with Google!');
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      
+      // Fetch user data and update auth store
+      authApi.me().then(response => {
+        const user = response.data.user;
+        useAuthStore.setState({
+          user,
+          token,
+          isAuthenticated: true,
+        });
+        
+        setStatus('success');
+        setMessage('Successfully signed in with Google!');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      }).catch(error => {
+        console.error('Failed to fetch user data:', error);
+        setStatus('error');
+        setMessage('Failed to complete authentication');
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      });
     } else if (error) {
       setStatus('error');
       setMessage(getErrorMessage(error));
