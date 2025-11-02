@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import GoogleCallbackPage from './pages/GoogleCallbackPage';
 
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
@@ -41,6 +42,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/auth/google/success" element={<GoogleCallbackPage />} />
+        <Route path="/auth/google/error" element={<GoogleCallbackPage />} />
         <Route
           path="/"
           element={

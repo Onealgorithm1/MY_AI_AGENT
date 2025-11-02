@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Brain,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import GoogleConnection from '../components/GoogleConnection';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -33,8 +34,25 @@ const getBaseUrl = () => {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user: currentUser, setUser } = useAuthStore();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    
+    if (success === 'google_connected') {
+      toast.success('Google account connected successfully!');
+      window.history.replaceState({}, '', '/profile');
+    } else if (error) {
+      const errorMessages = {
+        google_account_already_linked: 'This Google account is already linked to another user',
+      };
+      toast.error(errorMessages[error] || 'Failed to connect Google account');
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, [searchParams]);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -761,6 +779,9 @@ export default function UserProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Google Account Connection */}
+        <GoogleConnection />
 
         {/* AI Preferences Link Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
