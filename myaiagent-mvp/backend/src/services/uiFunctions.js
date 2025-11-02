@@ -6,14 +6,13 @@
 export const UI_FUNCTIONS = [
   {
     name: 'changeModel',
-    description: 'Switch the AI model PERMANENTLY for this conversation. ONLY call this when the user gives a DIRECT COMMAND to change models, such as: "switch to GPT-3.5", "use GPT-4", "change model to GPT-4 Turbo". DO NOT call this function in these situations: 1) Normal conversation about models, 2) When Auto mode already selected a model for you, 3) When user just asks "what model are you?", 4) When explaining model capabilities. If you are unsure, DO NOT call this function.',
+    description: 'Switch AI model. Only when user explicitly requests model change.',
     parameters: {
       type: 'object',
       properties: {
         model: {
           type: 'string',
           enum: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'auto'],
-          description: 'The model to switch to',
         },
       },
       required: ['model'],
@@ -21,13 +20,13 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'createNewChat',
-    description: 'Create a new conversation/chat. Use this when the user wants to start fresh or discuss a new topic.',
+    description: 'Create new conversation.',
     parameters: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: 'Title for the new conversation (e.g., "Python Help", "Math Problems")',
+          description: 'Chat title',
         },
       },
       required: [],
@@ -35,13 +34,13 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'renameConversation',
-    description: 'Rename the current conversation. Use this when the user asks to rename the chat.',
+    description: 'Rename current chat.',
     parameters: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: 'New title for the conversation',
+          description: 'New title',
         },
       },
       required: ['title'],
@@ -49,7 +48,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'deleteConversation',
-    description: 'Delete the current conversation. Use this when the user explicitly asks to delete or remove the current chat.',
+    description: 'Delete current chat.',
     parameters: {
       type: 'object',
       properties: {
@@ -175,7 +174,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'archiveEmail',
-    description: 'Archive an email in Gmail (remove from inbox). Use this when the user wants to archive or remove an email from their inbox.',
+    description: 'Archive Gmail (admin).',
     parameters: {
       type: 'object',
       properties: {
@@ -189,7 +188,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'deleteEmail',
-    description: 'Delete an email from Gmail. Use this when the user explicitly asks to delete or permanently remove an email.',
+    description: 'Delete Gmail (admin).',
     parameters: {
       type: 'object',
       properties: {
@@ -204,7 +203,7 @@ export const UI_FUNCTIONS = [
   // Google Calendar Functions
   {
     name: 'listCalendarEvents',
-    description: 'List upcoming events from Google Calendar. Use this when the user wants to see their schedule, check their calendar, or view upcoming events.',
+    description: 'List Calendar events.',
     parameters: {
       type: 'object',
       properties: {
@@ -227,7 +226,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'createCalendarEvent',
-    description: 'Create a new event in Google Calendar. Use this when the user wants to schedule a meeting, add an appointment, or create a calendar event.',
+    description: 'Create Calendar event.',
     parameters: {
       type: 'object',
       properties: {
@@ -258,7 +257,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'deleteCalendarEvent',
-    description: 'Delete an event from Google Calendar. Use this when the user wants to cancel or remove an event.',
+    description: 'Delete Calendar event.',
     parameters: {
       type: 'object',
       properties: {
@@ -273,7 +272,7 @@ export const UI_FUNCTIONS = [
   // Google Drive Functions
   {
     name: 'listDriveFiles',
-    description: 'List files from Google Drive. Use this when the user wants to see their Drive files, browse their storage, or find documents.',
+    description: 'List Drive files.',
     parameters: {
       type: 'object',
       properties: {
@@ -296,7 +295,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchDriveFiles',
-    description: 'Search for specific files in Google Drive. Use this when the user wants to find files by name, type, or content.',
+    description: 'Search Drive files.',
     parameters: {
       type: 'object',
       properties: {
@@ -319,7 +318,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'shareDriveFile',
-    description: 'Share a Google Drive file with someone. Use this when the user wants to give someone access to a file.',
+    description: 'Share Drive file.',
     parameters: {
       type: 'object',
       properties: {
@@ -343,7 +342,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'deleteDriveFile',
-    description: 'Delete a file from Google Drive. Use this when the user wants to remove or trash a file.',
+    description: 'Delete Drive file.',
     parameters: {
       type: 'object',
       properties: {
