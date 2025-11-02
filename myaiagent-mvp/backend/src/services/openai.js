@@ -41,13 +41,36 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
 
     return response.data;
   } catch (error) {
-    console.error('OpenAI chat error:', {
+    // Enhanced error logging to capture actual OpenAI error message
+    let errorDetails = {
       status: error.response?.status,
       statusText: error.response?.statusText,
-      data: error.response?.data,
       message: error.message
+    };
+    
+    // If response data exists and is an object, try to extract error message
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorDetails.data = error.response.data;
+      } else if (error.response.data.error) {
+        errorDetails.data = error.response.data.error;
+      } else {
+        errorDetails.data = error.response.data;
+      }
+    }
+    
+    console.error('🔴 OpenAI API Error Details:', JSON.stringify(errorDetails, null, 2));
+    
+    // Log request details for debugging
+    console.error('📤 Request Info:', {
+      model,
+      messageCount: messages.length,
+      functionsCount: functions?.length || 0,
+      functionNames: functions?.map(f => f.name) || [],
+      hasStream: stream
     });
-    throw new Error(error.message || 'Failed to get AI response');
+    
+    throw new Error(error.response?.data?.error?.message || error.message || 'Failed to get AI response');
   }
 }
 
