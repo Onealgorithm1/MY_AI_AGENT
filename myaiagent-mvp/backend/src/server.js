@@ -42,7 +42,7 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+  contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -52,10 +52,30 @@ app.use(helmet({
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      frameAncestors: ["'none'"], // Replaces X-Frame-Options
     },
-  } : false,
+  },
+  xssFilter: false, // Remove x-xss-protection header (deprecated)
+  frameguard: false, // Disable X-Frame-Options (using CSP frame-ancestors instead)
 }));
+
+// Add cache control and charset headers
+app.use((req, res, next) => {
+  // Set charset for all JSON responses
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  }
+  
+  // Cache control for static assets
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (req.path.startsWith('/api/')) {
+    // No cache for API responses
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  }
+  
+  next();
+});
 
 // CORS
 const corsOptions = {
