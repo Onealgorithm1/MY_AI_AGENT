@@ -141,8 +141,8 @@ export default function ChatPage() {
     setStreamingMessage('●●●');
 
     try {
-      // Get API base URL with fallback (includes /api path)
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      // Get API base URL - use relative path for Vite proxy
+      const apiUrl = '/api';
       
       // Send message with streaming
       const response = await fetch(`${apiUrl}/messages`, {
