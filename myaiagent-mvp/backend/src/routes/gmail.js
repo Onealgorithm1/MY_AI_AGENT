@@ -11,12 +11,12 @@ import {
   getUnreadCount,
   checkGmailConnection
 } from '../services/gmail.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Only authentication required - users can access their own Gmail via OAuth
 router.use(authenticate);
-router.use(requireAdmin);
 
 router.get('/status', async (req, res) => {
   try {

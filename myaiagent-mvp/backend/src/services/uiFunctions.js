@@ -242,15 +242,17 @@ export async function executeUIFunction(functionName, args, context) {
     }
   }
   
+  // Gmail functions - users can access their own Gmail via OAuth
   const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail'];
   if (gmailFunctions.includes(functionName)) {
-    if (!context.user || (context.user.role !== 'admin' && context.user.role !== 'superadmin')) {
+    if (!context.user) {
       return {
         success: false,
-        message: 'Gmail access is restricted to administrators only',
+        message: 'You must be logged in to access Gmail',
         data: null,
       };
     }
+    // Note: Users access their own Gmail via their connected Google OAuth account
   }
   
   if (functionName === 'readEmails' || functionName === 'searchEmails') {
