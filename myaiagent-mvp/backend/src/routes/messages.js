@@ -130,7 +130,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       createdAt: req.user.created_at,
       lastLoginAt: req.user.last_login_at,
       settings: req.user.settings,
-      preferences: req.user.preferences
+      preferences: req.user.preferences,
+      googleId: req.user.google_id
     }, req.fullUISchema);
 
     // Build messages with memory context and UI awareness

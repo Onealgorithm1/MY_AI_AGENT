@@ -49,6 +49,16 @@ export const generateUIAwarePrompt = (uiContext, userContext, fullSchema) => {
       userInfo += `\n- **Last Login**: ${new Date(userContext.lastLoginAt).toLocaleDateString()}`;
     }
     
+    // Google OAuth status
+    if (userContext.googleId) {
+      userInfo += `\n- **Google Account**: ✅ Connected (Gmail, Calendar, Drive access available)`;
+      userInfo += `\n  - You CAN call Gmail functions (readEmails, searchEmails, sendEmail, etc.)`;
+    } else {
+      userInfo += `\n- **Google Account**: ❌ Not Connected`;
+      userInfo += `\n  - Gmail functions are NOT available`;
+      userInfo += `\n  - If user asks about email access, guide them to connect Google in Settings`;
+    }
+    
     userInfo += `\n\n**IMPORTANT**: Use this information to personalize your responses. Address the user by name when appropriate, acknowledge their role, and provide context-aware assistance based on who they are.`;
   }
 
