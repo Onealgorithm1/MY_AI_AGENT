@@ -103,3 +103,9 @@ The application employs a client-server architecture. The frontend is built with
     -   **Comprehensive Error Messages**: User-friendly OAuth error display covering all failure scenarios (expired state, invalid signature, access denied, etc.)
     -   **Privacy Policy & Terms**: Added Google-compliant placeholder pages at `/privacy` and `/terms` for OAuth app publishing
     -   **Enhanced Logging**: Token refresh, revocation, and error operations now log detailed success/failure information
+-   **Enhanced Action Detection for Google Services (November 2, 2025)**:
+    -   **Expanded Natural Language Recognition**: Action detection now recognizes broader phrasing patterns including "see my", "view my", "tell me my", "what are my", "what is my", "access my", "display my", "pull up my", and "load my"
+    -   **Keyword-Based Detection**: Added comprehensive Google service keywords (email, gmail, inbox, mail, calendar, event, drive, file, doc, sheet) that trigger function calling when mentioned
+    -   **Smart Function Passing**: Functions are now passed to OpenAI when EITHER an action command is detected OR when user mentions Google services AND has Google access
+    -   **Enhanced Debug Logging**: Improved diagnostic logging shows query analysis, Google mention detection, access status, and function count
+    -   **Fixes Gmail Integration**: Resolved issue where queries like "what do you see in my gmail" weren't triggering Gmail functions due to overly strict action detection

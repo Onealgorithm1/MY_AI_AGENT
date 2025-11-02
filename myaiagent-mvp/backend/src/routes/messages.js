@@ -148,7 +148,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       );
     }
 
-    // Detect if message is an ACTION COMMAND (not just mentions features)
+    // === ENHANCED ACTION DETECTION FOR GOOGLE SERVICES ===
+    const userQuery = content.toLowerCase();
+    const hasGoogleAccess = !!req.user.google_id;
+
+    // Expanded phrasing patterns
     const actionVerbs = [
       'switch to', 'change to', 'use ', 'select ', 'set model', // model selection  
       'create a', 'create new', 'make a', 'make new', 'start a', // creation
@@ -159,24 +163,41 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'upload ', 'attach ', // file upload
       'call ', 'dial ', // voice
       'send email', 'send a', 'compose', 'write email', 'email ', // gmail send
-      'read my', 'show my', 'list my', 'get my', 'check my', // gmail/calendar/drive read
+      'read my', 'show my', 'list my', 'get my', // gmail/calendar/drive read
+      'see my', 'view my', 'tell me my', 'what are my', // EXPANDED - natural language
+      'what is my', 'access my', 'display my', 'pull up my', // EXPANDED - natural language
+      'check my', 'load my', // gmail/calendar/drive read
       'search for', 'find ', 'look for', // search
       'schedule ', 'book ', 'add event', 'add to calendar', // calendar
       'share ', 'give access', // drive share
     ];
-    
-    const lowercaseContent = content.toLowerCase();
-    const isActionCommand = actionVerbs.some(verb => lowercaseContent.includes(verb));
-    
-    // Only pass functions if it's truly an action command
-    const functionsToPass = isActionCommand ? UI_FUNCTIONS : null;
-    
-    // Debug logging for function calling
+
+    // Keywords that imply Gmail or email context
+    const googleKeywords = [
+      'email', 'gmail', 'inbox', 'mail', 'message', 'messages',
+      'calendar', 'event', 'events', 'meeting', 'meetings',
+      'drive', 'file', 'files', 'folder', 'folders',
+      'doc', 'docs', 'document', 'documents',
+      'sheet', 'sheets', 'spreadsheet', 'spreadsheets'
+    ];
+
+    const mentionsGoogle = googleKeywords.some(kw => userQuery.includes(kw));
+    const isActionCommand = actionVerbs.some(verb => userQuery.includes(verb));
+
+    // Trigger if it's a command OR just a Google-related question (when user has access)
+    const shouldPassFunctions = isActionCommand || (mentionsGoogle && hasGoogleAccess);
+
+    // Build list of functions to pass to OpenAI
+    const functionsToPass = shouldPassFunctions ? UI_FUNCTIONS : null;
+
+    // Debug log
     console.log('📋 Action Detection:', {
-      query: content.substring(0, 50),
+      query: userQuery.substring(0, 50),
       isAction: isActionCommand,
-      functionsCount: functionsToPass ? functionsToPass.length : 0,
-      hasGoogleId: !!req.user.google_id
+      mentionsGoogle,
+      hasGoogleAccess,
+      shouldPassFunctions,
+      functionsCount: functionsToPass ? functionsToPass.length : 0
     });
 
     if (stream) {
