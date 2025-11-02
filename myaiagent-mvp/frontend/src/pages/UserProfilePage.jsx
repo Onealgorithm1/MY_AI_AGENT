@@ -41,15 +41,23 @@ export default function UserProfilePage() {
   useEffect(() => {
     const success = searchParams.get('success');
     const error = searchParams.get('error');
+    const google_error = searchParams.get('google_error');
     
     if (success === 'google_connected') {
       toast.success('Google account connected successfully!');
       window.history.replaceState({}, '', '/profile');
-    } else if (error) {
+    } else if (error || google_error) {
+      const errorCode = error || google_error;
       const errorMessages = {
-        google_account_already_linked: 'This Google account is already linked to another user',
+        google_account_already_linked: 'This Google account is already linked to another user. Please disconnect it from the other account first.',
+        invalid_state: 'OAuth state validation failed. Please try connecting again.',
+        missing_parameters: 'OAuth callback missing required parameters. Please try again.',
+        callback_failed: 'Google OAuth callback failed. Please try again later.',
+        invalid_action: 'Invalid OAuth action. Please restart the connection process.',
+        access_denied: 'You denied access to Google. Please grant permissions to connect.',
+        state_expired: 'Your connection session expired (10 minutes). Please try connecting again.',
       };
-      toast.error(errorMessages[error] || 'Failed to connect Google account');
+      toast.error(errorMessages[errorCode] || `Failed to connect Google account: ${errorCode}`);
       window.history.replaceState({}, '', '/profile');
     }
   }, [searchParams]);

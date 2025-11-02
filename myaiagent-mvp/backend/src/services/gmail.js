@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import tokenManager from './tokenManager.js';
+import { retryWithExponentialBackoff, handleGoogleApiError } from '../utils/googleApiHelper.js';
 
 export async function getGmailClient(userId) {
   if (!userId) {
@@ -51,11 +52,13 @@ export async function listEmails(userId, options = {}) {
       labelIds = ['INBOX']
     } = options;
 
-    const response = await gmail.users.messages.list({
-      userId: 'me',
-      maxResults,
-      q: query,
-      labelIds
+    const response = await retryWithExponentialBackoff(async () => {
+      return await gmail.users.messages.list({
+        userId: 'me',
+        maxResults,
+        q: query,
+        labelIds
+      });
     });
 
     const messages = response.data.messages || [];
@@ -74,7 +77,7 @@ export async function listEmails(userId, options = {}) {
     return emailDetails.filter(email => email !== null);
   } catch (error) {
     console.error('Error listing emails:', error.message);
-    throw new Error(`Failed to list emails: ${error.message}`);
+    handleGoogleApiError(error, 'Gmail');
   }
 }
 
@@ -82,10 +85,12 @@ export async function getEmailDetails(userId, messageId) {
   try {
     const gmail = await getGmailClient(userId);
 
-    const response = await gmail.users.messages.get({
-      userId: 'me',
-      id: messageId,
-      format: 'full'
+    const response = await retryWithExponentialBackoff(async () => {
+      return await gmail.users.messages.get({
+        userId: 'me',
+        id: messageId,
+        format: 'full'
+      });
     });
 
     const message = response.data;
@@ -111,7 +116,7 @@ export async function getEmailDetails(userId, messageId) {
     };
   } catch (error) {
     console.error('Error getting email details:', error.message);
-    throw new Error(`Failed to get email: ${error.message}`);
+    handleGoogleApiError(error, 'Gmail');
   }
 }
 
@@ -139,11 +144,13 @@ export async function sendEmail(userId, options) {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    const response = await gmail.users.messages.send({
-      userId: 'me',
-      requestBody: {
-        raw: encodedMessage
-      }
+    const response = await retryWithExponentialBackoff(async () => {
+      return await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage
+        }
+      });
     });
 
     return {
@@ -153,7 +160,7 @@ export async function sendEmail(userId, options) {
     };
   } catch (error) {
     console.error('Error sending email:', error.message);
-    throw new Error(`Failed to send email: ${error.message}`);
+    handleGoogleApiError(error, 'Gmail');
   }
 }
 

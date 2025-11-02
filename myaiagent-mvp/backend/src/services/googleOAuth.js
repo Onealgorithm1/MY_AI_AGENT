@@ -2,6 +2,9 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { GOOGLE_OAUTH_CONFIG } from '../config/googleOAuth.js';
 
+const HMAC_SECRET = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const STATE_TOKEN_EXPIRY_MS = 10 * 60 * 1000;
+
 export class GoogleOAuthService {
   generateAuthUrl(state, loginHint = null) {
     const params = new URLSearchParams({
@@ -22,22 +25,74 @@ export class GoogleOAuthService {
   }
   
   generateStateToken(userId, action = 'connect') {
-    const data = JSON.stringify({
+    const timestamp = Date.now();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    
+    const payload = JSON.stringify({
       userId,
       action,
-      timestamp: Date.now(),
-      nonce: crypto.randomBytes(16).toString('hex'),
+      timestamp,
+      nonce,
     });
     
-    return Buffer.from(data).toString('base64url');
+    const signature = crypto
+      .createHmac('sha256', HMAC_SECRET)
+      .update(payload)
+      .digest('hex');
+    
+    const signedData = JSON.stringify({
+      payload,
+      signature,
+    });
+    
+    return Buffer.from(signedData).toString('base64url');
   }
   
   parseStateToken(state) {
     try {
       const decoded = Buffer.from(state, 'base64url').toString('utf8');
-      return JSON.parse(decoded);
+      const signedData = JSON.parse(decoded);
+      
+      if (!signedData.payload || !signedData.signature) {
+        throw new Error('State token missing required fields');
+      }
+      
+      const expectedSignature = crypto
+        .createHmac('sha256', HMAC_SECRET)
+        .update(signedData.payload)
+        .digest('hex');
+      
+      if (signedData.signature !== expectedSignature) {
+        throw new Error('State token signature verification failed');
+      }
+      
+      const stateData = JSON.parse(signedData.payload);
+      
+      if (!stateData.timestamp || typeof stateData.timestamp !== 'number') {
+        throw new Error('State token missing valid timestamp');
+      }
+      
+      if (!stateData.action || !stateData.nonce) {
+        throw new Error('State token missing required fields (action, nonce)');
+      }
+      
+      const now = Date.now();
+      const tokenAge = now - stateData.timestamp;
+      
+      if (tokenAge > STATE_TOKEN_EXPIRY_MS) {
+        throw new Error('State token has expired (valid for 10 minutes)');
+      }
+      
+      if (tokenAge < 0) {
+        throw new Error('State token timestamp is in the future');
+      }
+      
+      return stateData;
     } catch (error) {
-      throw new Error('Invalid state token');
+      if (error.message.includes('State token')) {
+        throw error;
+      }
+      throw new Error('Invalid state token format');
     }
   }
   

@@ -3,7 +3,27 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
-const KEY = Buffer.from(process.env.ENCRYPTION_KEY.substring(0, 64), 'hex');
+
+function validateEncryptionKey() {
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  
+  if (!encryptionKey) {
+    throw new Error('ENCRYPTION_KEY environment variable is not set. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  }
+  
+  if (encryptionKey.length !== 64) {
+    throw new Error(`ENCRYPTION_KEY must be exactly 64 hex characters (got ${encryptionKey.length}). Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
+  }
+  
+  if (!/^[0-9a-fA-F]{64}$/.test(encryptionKey)) {
+    throw new Error('ENCRYPTION_KEY must contain only hex characters (0-9, a-f, A-F)');
+  }
+  
+  return encryptionKey;
+}
+
+const VALIDATED_KEY = validateEncryptionKey();
+const KEY = Buffer.from(VALIDATED_KEY, 'hex');
 
 export function encrypt(text) {
   if (!text) return null;

@@ -94,3 +94,12 @@ The application employs a client-server architecture. The frontend is built with
 -   **Admin Dashboard**: Verified and confirmed full functionality of the API secrets management system, including ability to add, edit, test, and delete API keys for multiple services.
 -   **API Key Management Enhancement**: Updated `getApiKey()` function to fall back to environment variables when no key is found in the database. The system now checks database first, then falls back to `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, etc. from environment secrets.
 -   **Admin Access**: Fixed admin user role assignment - `admin@myaiagent.com` now has 'admin' role and can access Admin Dashboard (🛡️ shield icon in sidebar).
+-   **OAuth Security Hardening (November 2, 2025)**:
+    -   **Encryption Key Validation**: Server now validates ENCRYPTION_KEY on startup - must be exactly 64 hex characters, preventing silent failures
+    -   **State Token HMAC Signing**: OAuth state tokens now use HMAC-SHA256 signatures to prevent forgery and replay attacks
+    -   **State Token Expiration**: 10-minute window enforced with timestamp validation (rejects tokens in future or expired)
+    -   **Token Refresh Error Handling**: Gracefully deletes invalid tokens and logs reconnection requirements instead of crashing
+    -   **Google API Rate Limiting**: Exponential backoff retry logic (3 retries) for 429/403/5xx errors across all Google services
+    -   **Comprehensive Error Messages**: User-friendly OAuth error display covering all failure scenarios (expired state, invalid signature, access denied, etc.)
+    -   **Privacy Policy & Terms**: Added Google-compliant placeholder pages at `/privacy` and `/terms` for OAuth app publishing
+    -   **Enhanced Logging**: Token refresh, revocation, and error operations now log detailed success/failure information

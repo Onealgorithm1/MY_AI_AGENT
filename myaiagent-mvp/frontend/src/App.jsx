@@ -4,6 +4,8 @@ import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
@@ -84,6 +86,8 @@ function App() {
             </AdminRoute>
           }
         />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Suspense>

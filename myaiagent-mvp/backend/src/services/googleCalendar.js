@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { tokenManager } from './tokenManager.js';
+import { retryWithExponentialBackoff, handleGoogleApiError } from '../utils/googleApiHelper.js';
 
 /**
  * Get authenticated Calendar client for a user
@@ -30,13 +31,15 @@ export async function listEvents(userId, options = {}) {
     
     const { maxResults = 10, timeMin, timeMax } = options;
     
-    const response = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: timeMin || new Date().toISOString(),
-      timeMax: timeMax || undefined,
-      maxResults,
-      singleEvents: true,
-      orderBy: 'startTime',
+    const response = await retryWithExponentialBackoff(async () => {
+      return await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: timeMin || new Date().toISOString(),
+        timeMax: timeMax || undefined,
+        maxResults,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
     });
     
     return response.data.items.map(event => ({
