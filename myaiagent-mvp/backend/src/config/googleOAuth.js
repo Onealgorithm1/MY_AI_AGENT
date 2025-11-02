@@ -29,12 +29,6 @@ export const GOOGLE_OAUTH_CONFIG = {
     
     // Sheets API
     'https://www.googleapis.com/auth/spreadsheets',
-    
-    // Google Analytics
-    'https://www.googleapis.com/auth/analytics.readonly',
-    
-    // Google Ads
-    'https://www.googleapis.com/auth/adwords',
   ],
   
   authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
