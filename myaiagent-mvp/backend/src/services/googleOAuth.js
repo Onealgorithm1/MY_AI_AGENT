@@ -43,13 +43,15 @@ export class GoogleOAuthService {
   
   async exchangeCodeForTokens(code) {
     try {
-      const response = await axios.post(GOOGLE_OAUTH_CONFIG.tokenUrl, {
+      const params = new URLSearchParams({
         code,
         client_id: GOOGLE_OAUTH_CONFIG.clientId,
         client_secret: GOOGLE_OAUTH_CONFIG.clientSecret,
         redirect_uri: GOOGLE_OAUTH_CONFIG.redirectUri,
         grant_type: 'authorization_code',
-      }, {
+      });
+      
+      const response = await axios.post(GOOGLE_OAUTH_CONFIG.tokenUrl, params.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       
@@ -68,12 +70,14 @@ export class GoogleOAuthService {
   
   async refreshAccessToken(refreshToken) {
     try {
-      const response = await axios.post(GOOGLE_OAUTH_CONFIG.tokenUrl, {
+      const params = new URLSearchParams({
         refresh_token: refreshToken,
         client_id: GOOGLE_OAUTH_CONFIG.clientId,
         client_secret: GOOGLE_OAUTH_CONFIG.clientSecret,
         grant_type: 'refresh_token',
-      }, {
+      });
+      
+      const response = await axios.post(GOOGLE_OAUTH_CONFIG.tokenUrl, params.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       

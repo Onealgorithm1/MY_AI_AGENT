@@ -59,7 +59,23 @@ The application employs a client-server architecture. The frontend is built with
 -   **Google Custom Search API**: For web search functionality, requiring `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
 
 ## Recent Changes (November 2025)
--   **Gmail Integration Complete**: Full Gmail functionality added via Replit OAuth connector. Admin users can read, send, search, archive, delete, and manage emails through natural language AI commands. Security hardened with admin-only access controls on both API routes (requireAdmin middleware) and function calling (context.user verification). Fixed privilege escalation vulnerability by using authenticated user context instead of spoofable userId parameter.
+-   **Google OAuth Integration Complete**: Implemented comprehensive Google OAuth 2.0 authentication system with support for both sign-in and account linking. Users can now:
+    -   Sign up/log in directly with Google account
+    -   Link existing email/password accounts to Google
+    -   Disconnect Google accounts from Settings page
+    -   Access Gmail, Calendar, Drive, Docs, Sheets, Analytics, and Ads through AI commands with per-user OAuth tokens
+    -   Benefit from automatic token refresh (5 minutes before expiry)
+    -   Secure token storage with AES-256-GCM encryption
+    -   Multi-tenant architecture supporting unlimited users with separate Google accounts
+-   **Database Schema Updates**: Added `oauth_tokens` table with encrypted token storage and updated `users` table with Google OAuth fields (google_id, profile_picture, phone_number)
+-   **Security Architecture**:
+    -   AES-256-GCM encryption for all OAuth tokens (access & refresh)
+    -   CSRF protection via state parameter in OAuth flow
+    -   Per-user token isolation (users can only access their own Google data)
+    -   Automatic token refresh prevents expired credentials
+    -   Admin-only Gmail routes maintained for security
+-   **Gmail Service Overhaul**: Migrated from Replit Gmail connector to custom per-user OAuth implementation. Each user's Gmail operations now use their own authenticated Google account instead of shared service account.
+-   **Gmail Integration Complete**: Full Gmail functionality added via custom OAuth. Admin users can read, send, search, archive, delete, and manage emails through natural language AI commands. Security hardened with admin-only access controls on both API routes (requireAdmin middleware) and function calling (context.user verification). Fixed privilege escalation vulnerability by using authenticated user context instead of spoofable userId parameter.
 -   **Security Enhancement**: Fixed API key exposure in error logs. Error logging in `openai.js` and `elevenlabs.js` now only logs safe error information (status, message, data) and excludes headers containing API keys.
 -   **Admin Dashboard**: Verified and confirmed full functionality of the API secrets management system, including ability to add, edit, test, and delete API keys for multiple services.
 -   **API Key Management Enhancement**: Updated `getApiKey()` function to fall back to environment variables when no key is found in the database. The system now checks database first, then falls back to `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, etc. from environment secrets.
