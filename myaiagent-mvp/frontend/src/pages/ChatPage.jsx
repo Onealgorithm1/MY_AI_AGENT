@@ -105,6 +105,9 @@ export default function ChatPage() {
   // Load messages for conversation
   const loadConversation = async (conversationId) => {
     try {
+      // Clear messages immediately to avoid showing previous chat
+      setMessages([]);
+      
       const response = await conversationsApi.getMessages(conversationId);
       setMessages(response.data.messages);
       
