@@ -630,9 +630,17 @@ router.post('/:id/test', async (req, res) => {
           message: error.response?.data?.error?.message || 'Invalid API key'
         };
       }
-    } else if (secret.service_name === 'Google') {
-      // Test Google Cloud API key or service account
-      testResult = { success: true, message: 'Google credentials configured' };
+    } else if (secret.service_name === 'ElevenLabs') {
+      // Test ElevenLabs key
+      const axios = (await import('axios')).default;
+      try {
+        const response = await axios.get('https://api.elevenlabs.io/v1/user', {
+          headers: { 'xi-api-key': decryptedValue },
+        });
+        testResult = { success: true, message: 'ElevenLabs API key is valid', user: response.data };
+      } catch (error) {
+        testResult = { success: false, message: 'Invalid API key' };
+      }
     }
 
     // Update last_used_at

@@ -53,28 +53,19 @@ export function decrypt(encryptedText) {
   }
 }
 
-// Normalize provider name to canonical service_name format
-// Handles both lowercase provider keys and legacy aliases
-function normalizeProviderName(provider) {
-  const normalized = provider.toLowerCase().trim();
-  
-  // Map provider names and legacy aliases to canonical service_name format
-  const serviceNameMap = {
-    'openai': 'OpenAI',
-    'anthropic': 'Anthropic',
-    'google': 'Google',
-    'google apis': 'Google',
-    'google cloud': 'Google',
-    'stripe': 'Stripe'
-  };
-  
-  return serviceNameMap[normalized] || null;
-}
-
 // Get API key from database with support for multiple keys per service
 export async function getApiKey(provider, keyType = 'project') {
   try {
-    const serviceName = normalizeProviderName(provider);
+    // Map provider to service_name format
+    const serviceNameMap = {
+      'openai': 'OpenAI',
+      'elevenlabs': 'ElevenLabs',
+      'anthropic': 'Anthropic',
+      'google': 'Google',
+      'stripe': 'Stripe'
+    };
+    
+    const serviceName = serviceNameMap[provider.toLowerCase()];
     if (!serviceName) {
       console.error(`Unknown provider: ${provider}`);
       return null;
@@ -129,6 +120,7 @@ export async function getApiKey(provider, keyType = 'project') {
     if (result.rows.length === 0) {
       const envKeyMap = {
         'openai': 'OPENAI_API_KEY',
+        'elevenlabs': 'ELEVENLABS_API_KEY',
         'anthropic': 'ANTHROPIC_API_KEY',
         'google': 'GOOGLE_API_KEY',
         'stripe': 'STRIPE_SECRET_KEY'
@@ -154,23 +146,17 @@ export async function getApiKey(provider, keyType = 'project') {
 // Save API key to database
 export async function saveApiKey(provider, apiKey, userId) {
   try {
-    const serviceName = normalizeProviderName(provider);
-    if (!serviceName) {
-      console.error(`Unknown provider: ${provider}`);
-      return false;
-    }
-    
     // Deactivate old keys
     await query(
       'UPDATE api_secrets SET is_active = false WHERE service_name = $1',
-      [serviceName]
+      [provider]
     );
     
     // Insert new key
     const encryptedValue = encrypt(apiKey);
     await query(
       'INSERT INTO api_secrets (service_name, key_name, key_value, created_by, is_active) VALUES ($1, $2, $3, $4, true)',
-      [serviceName, `${serviceName}_api_key`, encryptedValue, userId]
+      [provider, `${provider}_api_key`, encryptedValue, userId]
     );
     
     return true;
@@ -183,15 +169,9 @@ export async function saveApiKey(provider, apiKey, userId) {
 // Check if API key is configured
 export async function hasApiKey(provider) {
   try {
-    const serviceName = normalizeProviderName(provider);
-    if (!serviceName) {
-      console.error(`Unknown provider: ${provider}`);
-      return false;
-    }
-    
     const result = await query(
       'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true LIMIT 1',
-      [serviceName]
+      [provider]
     );
     return result.rows.length > 0;
   } catch (error) {

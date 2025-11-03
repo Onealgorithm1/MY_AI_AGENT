@@ -74,7 +74,7 @@ export default function ChatPage() {
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('en-US-Neural2-C');
+  const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
   const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
   
   // Typewriter state
@@ -211,17 +211,15 @@ export default function ChatPage() {
           setTtsEnabled(data.tts_enabled);
         }
         if (data.tts_voice_id) {
-          // Validate voice ID format (Google TTS format with BCP-47 locale support)
-          // Examples: en-US-Neural2-C (4 segments), sr-Latn-RS-Standard-A (5 segments)
-          // Accepts 2-3 letter language code, followed by 2-4 dash-separated segments
-          const isValidVoiceId = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,}){3,}$/.test(data.tts_voice_id);
+          // Validate voice ID format (ElevenLabs IDs are alphanumeric, 15-30 chars)
+          const isValidVoiceId = /^[a-zA-Z0-9]{15,30}$/.test(data.tts_voice_id);
           
           if (isValidVoiceId) {
             setSelectedVoice(data.tts_voice_id);
           } else {
             // Invalid voice ID detected - reset to default and save
             console.warn('Invalid voice ID detected, resetting to default');
-            const defaultVoice = 'en-US-Neural2-C'; // Google Neural2 Female voice
+            const defaultVoice = '21m00Tcm4TlvDq8ikWAM'; // Rachel
             setSelectedVoice(defaultVoice);
             // Save the corrected voice ID
             await authApi.updatePreferences({ tts_voice_id: defaultVoice });

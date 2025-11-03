@@ -334,16 +334,16 @@ router.get('/api-keys', async (req, res) => {
   try {
     const { hasApiKey } = await import('../utils/apiKeys.js');
     const openaiConfigured = await hasApiKey('openai');
-    const googleConfigured = await hasApiKey('google');
+    const elevenLabsConfigured = await hasApiKey('elevenlabs');
 
     res.json({
       openai: {
         configured: openaiConfigured,
         preview: openaiConfigured ? 'sk-...****' : null,
       },
-      google: {
-        configured: googleConfigured, 
-        preview: googleConfigured ? 'ya29...****' : null,
+      elevenlabs: {
+        configured: elevenLabsConfigured, 
+        preview: elevenLabsConfigured ? 'xi-...****' : null,
       },
     });
   } catch (error) {
@@ -361,7 +361,7 @@ router.post('/api-keys', async (req, res) => {
       return res.status(400).json({ error: 'Provider and API key are required' });
     }
     
-    const allowedProviders = ['openai', 'google'];
+    const allowedProviders = ['openai', 'elevenlabs'];
     if (!allowedProviders.includes(provider)) {
       return res.status(400).json({ error: 'Invalid provider' });
     }
