@@ -546,7 +546,9 @@ router.get('/preferences', authenticate, async (req, res) => {
     res.json({ 
       preferences,
       tts_enabled: preferences.tts_enabled || false,
-      tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL'
+      tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
+      tts_auto_play: preferences.tts_auto_play || false,
+      typing_speed: preferences.typing_speed || 'snappy'
     });
   } catch (error) {
     console.error('Get preferences error:', error);
@@ -557,7 +559,7 @@ router.get('/preferences', authenticate, async (req, res) => {
 // Update user preferences
 router.put('/preferences', authenticate, async (req, res) => {
   try {
-    const { preferences, tts_enabled, tts_voice_id } = req.body;
+    const { preferences, tts_enabled, tts_voice_id, tts_auto_play, typing_speed } = req.body;
 
     // Get current preferences
     const currentResult = await query(
@@ -574,13 +576,21 @@ router.put('/preferences', authenticate, async (req, res) => {
       mergedPreferences = { ...mergedPreferences, ...preferences };
     }
     
-    // Handle TTS settings separately to allow granular updates
+    // Handle TTS and typing settings separately to allow granular updates
     if (tts_enabled !== undefined) {
       mergedPreferences.tts_enabled = tts_enabled;
     }
     
     if (tts_voice_id !== undefined) {
       mergedPreferences.tts_voice_id = tts_voice_id;
+    }
+    
+    if (tts_auto_play !== undefined) {
+      mergedPreferences.tts_auto_play = tts_auto_play;
+    }
+    
+    if (typing_speed !== undefined) {
+      mergedPreferences.typing_speed = typing_speed;
     }
 
     // Update preferences
@@ -599,6 +609,8 @@ router.put('/preferences', authenticate, async (req, res) => {
       preferences: user.preferences,
       tts_enabled: user.preferences.tts_enabled || false,
       tts_voice_id: user.preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
+      tts_auto_play: user.preferences.tts_auto_play || false,
+      typing_speed: user.preferences.typing_speed || 'snappy',
       user: {
         id: user.id,
         email: user.email,
