@@ -1,0 +1,62 @@
+This is the complete, single-page document. It contains the **AI Agent's updated knowledge, the full UAT context, and the next required test (U.1)**, formatted to be granular and ready for copy-pasting.
+
+The agent's internal instruction is to use this knowledge to answer diagnostic questions and guide the user through the next test.
+
+---
+
+# 🧠 AI AGENT SYSTEM KNOWLEDGE UPDATE v2.1 (POST-TTS IMPLEMENTATION)
+
+**Date:** November 3, 2025
+**Purpose:** Update agent's internal knowledge base with recent UAT results, new feature status (ElevenLabs), and critical development directives. This enables "Grok-like" diagnostic commentary.
+
+## 1. Operational Status Summary & Conversational Logic
+
+| Component | Status | Internal Directive (How to Talk About It) |
+| :--- | :--- | :--- |
+| **ElevenLabs TTS** | **FEATURE COMPLETE** | **NEW FEATURE!** Confirm audio playback is now enabled via the **Voice Toggle** in the chat header. Inform the user they can set their **preferred voice** in the dropdown. |
+| **TTS Sync (A.3)** | **MAJOR FAIL** | **KNOWN UX BUG.** Acknowledge the **word-by-word highlighting** (the "Grok-like speaking" effect) is **NOT YET IMPLEMENTED** on the frontend. This is a **P0 UX Fix** currently in development. |
+| **Web Search (A.1)** | **CRITICAL FAIL** | **BLOCKED.** State clearly that the **`web_search` tool is non-functional** (error code 400/403 expected). Guide the user to check the **`Google Search_API_KEY`** and the AWS Cloud Firewall rules. |
+| **Security (C.1-C.8)** | **SOLID** | Confirm the system uses **secure HTTP-only cookies** and has **CSRF protection** in place, making the session secure against XSS and Forgery. |
+| **UI-Aware Tools** | **READY TO TEST** | The next step is to execute a **Function Call** to validate the entire tool-use pipeline is working for app control. (See Test U.1) |
+| **Preferences** | **UPDATED** | The agent must check the user's saved preferences for **`tts_enabled`** and **`tts_voice_id`** before responding in audio. |
+
+---
+
+## 2. UAT Script & Next Required Action
+
+The agent has successfully passed most core functionality and confirmed security defenses (C.4, C.5, C.6, C.7, C.8). The focus is now on fixing tool failures (A.1, A.3) and validating the core function-calling pipeline.
+
+### Next Test Case: U.1 (Function Calling Validation)
+
+This test validates the most complex part of the agent: its ability to recognize an instruction, select the correct tool (`Maps_to_admin_dashboard`), and execute the corresponding function on the frontend.
+
+| Test ID | Area | Test Case / Scenario | Expected Result (PASS) | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **U.1** | **Navigation** | Instruct the agent: "Please navigate to the Admin Dashboard." | The agent successfully calls the function (`Maps_to_admin_dashboard`), and the client-side router changes the view to `/admin`. | |
+
+### Execution Command:
+
+The user's next command will execute this test. The agent must process this as a **tool call**.
+
+**Query:** Please navigate to the Admin Dashboard.
+
+---
+
+## 3. Development Directives (P0 & P1)
+
+These are the active project tasks the agent must reference when discussing system readiness.
+
+### CRITICAL FIXES (P0 - Blocking Production)
+
+1.  **Fix Web Search (A.1):** Immediately verify and load the correct Google Custom Search API key and check the Fargate outbound security group rules to unblock external API access.
+2.  **Implement TTS Synchronization (A.3):** The Frontend Team must prioritize implementing the logic to parse the **ElevenLabs word-level metadata** and synchronize it with the text in the chat bubble.
+
+### PRIORITY TASKS (P1 - Required for Staging Sign-off)
+
+1.  **Automated Testing:** Set up Playwright E2E tests for the core Auth, Chat, and Google OAuth flows.
+2.  **Observability:** Implement Sentry error tracking and Uptime Monitoring for the staging environment.
+3.  **Horizontal Scalability:** Implement **Redis Caching** to replace the current in-memory rate limiting, allowing the application to scale across multiple Fargate containers.
+
+---
+
+**END OF AGENT KNOWLEDGE BASE**
