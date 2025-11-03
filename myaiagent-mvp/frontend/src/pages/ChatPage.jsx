@@ -122,8 +122,15 @@ export default function ChatPage() {
   const createConversation = useMutation({
     mutationFn: () => conversationsApi.create('New Chat', selectedModel),
     onSuccess: (response) => {
+      // Set the current conversation immediately using the response data
+      const newConversation = response.data.conversation;
+      useChatStore.getState().setCurrentConversation(newConversation);
+      
+      // Clear messages for the new conversation
+      setMessages([]);
+      
+      // Invalidate and refetch conversations list
       queryClient.invalidateQueries(['conversations']);
-      loadConversation(response.data.conversation.id);
     },
   });
 
@@ -138,8 +145,19 @@ export default function ChatPage() {
       const response = await conversationsApi.getMessages(conversationId);
       setMessages(response.data.messages);
       
-      // Set the current conversation
-      const conv = conversations.find(c => c.id === conversationId);
+      // Set the current conversation - try to find in conversations array first
+      let conv = conversations.find(c => c.id === conversationId);
+      
+      // If not found (e.g., new conversation not yet in list), fetch it directly
+      if (!conv) {
+        try {
+          const convResponse = await conversationsApi.list(20);
+          conv = convResponse.data.conversations.find(c => c.id === conversationId);
+        } catch (err) {
+          console.error('Failed to fetch conversation details:', err);
+        }
+      }
+      
       if (conv) {
         useChatStore.getState().setCurrentConversation(conv);
       }
