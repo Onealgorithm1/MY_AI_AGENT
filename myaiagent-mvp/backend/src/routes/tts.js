@@ -1,65 +1,32 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { generateSpeechElevenLabs, getVoices } from '../services/elevenlabs.js';
-import { query } from '../utils/database.js';
-import { decryptSecret } from '../services/secrets.js';
+import { generateSpeechGoogle, getVoices } from '../services/googleTTS.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-async function getElevenLabsApiKey() {
-  try {
-    const result = await query(
-      `SELECT key_value FROM api_secrets 
-       WHERE key_name = 'ELEVENLABS_API_KEY' 
-       AND is_active = true 
-       ORDER BY is_default DESC NULLS LAST, created_at DESC 
-       LIMIT 1`
-    );
-
-    if (result.rows.length > 0) {
-      return decryptSecret(result.rows[0].key_value);
-    }
-
-    return process.env.ELEVENLABS_API_KEY || null;
-  } catch (error) {
-    console.error('Error fetching ElevenLabs API key:', error);
-    return process.env.ELEVENLABS_API_KEY || null;
-  }
-}
-
 router.get('/voices', async (req, res) => {
   try {
-    const apiKey = await getElevenLabsApiKey();
-    
-    if (!apiKey) {
-      return res.status(400).json({ 
-        error: 'ElevenLabs API key not configured. Please add it in the Admin Dashboard.',
-        code: 'API_KEY_MISSING'
-      });
-    }
-
-    const voices = await getVoices(apiKey);
+    const voices = await getVoices();
     
     res.json({ 
       voices: voices.map(v => ({
         voice_id: v.voice_id,
         name: v.name,
+        language_code: v.language_code,
         category: v.category,
-        labels: v.labels,
+        quality: v.quality,
+        ssml_gender: v.ssml_gender
       }))
     });
   } catch (error) {
     console.error('Error fetching voices:', error.message);
     
-    // Check for HTTP status codes (support both error.response.status and error.status)
-    const statusCode = error.response?.status || error.status || error.statusCode;
-    
-    if (statusCode === 401) {
-      return res.status(401).json({ 
-        error: 'Invalid ElevenLabs API key',
-        code: 'INVALID_API_KEY'
+    if (error.message.includes('not configured')) {
+      return res.status(400).json({ 
+        error: 'Google Cloud TTS credentials not configured. Please add them in the Admin Dashboard.',
+        code: 'CREDENTIALS_MISSING'
       });
     }
     
@@ -72,7 +39,7 @@ router.get('/voices', async (req, res) => {
 
 router.post('/synthesize', async (req, res) => {
   try {
-    const { text, voiceId = 'EXAVITQu4vr4xnSDxMaL' } = req.body;
+    const { text, voiceId = 'en-US-Neural2-C', speakingRate = 1.0 } = req.body;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ 
@@ -88,16 +55,8 @@ router.post('/synthesize', async (req, res) => {
       });
     }
 
-    const apiKey = await getElevenLabsApiKey();
-    if (!apiKey) {
-      return res.status(400).json({ 
-        error: 'ElevenLabs API key not configured',
-        code: 'API_KEY_MISSING'
-      });
-    }
-
     console.log(`🔊 Synthesizing speech: ${text.substring(0, 50)}... (voice: ${voiceId})`);
-    const audioBuffer = await generateSpeechElevenLabs(text, voiceId, 'eleven_multilingual_v2', apiKey);
+    const audioBuffer = await generateSpeechGoogle(text, voiceId, speakingRate);
     
     res.set({
       'Content-Type': 'audio/mpeg',
@@ -112,20 +71,10 @@ router.post('/synthesize', async (req, res) => {
   } catch (error) {
     console.error('Error synthesizing speech:', error.message);
     
-    // Check for HTTP status codes (support both error.response.status and error.status)
-    const statusCode = error.response?.status || error.status || error.statusCode;
-    
-    if (statusCode === 401) {
-      return res.status(401).json({ 
-        error: 'Invalid ElevenLabs API key',
-        code: 'INVALID_API_KEY'
-      });
-    }
-    
-    if (statusCode === 429) {
-      return res.status(429).json({ 
-        error: 'ElevenLabs rate limit reached. Please try again later.',
-        code: 'RATE_LIMIT_EXCEEDED'
+    if (error.message.includes('not configured')) {
+      return res.status(400).json({ 
+        error: 'Google Cloud TTS credentials not configured',
+        code: 'CREDENTIALS_MISSING'
       });
     }
     

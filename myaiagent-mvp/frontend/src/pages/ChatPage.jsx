@@ -211,15 +211,15 @@ export default function ChatPage() {
           setTtsEnabled(data.tts_enabled);
         }
         if (data.tts_voice_id) {
-          // Validate voice ID format (ElevenLabs IDs are alphanumeric, 15-30 chars)
-          const isValidVoiceId = /^[a-zA-Z0-9]{15,30}$/.test(data.tts_voice_id);
+          // Validate voice ID format (Google TTS format: en-US-Neural2-C)
+          const isValidVoiceId = /^[a-z]{2}-[A-Z]{2}-(Neural2|Wavenet|Standard)-[A-Z]$/.test(data.tts_voice_id);
           
           if (isValidVoiceId) {
             setSelectedVoice(data.tts_voice_id);
           } else {
             // Invalid voice ID detected - reset to default and save
             console.warn('Invalid voice ID detected, resetting to default');
-            const defaultVoice = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+            const defaultVoice = 'en-US-Neural2-C'; // Google Neural2 Female voice
             setSelectedVoice(defaultVoice);
             // Save the corrected voice ID
             await authApi.updatePreferences({ tts_voice_id: defaultVoice });

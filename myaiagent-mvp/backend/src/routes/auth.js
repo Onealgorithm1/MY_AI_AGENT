@@ -546,7 +546,7 @@ router.get('/preferences', authenticate, async (req, res) => {
     res.json({ 
       preferences,
       tts_enabled: preferences.tts_enabled || false,
-      tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
+      tts_voice_id: preferences.tts_voice_id || 'en-US-Neural2-C',
       tts_auto_play: preferences.tts_auto_play || false,
       typing_speed: preferences.typing_speed || 'snappy'
     });
@@ -608,7 +608,7 @@ router.put('/preferences', authenticate, async (req, res) => {
       message: 'Preferences updated successfully',
       preferences: user.preferences,
       tts_enabled: user.preferences.tts_enabled || false,
-      tts_voice_id: user.preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
+      tts_voice_id: user.preferences.tts_voice_id || 'en-US-Neural2-C',
       tts_auto_play: user.preferences.tts_auto_play || false,
       typing_speed: user.preferences.typing_speed || 'snappy',
       user: {
