@@ -30,11 +30,14 @@ import {
   BarChart3,
   Volume2,
   VolumeX,
+  Pause,
+  Play,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 import SearchResults from '../components/SearchResults';
 import VoiceSelector from '../components/VoiceSelector';
+import useTypewriter from '../hooks/useTypewriter';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -73,7 +76,27 @@ export default function ChatPage() {
   const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState(null);
+  const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
   const audioRef = useRef(null);
+  
+  // Typewriter state
+  const [typingSpeed, setTypingSpeed] = useState('snappy');
+  const [streamingContent, setStreamingContent] = useState('');
+  
+  // Typewriter for streaming message
+  const { displayedText: typewriterText, isTyping, skip: skipTypewriter } = useTypewriter(
+    streamingContent,
+    {
+      speed: typingSpeed,
+      enabled: streamingContent.length > 0,
+      onComplete: () => {
+        // Auto-play TTS if enabled and message is complete
+        if (ttsAutoPlay && streamingContent) {
+          playMessageAudio(streamingContent);
+        }
+      }
+    }
+  );
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
@@ -133,7 +156,21 @@ export default function ChatPage() {
 
   // TTS Functions
   const playMessageAudio = async (text, messageId = null) => {
-    if (!text || isSpeaking) return;
+    if (!text) return;
+    
+    // If already playing this message, pause it
+    if (isSpeaking && playingMessageId === messageId && audioRef.current) {
+      audioRef.current.pause();
+      setIsSpeaking(false);
+      return;
+    }
+    
+    // If paused on this message, resume
+    if (!isSpeaking && playingMessageId === messageId && audioRef.current && !audioRef.current.ended) {
+      audioRef.current.play();
+      setIsSpeaking(true);
+      return;
+    }
     
     try {
       setIsSpeaking(true);
@@ -212,7 +249,19 @@ export default function ChatPage() {
     }
   };
 
-  // Load TTS preferences on mount
+  const handleAutoPlayToggle = async (enabled) => {
+    setTtsAutoPlay(enabled);
+    
+    try {
+      await authApi.updatePreferences({ tts_auto_play: enabled });
+      toast.success(enabled ? 'Auto-play enabled' : 'Auto-play disabled');
+    } catch (error) {
+      console.error('Failed to save auto-play preference:', error);
+      toast.error('Failed to save preference');
+    }
+  };
+
+  // Load TTS and typing preferences on mount
   useEffect(() => {
     const loadPreferences = async () => {
       try {
@@ -223,8 +272,14 @@ export default function ChatPage() {
         if (data.tts_voice_id) {
           setSelectedVoice(data.tts_voice_id);
         }
+        if (data.tts_auto_play !== undefined) {
+          setTtsAutoPlay(data.tts_auto_play);
+        }
+        if (data.typing_speed) {
+          setTypingSpeed(data.typing_speed);
+        }
       } catch (error) {
-        console.error('Failed to load TTS preferences:', error);
+        console.error('Failed to load preferences:', error);
       }
     };
     
@@ -259,6 +314,7 @@ export default function ChatPage() {
     setInputMessage('');
     setIsSending(true);
     setStreamingMessage('●●●');
+    setStreamingContent('');
 
     try {
       // Get API base URL - use relative path for Vite proxy
@@ -322,11 +378,15 @@ export default function ChatPage() {
               
               if (data.content) {
                 fullResponse += data.content;
-                setStreamingMessage(fullResponse);
+                setStreamingContent(fullResponse);
               }
               
               if (data.done) {
-                setStreamingMessage('');
+                // Clear streaming after a brief delay to allow typewriter to finish
+                setTimeout(() => {
+                  setStreamingMessage('');
+                  setStreamingContent('');
+                }, 100);
                 
                 // Reload conversation to get the actual message with server-issued ID
                 await loadConversation(conversationId);
@@ -336,10 +396,7 @@ export default function ChatPage() {
                   handleAIAction(data.action);
                 }
                 
-                // Play TTS if enabled
-                if (ttsEnabled && fullResponse) {
-                  playMessageAudio(fullResponse);
-                }
+                // Note: Auto-play TTS is handled by typewriter onComplete callback
               }
             } catch (e) {
               // Skip invalid JSON
@@ -351,6 +408,7 @@ export default function ChatPage() {
       console.error('Send message error:', error);
       toast.error('Failed to send message');
       setStreamingMessage('');
+      setStreamingContent('');
     } finally {
       setIsSending(false);
     }
@@ -781,13 +839,25 @@ export default function ChatPage() {
               )}
             </button>
             
-            {/* Voice Selector */}
+            {/* Voice Selector and Auto-play */}
             {ttsEnabled && (
-              <VoiceSelector 
-                selectedVoice={selectedVoice}
-                onVoiceChange={handleVoiceChange}
-                className="w-48"
-              />
+              <>
+                <VoiceSelector 
+                  selectedVoice={selectedVoice}
+                  onVoiceChange={handleVoiceChange}
+                  className="w-48"
+                />
+                <label className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={ttsAutoPlay}
+                    onChange={(e) => handleAutoPlayToggle(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    aria-label="Auto-play voice responses"
+                  />
+                  <span>Auto-play</span>
+                </label>
+              </>
             )}
             
             <button
@@ -867,10 +937,14 @@ export default function ChatPage() {
                             ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
                         }`}
-                        title="Play audio"
-                        disabled={isSpeaking && playingMessageId !== message.id}
+                        title={isSpeaking && playingMessageId === message.id ? 'Pause audio' : 'Play audio'}
+                        aria-label={isSpeaking && playingMessageId === message.id ? 'Pause audio' : 'Play audio'}
                       >
-                        <Volume2 className={`w-3.5 h-3.5 ${playingMessageId === message.id ? 'animate-pulse' : ''}`} />
+                        {isSpeaking && playingMessageId === message.id ? (
+                          <Pause className="w-3.5 h-3.5 animate-pulse" />
+                        ) : (
+                          <Volume2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                       <button
                         onClick={() => copyToClipboard(message.content)}
@@ -916,9 +990,20 @@ export default function ChatPage() {
                   <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
                 </div>
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
-                  <div className="whitespace-pre-wrap">{streamingMessage}</div>
+                  <div className="whitespace-pre-wrap">
+                    {streamingContent ? typewriterText : streamingMessage}
+                  </div>
                   <span className="inline-block w-1 h-4 bg-gray-900 dark:bg-gray-100 animate-pulse ml-1" />
                 </div>
+                {isTyping && (
+                  <button
+                    onClick={skipTypewriter}
+                    className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    title="Skip typing animation"
+                  >
+                    Skip
+                  </button>
+                )}
               </div>
             )}
 
