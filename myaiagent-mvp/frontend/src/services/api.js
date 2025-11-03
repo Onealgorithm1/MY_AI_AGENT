@@ -36,13 +36,18 @@ api.interceptors.request.use(
     if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;
+        console.log('✅ CSRF token added to request:', config.method, config.url);
       } else {
-        console.warn('CSRF token missing for state-changing request:', config.method, config.url);
+        console.error('❌ CSRF token missing for state-changing request:', config.method, config.url);
+        console.error('   Please refresh the page to fetch CSRF token');
       }
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Response interceptor - handle errors and CSRF token refresh
@@ -59,10 +64,16 @@ api.interceptors.response.use(
       return api(config);
     }
     
-    // Unauthorized - JWT invalid/expired, clear user data and redirect
+    // Unauthorized - JWT invalid/expired
     if (error.response?.status === 401) {
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Don't redirect if already on login/signup pages or if this is a login attempt
+      const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/signup';
+      const isLoginAttempt = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup');
+      
+      if (!isAuthPage && !isLoginAttempt) {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
