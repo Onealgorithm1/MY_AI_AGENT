@@ -72,6 +72,7 @@ export default function ChatPage() {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState(null);
   const audioRef = useRef(null);
 
   // Get memory facts count
@@ -131,11 +132,12 @@ export default function ChatPage() {
   };
 
   // TTS Functions
-  const playMessageAudio = async (text) => {
-    if (!ttsEnabled || !text || isSpeaking) return;
+  const playMessageAudio = async (text, messageId = null) => {
+    if (!text || isSpeaking) return;
     
     try {
       setIsSpeaking(true);
+      setPlayingMessageId(messageId);
       console.log('🔊 Generating speech for message...');
       
       const truncatedText = text.length > 5000 
@@ -156,12 +158,14 @@ export default function ChatPage() {
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
         setIsSpeaking(false);
+        setPlayingMessageId(null);
         console.log('✅ Speech playback completed');
       };
       
       audio.onerror = (e) => {
         URL.revokeObjectURL(audioUrl);
         setIsSpeaking(false);
+        setPlayingMessageId(null);
         console.error('❌ Audio playback error:', e);
         toast.error('Failed to play audio');
       };
@@ -170,10 +174,13 @@ export default function ChatPage() {
       
     } catch (error) {
       setIsSpeaking(false);
+      setPlayingMessageId(null);
       console.error('❌ TTS synthesis failed:', error);
       
       if (error.response?.data?.code === 'API_KEY_MISSING') {
         toast.error('ElevenLabs API key not configured');
+      } else if (error.response?.data?.code === 'INVALID_API_KEY') {
+        toast.error('Invalid ElevenLabs API key');
       } else if (error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
         toast.error('Voice synthesis rate limit reached. Please try again later.');
       } else {
@@ -853,6 +860,18 @@ export default function ChatPage() {
                   
                   {message.role === 'assistant' && (
                     <div className="flex items-center gap-3 mt-1.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        onClick={() => playMessageAudio(message.content, message.id)}
+                        className={`p-1 transition-colors ${
+                          playingMessageId === message.id
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
+                        }`}
+                        title="Play audio"
+                        disabled={isSpeaking && playingMessageId !== message.id}
+                      >
+                        <Volume2 className={`w-3.5 h-3.5 ${playingMessageId === message.id ? 'animate-pulse' : ''}`} />
+                      </button>
                       <button
                         onClick={() => copyToClipboard(message.content)}
                         className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
