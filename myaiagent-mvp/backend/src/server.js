@@ -13,6 +13,18 @@ import { fileURLToPath } from 'url';
 // Load environment variables
 dotenv.config();
 
+// SECURITY: Validate required secrets immediately after loading .env
+if (!process.env.JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET environment variable is required');
+  console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'base64\'))"');
+  process.exit(1);
+}
+if (!process.env.CSRF_SECRET && !process.env.HMAC_SECRET) {
+  console.error('❌ FATAL: CSRF_SECRET or HMAC_SECRET environment variable is required');
+  console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'base64\'))"');
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -97,13 +109,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
 // CSRF Protection (SECURITY: Protects against Cross-Site Request Forgery)
-const csrfSecret = process.env.CSRF_SECRET || process.env.HMAC_SECRET || 'change-this-csrf-secret';
+const csrfSecret = process.env.CSRF_SECRET || process.env.HMAC_SECRET;
 const {
   generateToken: generateCsrfToken,
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => csrfSecret,
-  cookieName: '__Host-csrf',
+  cookieName: 'csrf-token',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,

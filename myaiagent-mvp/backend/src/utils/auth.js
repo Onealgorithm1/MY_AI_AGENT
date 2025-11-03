@@ -1,8 +1,19 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-key';
-const JWT_EXPIRY = process.env.SESSION_DURATION_HOURS || 24;
+// SECURITY: Read secrets lazily to avoid ES6 import hoisting issues
+// dotenv.config() runs in server.js before this module is used
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  return secret;
+}
+
+function getJwtExpiry() {
+  return process.env.SESSION_DURATION_HOURS || 24;
+}
 
 // Hash password
 export async function hashPassword(password) {
@@ -22,15 +33,15 @@ export function generateToken(user) {
     role: user.role,
   };
   
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: `${JWT_EXPIRY}h`,
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: `${getJwtExpiry()}h`,
   });
 }
 
 // Verify JWT token
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, getJwtSecret());
   } catch (error) {
     throw new Error('Invalid token');
   }
