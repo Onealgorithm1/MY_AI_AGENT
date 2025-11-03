@@ -128,10 +128,12 @@ export default function ChatPage() {
   });
 
   // Load messages for conversation
-  const loadConversation = async (conversationId) => {
+  const loadConversation = async (conversationId, clearFirst = true) => {
     try {
-      // Clear messages immediately to avoid showing previous chat
-      setMessages([]);
+      // Only clear messages when switching conversations, not when refreshing
+      if (clearFirst) {
+        setMessages([]);
+      }
       
       const response = await conversationsApi.getMessages(conversationId);
       setMessages(response.data.messages);
@@ -314,7 +316,8 @@ export default function ChatPage() {
                 }, 100);
                 
                 // Reload conversation to get the actual message with server-issued ID
-                await loadConversation(conversationId);
+                // Pass false to avoid clearing messages (prevents scroll jump)
+                await loadConversation(conversationId, false);
                 
                 // Handle UI actions from AI
                 if (data.action) {
