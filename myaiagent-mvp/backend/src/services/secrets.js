@@ -50,7 +50,6 @@ export function maskSecret(secret) {
 export function validateApiKey(keyName, keyValue) {
   const patterns = {
     'OPENAI_API_KEY': /^sk-[a-zA-Z0-9-_]{20,}$/,
-    'ELEVENLABS_API_KEY': /^[a-f0-9]{32}$/,
     'ANTHROPIC_API_KEY': /^sk-ant-[a-zA-Z0-9-_]{20,}$/,
   };
 

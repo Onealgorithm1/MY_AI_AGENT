@@ -238,7 +238,7 @@ export const uiSchema = {
         {
           id: "apiKeysTab",
           label: "API Keys",
-          description: "Configure OpenAI and ElevenLabs API keys"
+          description: "Configure OpenAI and Google Cloud API keys"
         },
         {
           id: "statsTab",

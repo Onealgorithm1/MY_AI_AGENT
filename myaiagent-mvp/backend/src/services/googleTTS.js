@@ -64,8 +64,8 @@ export async function getVoices() {
 
     return voices.sort((a, b) => {
       if (a.quality !== b.quality) {
-        const qualityOrder = { 'Neural2': 0, 'WaveNet': 1, 'Standard': 2 };
-        return qualityOrder[a.quality] - qualityOrder[b.quality];
+        const qualityOrder = { 'Neural2': 0, 'Studio': 1, 'WaveNet': 2, 'Journey': 3, 'Polyglot': 4, 'Standard': 5 };
+        return (qualityOrder[a.quality] || 99) - (qualityOrder[b.quality] || 99);
       }
       return a.name.localeCompare(b.name);
     });
@@ -78,8 +78,11 @@ export async function getVoices() {
 
 function getVoiceQuality(voiceName) {
   if (voiceName.includes('Neural2')) return 'Neural2';
-  if (voiceName.includes('Wavenet')) return 'WaveNet';
   if (voiceName.includes('Studio')) return 'Studio';
+  if (voiceName.includes('Wavenet')) return 'WaveNet';
+  if (voiceName.includes('Journey')) return 'Journey';
+  if (voiceName.includes('Polyglot')) return 'Polyglot';
+  if (voiceName.includes('News')) return 'News';
   return 'Standard';
 }
 
@@ -115,10 +118,6 @@ export async function generateSpeechGoogle(
 
     const voiceParts = voiceId.split('-');
     const languageCode = `${voiceParts[0]}-${voiceParts[1]}`;
-    
-    const ssmlGender = voiceId.includes('A') || voiceId.includes('C') || voiceId.includes('E') || voiceId.includes('G')
-      ? 'FEMALE'
-      : 'MALE';
 
     console.log('🔊 Google TTS Request:', {
       textLength: text.length,
@@ -130,8 +129,8 @@ export async function generateSpeechGoogle(
       input: { text: text },
       voice: {
         languageCode: languageCode,
-        name: voiceId,
-        ssmlGender: ssmlGender
+        name: voiceId
+        // ssmlGender is omitted - Google uses the voice's inherent gender
       },
       audioConfig: {
         audioEncoding: 'MP3',

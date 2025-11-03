@@ -211,8 +211,10 @@ export default function ChatPage() {
           setTtsEnabled(data.tts_enabled);
         }
         if (data.tts_voice_id) {
-          // Validate voice ID format (Google TTS format: en-US-Neural2-C)
-          const isValidVoiceId = /^[a-z]{2}-[A-Z]{2}-(Neural2|Wavenet|Standard)-[A-Z]$/.test(data.tts_voice_id);
+          // Validate voice ID format (Google TTS format with BCP-47 locale support)
+          // Examples: en-US-Neural2-C, sr-Latn-RS-Standard-A, cmn-Hans-CN-Neural2-A
+          // Accepts language code, optional script code (Latn, Hans, etc.), region, quality tier, variant
+          const isValidVoiceId = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){2,}-[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(data.tts_voice_id);
           
           if (isValidVoiceId) {
             setSelectedVoice(data.tts_voice_id);

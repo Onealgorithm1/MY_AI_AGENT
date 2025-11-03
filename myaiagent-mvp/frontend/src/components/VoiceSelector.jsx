@@ -76,7 +76,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange, className 
     return acc;
   }, {});
 
-  const qualityOrder = ['Neural2', 'WaveNet', 'Studio', 'Standard'];
+  const qualityOrder = ['Neural2', 'Studio', 'WaveNet', 'Journey', 'Polyglot', 'News', 'Standard'];
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

@@ -69,8 +69,7 @@ app.use(helmet({
         'ws:', 
         'https://api.openai.com',
         'https://generativelanguage.googleapis.com',
-        'https://api.elevenlabs.io',
-        'https://api.elevenlabs.com'
+        'https://texttospeech.googleapis.com'
       ],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
