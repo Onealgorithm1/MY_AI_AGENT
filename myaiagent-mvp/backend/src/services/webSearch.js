@@ -4,6 +4,8 @@ import { decryptSecret } from './secrets.js';
 
 export async function performWebSearch(searchQuery, numResults = 5) {
   try {
+    let apiKey, searchEngineId;
+
     const apiKeyResult = await query(
       `SELECT key_value FROM api_secrets 
        WHERE key_name = 'GOOGLE_SEARCH_API_KEY' 
@@ -20,16 +22,23 @@ export async function performWebSearch(searchQuery, numResults = 5) {
        LIMIT 1`
     );
 
-    if (apiKeyResult.rows.length === 0) {
-      throw new Error('Google Search API key not configured');
+    if (apiKeyResult.rows.length > 0) {
+      apiKey = decryptSecret(apiKeyResult.rows[0].key_value);
+    } else {
+      apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+      if (!apiKey) {
+        throw new Error('Google Search API key not configured. Please add it to environment variables or Admin Dashboard.');
+      }
     }
 
-    if (searchEngineIdResult.rows.length === 0) {
-      throw new Error('Google Search Engine ID not configured');
+    if (searchEngineIdResult.rows.length > 0) {
+      searchEngineId = decryptSecret(searchEngineIdResult.rows[0].key_value);
+    } else {
+      searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+      if (!searchEngineId) {
+        throw new Error('Google Search Engine ID not configured. Please add it to environment variables or Admin Dashboard.');
+      }
     }
-
-    const apiKey = decryptSecret(apiKeyResult.rows[0].key_value);
-    const searchEngineId = decryptSecret(searchEngineIdResult.rows[0].key_value);
 
     const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
       params: {

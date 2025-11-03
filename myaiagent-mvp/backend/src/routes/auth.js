@@ -543,7 +543,11 @@ router.get('/preferences', authenticate, async (req, res) => {
 
     const preferences = result.rows[0]?.preferences || {};
 
-    res.json({ preferences });
+    res.json({ 
+      preferences,
+      tts_enabled: preferences.tts_enabled || false,
+      tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL'
+    });
   } catch (error) {
     console.error('Get preferences error:', error);
     res.status(500).json({ error: 'Failed to fetch preferences' });
@@ -553,11 +557,7 @@ router.get('/preferences', authenticate, async (req, res) => {
 // Update user preferences
 router.put('/preferences', authenticate, async (req, res) => {
   try {
-    const { preferences } = req.body;
-
-    if (!preferences || typeof preferences !== 'object') {
-      return res.status(400).json({ error: 'Invalid preferences format' });
-    }
+    const { preferences, tts_enabled, tts_voice_id } = req.body;
 
     // Get current preferences
     const currentResult = await query(
@@ -567,8 +567,21 @@ router.put('/preferences', authenticate, async (req, res) => {
 
     const currentPreferences = currentResult.rows[0]?.preferences || {};
     
-    // Merge new preferences with existing ones
-    const mergedPreferences = { ...currentPreferences, ...preferences };
+    // Merge preferences (handle both full preferences object and individual TTS settings)
+    let mergedPreferences = { ...currentPreferences };
+    
+    if (preferences && typeof preferences === 'object') {
+      mergedPreferences = { ...mergedPreferences, ...preferences };
+    }
+    
+    // Handle TTS settings separately to allow granular updates
+    if (tts_enabled !== undefined) {
+      mergedPreferences.tts_enabled = tts_enabled;
+    }
+    
+    if (tts_voice_id !== undefined) {
+      mergedPreferences.tts_voice_id = tts_voice_id;
+    }
 
     // Update preferences
     const result = await query(
@@ -584,6 +597,8 @@ router.put('/preferences', authenticate, async (req, res) => {
     res.json({
       message: 'Preferences updated successfully',
       preferences: user.preferences,
+      tts_enabled: user.preferences.tts_enabled || false,
+      tts_voice_id: user.preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
       user: {
         id: user.id,
         email: user.email,

@@ -3,21 +3,18 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 // Initialize ElevenLabs client (will be set when API key is available)
 let elevenLabsClient = null;
 
-async function getElevenLabsClient() {
-  if (!elevenLabsClient) {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      throw new Error('ElevenLabs API key not configured. Please add ELEVENLABS_API_KEY to your secrets.');
-    }
-    elevenLabsClient = new ElevenLabsClient({ apiKey });
+async function getElevenLabsClient(apiKey = null) {
+  const key = apiKey || process.env.ELEVENLABS_API_KEY;
+  if (!key) {
+    throw new Error('ElevenLabs API key not configured. Please add ELEVENLABS_API_KEY to your secrets.');
   }
-  return elevenLabsClient;
+  return new ElevenLabsClient({ apiKey: key });
 }
 
 // Get available voices
-export async function getVoices() {
+export async function getVoices(apiKey = null) {
   try {
-    const client = await getElevenLabsClient();
+    const client = await getElevenLabsClient(apiKey);
     const response = await client.voices.getAll();
     
     return response.voices.map(voice => ({
@@ -30,7 +27,13 @@ export async function getVoices() {
     }));
   } catch (error) {
     console.error('Get ElevenLabs voices error:', error.message);
-    throw new Error('Failed to get voices');
+    // Preserve original error with enriched message for proper error handling in routes
+    error.message = 'Failed to get voices: ' + (error.message || 'Unknown error');
+    // Ensure response object exists for route error detection
+    if (!error.response && (error.status || error.statusCode)) {
+      error.response = { status: error.status || error.statusCode };
+    }
+    throw error;
   }
 }
 
@@ -38,10 +41,11 @@ export async function getVoices() {
 export async function generateSpeechElevenLabs(
   text, 
   voiceId = '21m00Tcm4TlvDq8ikWAM', // Default: Rachel voice
-  modelId = 'eleven_multilingual_v2'
+  modelId = 'eleven_multilingual_v2',
+  apiKey = null
 ) {
   try {
-    const client = await getElevenLabsClient();
+    const client = await getElevenLabsClient(apiKey);
     
     console.log('🔊 ElevenLabs TTS Request:', {
       textLength: text.length,
@@ -69,7 +73,13 @@ export async function generateSpeechElevenLabs(
     return Buffer.concat(chunks);
   } catch (error) {
     console.error('ElevenLabs TTS error:', error.message);
-    throw new Error('Failed to generate speech');
+    // Preserve original error with enriched message for proper error handling in routes
+    error.message = 'Failed to generate speech: ' + (error.message || 'Unknown error');
+    // Ensure response object exists for route error detection
+    if (!error.response && (error.status || error.statusCode)) {
+      error.response = { status: error.status || error.statusCode };
+    }
+    throw error;
   }
 }
 

@@ -43,6 +43,7 @@ import uiActionsRoutes from './routes/ui-actions.js';
 import eventsRoutes from './routes/events.js';
 import toolsRoutes from './routes/tools.js';
 import gmailRoutes from './routes/gmail.js';
+import ttsRoutes from './routes/tts.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -62,7 +63,15 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'wss:', 'ws:', 'https://api.openai.com'],
+      connectSrc: [
+        "'self'", 
+        'wss:', 
+        'ws:', 
+        'https://api.openai.com',
+        'https://generativelanguage.googleapis.com',
+        'https://api.elevenlabs.io',
+        'https://api.elevenlabs.com'
+      ],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -188,6 +197,7 @@ app.use('/api/ui-actions', uiActionsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/gmail', gmailRoutes);
+app.use('/api/tts', ttsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

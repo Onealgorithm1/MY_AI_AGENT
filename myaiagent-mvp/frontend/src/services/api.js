@@ -251,4 +251,17 @@ export const secrets = {
     api.patch(`/secrets/${id}/metadata`, data),
 };
 
+// TTS endpoints
+export const tts = {
+  getVoices: () => api.get('/tts/voices'),
+  
+  synthesize: async (text, voiceId) => {
+    const response = await api.post('/tts/synthesize', 
+      { text, voiceId },
+      { responseType: 'blob' }
+    );
+    return response.data;
+  },
+};
+
 export default api;

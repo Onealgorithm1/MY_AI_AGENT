@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken, tts, auth as authApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -28,10 +28,13 @@ import {
   ThumbsDown,
   Brain,
   BarChart3,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 import SearchResults from '../components/SearchResults';
+import VoiceSelector from '../components/VoiceSelector';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -64,6 +67,12 @@ export default function ChatPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [showInsights, setShowInsights] = useState(false);
+  
+  // TTS state
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef(null);
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
@@ -120,6 +129,110 @@ export default function ChatPage() {
       toast.error('Failed to load conversation');
     }
   };
+
+  // TTS Functions
+  const playMessageAudio = async (text) => {
+    if (!ttsEnabled || !text || isSpeaking) return;
+    
+    try {
+      setIsSpeaking(true);
+      console.log('🔊 Generating speech for message...');
+      
+      const truncatedText = text.length > 5000 
+        ? text.substring(0, 4997) + '...' 
+        : text;
+      
+      const audioBlob = await tts.synthesize(truncatedText, selectedVoice);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        console.log('✅ Speech playback completed');
+      };
+      
+      audio.onerror = (e) => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        console.error('❌ Audio playback error:', e);
+        toast.error('Failed to play audio');
+      };
+      
+      await audio.play();
+      
+    } catch (error) {
+      setIsSpeaking(false);
+      console.error('❌ TTS synthesis failed:', error);
+      
+      if (error.response?.data?.code === 'API_KEY_MISSING') {
+        toast.error('ElevenLabs API key not configured');
+      } else if (error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
+        toast.error('Voice synthesis rate limit reached. Please try again later.');
+      } else {
+        toast.error('Could not generate speech');
+      }
+    }
+  };
+
+  const handleTtsToggle = async (enabled) => {
+    setTtsEnabled(enabled);
+    
+    try {
+      await authApi.updatePreferences({ tts_enabled: enabled });
+      toast.success(enabled ? 'Voice enabled' : 'Voice disabled');
+    } catch (error) {
+      console.error('Failed to save TTS preference:', error);
+      toast.error('Failed to save preference');
+    }
+  };
+
+  const handleVoiceChange = async (voiceId) => {
+    setSelectedVoice(voiceId);
+    
+    try {
+      await authApi.updatePreferences({ tts_voice_id: voiceId });
+    } catch (error) {
+      console.error('Failed to save voice preference:', error);
+      toast.error('Failed to save voice preference');
+    }
+  };
+
+  // Load TTS preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const { data } = await authApi.getPreferences();
+        if (data.tts_enabled !== undefined) {
+          setTtsEnabled(data.tts_enabled);
+        }
+        if (data.tts_voice_id) {
+          setSelectedVoice(data.tts_voice_id);
+        }
+      } catch (error) {
+        console.error('Failed to load TTS preferences:', error);
+      }
+    };
+    
+    loadPreferences();
+  }, []);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+    };
+  }, []);
 
   // Send message
   const sendMessage = async () => {
@@ -214,6 +327,11 @@ export default function ChatPage() {
                 // Handle UI actions from AI
                 if (data.action) {
                   handleAIAction(data.action);
+                }
+                
+                // Play TTS if enabled
+                if (ttsEnabled && fullResponse) {
+                  playMessageAudio(fullResponse);
                 }
               }
             } catch (e) {
@@ -626,6 +744,45 @@ export default function ChatPage() {
                 <BarChart3 className="w-5 h-5" />
               </button>
             )}
+            
+            {/* TTS Toggle Button */}
+            <button
+              onClick={() => handleTtsToggle(!ttsEnabled)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all ${
+                ttsEnabled 
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
+              } ${isSpeaking ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
+              title={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
+            >
+              {ttsEnabled ? (
+                <>
+                  <Volume2 className="w-4 h-4" />
+                  <span className="text-sm">Voice On</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-4 h-4" />
+                  <span className="text-sm">Voice Off</span>
+                </>
+              )}
+              {isSpeaking && (
+                <span className="flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+              )}
+            </button>
+            
+            {/* Voice Selector */}
+            {ttsEnabled && (
+              <VoiceSelector 
+                selectedVoice={selectedVoice}
+                onVoiceChange={handleVoiceChange}
+                className="w-48"
+              />
+            )}
+            
             <button
               onClick={() => setIsVoiceActive(!isVoiceActive)}
               className={`p-2 rounded-lg transition-colors ${
