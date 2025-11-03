@@ -177,9 +177,9 @@ export default function useMessageAudio(messageId, text, voiceId) {
     } else if (state === AUDIO_STATES.PLAYING) {
       pause();
     } else if (state === AUDIO_STATES.PAUSED) {
-      resume();
+      replay(); // Restart from beginning instead of resuming
     }
-  }, [state, play, pause, resume, replay]);
+  }, [state, play, pause, replay]);
 
   const retry = useCallback(() => {
     audioBufferRef.current = null;

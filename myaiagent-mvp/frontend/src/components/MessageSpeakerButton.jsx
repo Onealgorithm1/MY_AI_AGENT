@@ -26,7 +26,7 @@ const getIconAndLabel = (state, isError) => {
     case 'paused':
       return {
         icon: Pause,
-        label: 'Resume audio',
+        label: 'Restart audio',
         color: 'text-blue-500',
       };
     case 'completed':
