@@ -1,17 +1,20 @@
 export function calculateWordTimings(text, audioDuration) {
   const words = text.split(/(\s+)/).filter(part => part.trim().length > 0);
   
+  // More realistic timing model with pauses and delays
   const wordCharCounts = words.map(word => {
     let charCount = word.length;
     
+    // Add significant pause after sentence endings
     if (/[.!?]$/.test(word)) {
-      charCount += 2;
+      charCount += 4; // Longer pause after sentences
     } else if (/[,;:]$/.test(word)) {
-      charCount += 1;
+      charCount += 2; // Medium pause after commas
     }
     
+    // Longer words take more time to pronounce
     if (word.length > 9) {
-      charCount += 1;
+      charCount += 2;
     }
     
     return charCount;
@@ -19,12 +22,17 @@ export function calculateWordTimings(text, audioDuration) {
   
   const totalChars = wordCharCounts.reduce((sum, count) => sum + count, 0);
   
+  // Account for natural silence at start of audio (typically 100-300ms)
+  const startDelay = Math.min(0.25, audioDuration * 0.05);
+  // Reserve time for trailing silence
+  const usableAudioDuration = audioDuration - startDelay - 0.1;
+  
   const timings = [];
-  let currentTime = 0;
+  let currentTime = startDelay;
   
   words.forEach((word, index) => {
     const charCount = wordCharCounts[index];
-    const duration = (charCount / totalChars) * audioDuration;
+    const duration = (charCount / totalChars) * usableAudioDuration;
     
     timings.push({
       word,
