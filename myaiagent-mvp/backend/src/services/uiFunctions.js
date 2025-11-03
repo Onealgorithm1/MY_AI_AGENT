@@ -454,6 +454,12 @@ export const UI_FUNCTIONS = [
         },
         values: {
           type: 'array',
+          items: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+          },
           description: '2D array of values to write (e.g., [["Name", "Age"], ["John", "30"]])',
         },
       },
@@ -476,6 +482,9 @@ export const UI_FUNCTIONS = [
         },
         values: {
           type: 'array',
+          items: {
+            type: 'string',
+          },
           description: 'Array of values to append as a new row (e.g., ["John", "30", "Engineer"])',
         },
       },
