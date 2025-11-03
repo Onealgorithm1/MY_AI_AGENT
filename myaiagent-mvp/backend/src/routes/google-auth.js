@@ -106,8 +106,9 @@ router.get('/google/callback', async (req, res) => {
       const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF defense (lax for dev compatibility)
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        path: '/', // Available for all routes
       };
       res.cookie('jwt', jwtToken, cookieOptions);
       

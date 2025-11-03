@@ -128,7 +128,7 @@ const {
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // lax for dev compatibility
     path: '/',
   },
   size: 64,

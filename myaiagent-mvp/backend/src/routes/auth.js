@@ -90,8 +90,9 @@ router.post('/signup', async (req, res) => {
     const cookieOptions = {
       httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
       secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-      sameSite: 'strict', // CSRF defense
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF defense (lax for dev compatibility)
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/', // Available for all routes
     };
     res.cookie('jwt', token, cookieOptions);
 
@@ -161,8 +162,9 @@ router.post('/login', async (req, res) => {
     const cookieOptions = {
       httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
       secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-      sameSite: 'strict', // CSRF defense
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF defense (lax for dev compatibility)
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/', // Available for all routes
     };
     res.cookie('jwt', token, cookieOptions);
 
