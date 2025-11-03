@@ -102,7 +102,16 @@ router.get('/google/callback', async (req, res) => {
       
       const jwtToken = generateToken(currentUser);
       
-      return res.redirect(`${FRONTEND_URL}/auth/google/success?token=${jwtToken}`);
+      // SECURITY: Set JWT as HTTP-only cookie (not URL parameter)
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      };
+      res.cookie('jwt', jwtToken, cookieOptions);
+      
+      return res.redirect(`${FRONTEND_URL}/auth/google/success`);
     } else if (action === 'connect') {
       console.log('🔗 Google connect action triggered, userId:', userId);
       

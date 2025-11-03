@@ -12,19 +12,24 @@ const GoogleCallbackPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const token = params.get('token');
     const error = params.get('error');
 
-    if (token) {
-      // Save token to localStorage
-      localStorage.setItem('token', token);
-      
-      // Fetch user data and update auth store
-      authApi.me().then(response => {
+    if (error) {
+      setStatus('error');
+      setMessage(getErrorMessage(error));
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      return;
+    }
+
+    // SECURITY: Token is now in HTTP-only cookie (set by backend)
+    // Just fetch user data - the cookie will be sent automatically
+    authApi.me()
+      .then(response => {
         const user = response.data.user;
         useAuthStore.setState({
           user,
-          token,
           isAuthenticated: true,
         });
         
@@ -33,27 +38,15 @@ const GoogleCallbackPage = () => {
         setTimeout(() => {
           navigate('/');
         }, 2000);
-      }).catch(error => {
+      })
+      .catch(error => {
         console.error('Failed to fetch user data:', error);
         setStatus('error');
-        setMessage('Failed to complete authentication');
+        setMessage('Failed to complete authentication. Please try again.');
         setTimeout(() => {
           navigate('/login');
         }, 3000);
       });
-    } else if (error) {
-      setStatus('error');
-      setMessage(getErrorMessage(error));
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
-    } else {
-      setStatus('error');
-      setMessage('Invalid callback parameters');
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
-    }
   }, [location, navigate]);
 
   const getErrorMessage = (error) => {
