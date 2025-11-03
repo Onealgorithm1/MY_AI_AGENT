@@ -19,19 +19,16 @@ const WordHighlighter = memo(({ text, currentWordIndex, wordTimings, className =
           <span
             key={index}
             className={`
-              transition-all duration-150
-              ${!isVisible ? 'opacity-0' : 'opacity-100'}
+              inline-block transition-all duration-200 ease-out
+              ${!isVisible ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}
               ${isCurrent 
-                ? 'bg-yellow-200 dark:bg-yellow-600/40 rounded px-0.5 scale-105 inline-block' 
+                ? 'bg-yellow-200 dark:bg-yellow-600/40 rounded px-0.5' 
                 : ''
               }
             `}
-            style={{
-              display: isVisible ? 'inline' : 'none'
-            }}
           >
             {timing.word}
-            {index < wordTimings.length - 1 && isVisible ? ' ' : ''}
+            {index < wordTimings.length - 1 ? ' ' : ''}
           </span>
         );
       })}
