@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.21.0",
-    "@google/genai": "^1.28.0",
+    "@google/generative-ai": "^0.24.1",
     "googleapis": "^164.1.0",
     "react-icons": "^5.5.0"
   }

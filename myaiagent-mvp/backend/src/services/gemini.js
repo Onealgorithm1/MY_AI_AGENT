@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
 
@@ -11,7 +11,7 @@ async function getGeminiClient() {
     if (!apiKey) {
       throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY to your secrets.');
     }
-    geminiClient = new GoogleGenAI({ apiKey });
+    geminiClient = new GoogleGenerativeAI(apiKey);
   }
   return geminiClient;
 }
@@ -55,35 +55,31 @@ export async function createChatCompletion(messages, model = 'gemini-2.0-flash-e
       hasStream: stream
     });
     
-    // Build request parameters for @google/genai SDK
-    const requestParams = {
+    // Get the generative model with configuration
+    const modelInstance = client.getGenerativeModel({
       model,
-      contents: geminiMessages.contents,
-      config: {
+      systemInstruction: geminiMessages.systemInstruction,
+      generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 4000,
-      }
+      },
+      tools: tools || undefined
+    });
+    
+    // Build request with contents
+    const request = {
+      contents: geminiMessages.contents
     };
-    
-    // Add system instruction if present
-    if (geminiMessages.systemInstruction) {
-      requestParams.systemInstruction = geminiMessages.systemInstruction;
-    }
-    
-    // Add tools if provided
-    if (tools) {
-      requestParams.tools = tools;
-    }
     
     if (stream) {
       // Streaming response
-      const result = await client.models.generateContentStream(requestParams);
+      const result = await modelInstance.generateContentStream(request);
       
       // Return stream-like object compatible with OpenAI
       return createStreamAdapter(result, model);
     } else {
       // Non-streaming response
-      const result = await client.models.generateContent(requestParams);
+      const result = await modelInstance.generateContent(request);
       
       // Transform Gemini response to OpenAI format
       return transformGeminiResponse(result, model);
