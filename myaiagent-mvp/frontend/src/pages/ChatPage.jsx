@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -144,13 +144,21 @@ export default function ChatPage() {
       // Get API base URL - use relative path for Vite proxy
       const apiUrl = '/api';
       
+      // Get CSRF token for the request
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        console.warn('⚠️ CSRF token missing, fetching...');
+        await fetchCsrfToken();
+      }
+      
       // Send message with streaming
       const response = await fetch(`${apiUrl}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
         },
+        credentials: 'include', // SECURITY: Send cookies (JWT)
         body: JSON.stringify({
           conversationId,
           content: userMessage.content,

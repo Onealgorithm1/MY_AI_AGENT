@@ -29,6 +29,9 @@ export const fetchCsrfToken = async () => {
   }
 };
 
+// Function to get current CSRF token (for use in fetch() requests)
+export const getCsrfToken = () => csrfToken;
+
 // Request interceptor - add CSRF token to state-changing requests
 api.interceptors.request.use(
   (config) => {
