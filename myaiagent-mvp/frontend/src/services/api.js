@@ -56,11 +56,18 @@ api.interceptors.response.use(
   async (error) => {
     // CSRF token invalid/missing - fetch new token and retry
     if (error.response?.status === 403 && error.response?.data?.code === 'EBADCSRFTOKEN') {
-      console.log('CSRF token invalid, fetching new token...');
+      console.log('🔄 CSRF token invalid, fetching new token...');
       await fetchCsrfToken();
+      console.log('✅ New CSRF token fetched, retrying request...');
       // Retry the original request with new token
       const config = error.config;
       config.headers['X-CSRF-Token'] = csrfToken;
+      // Prevent infinite retry loop
+      if (config.__isRetry) {
+        console.error('❌ CSRF retry failed twice, giving up');
+        return Promise.reject(error);
+      }
+      config.__isRetry = true;
       return api(config);
     }
     

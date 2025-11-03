@@ -71,11 +71,14 @@ The application employs a client-server architecture. The frontend is built with
     -   **Mandatory Secret Validation**: Server now fails fast at startup if JWT_SECRET or CSRF_SECRET/HMAC_SECRET are missing
     -   **Lazy Secret Loading**: Refactored auth utilities to read secrets at runtime (not module load time) to avoid ES6 import hoisting issues
     -   **Cookie Configuration**: JWT and CSRF cookies set with HttpOnly, SameSite=Strict, Secure (in production) flags
-    -   **Frontend Updates**: Axios client configured with withCredentials: true, automatic CSRF token fetching, and X-CSRF-Token header injection
+    -   **Frontend Updates**: Axios client configured with withCredentials: true, automatic CSRF token fetching, X-CSRF-Token header injection, and automatic retry on CSRF failures
     -   **Auth Flow Modernization**: Removed all localStorage token handling, logout now calls backend to clear HTTP-only cookies
+    -   **Google OAuth Security**: Fixed Google OAuth to use HTTP-only cookies instead of URL tokens, preventing token exposure in browser history
+    -   **CSRF Retry Logic**: Implemented automatic CSRF token refresh and request retry on 403 errors with infinite loop prevention
     -   **Security Dependencies**: Added cookie-parser and csrf-csrf packages to backend
     -   **Production Documentation**: Created comprehensive PRODUCTION_SECRET_ROTATION_GUIDE.md with AWS deployment instructions, secret generation commands, rotation schedules, and emergency procedures
     -   **Staging Ready**: All critical security issues resolved, architect-approved, ready for beta/staging deployment (requires automated testing and monitoring before full production)
+    -   **Login Verified**: Email/password and Google OAuth login both tested and working correctly
 -   **Google OAuth Integration Complete**: Implemented comprehensive Google OAuth 2.0 authentication system with support for both sign-in and account linking. Users can now:
     -   Sign up/log in directly with Google account
     -   Link existing email/password accounts to Google
