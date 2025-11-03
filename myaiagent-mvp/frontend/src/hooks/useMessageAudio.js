@@ -38,7 +38,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
     setCurrentWordIndex(wordIndex);
 
     if (wordIndex >= wordTimingsRef.current.length) {
-      setState(AUDIO_STATES.COMPLETED);
+      setState(AUDIO_STATES.IDLE);
       setCurrentWordIndex(-1);
       cancelAnimationFrame(animationFrameRef.current);
     } else {
@@ -105,7 +105,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
 
       source.onended = () => {
         if (state === AUDIO_STATES.PLAYING) {
-          setState(AUDIO_STATES.COMPLETED);
+          setState(AUDIO_STATES.IDLE);
           setCurrentWordIndex(-1);
           pausedAtRef.current = 0;
           cancelAnimationFrame(animationFrameRef.current);
@@ -168,12 +168,8 @@ export default function useMessageAudio(messageId, text, voiceId) {
   }, [play]);
 
   const toggle = useCallback(() => {
-    if (state === AUDIO_STATES.IDLE || state === AUDIO_STATES.COMPLETED || state === AUDIO_STATES.ERROR) {
-      if (state === AUDIO_STATES.COMPLETED) {
-        replay();
-      } else {
-        play();
-      }
+    if (state === AUDIO_STATES.IDLE || state === AUDIO_STATES.ERROR) {
+      play();
     } else if (state === AUDIO_STATES.PLAYING) {
       pause();
     } else if (state === AUDIO_STATES.PAUSED) {
