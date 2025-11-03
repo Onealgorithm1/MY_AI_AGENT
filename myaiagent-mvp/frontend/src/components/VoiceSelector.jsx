@@ -22,8 +22,12 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange, className 
       
       setVoices(voiceList);
       
-      if (!selectedVoice && voiceList.length > 0) {
-        onVoiceChange(voiceList[0].voice_id);
+      // If no voice is selected OR the selected voice is not in the list (stale/invalid ID),
+      // default to the first available voice
+      if (!selectedVoice || !voiceList.find(v => v.voice_id === selectedVoice)) {
+        if (voiceList.length > 0) {
+          onVoiceChange(voiceList[0].voice_id);
+        }
       }
       
     } catch (error) {

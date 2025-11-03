@@ -74,7 +74,7 @@ export default function ChatPage() {
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
+  const [selectedVoice, setSelectedVoice] = useState('en-US-Neural2-C');
   const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
   
   // Typewriter state
