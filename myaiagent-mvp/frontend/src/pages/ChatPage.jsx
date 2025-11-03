@@ -400,7 +400,7 @@ export default function ChatPage() {
       
       // If deleting the current conversation, clear it
       if (currentConversation?.id === convId) {
-        setCurrentConversation(null);
+        useChatStore.getState().setCurrentConversation(null);
         setMessages([]);
       }
       

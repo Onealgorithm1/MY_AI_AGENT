@@ -37,6 +37,11 @@ export async function getVoices(apiKey = null) {
   }
 }
 
+// Validate voice ID format (ElevenLabs voice IDs are alphanumeric, ~20 chars)
+function isValidVoiceId(voiceId) {
+  return voiceId && /^[a-zA-Z0-9]{15,30}$/.test(voiceId);
+}
+
 // Generate speech with ElevenLabs (compatible with OpenAI interface)
 export async function generateSpeechElevenLabs(
   text, 
@@ -47,13 +52,21 @@ export async function generateSpeechElevenLabs(
   try {
     const client = await getElevenLabsClient(apiKey);
     
+    // Validate voice ID and fall back to default if invalid
+    const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+    const validVoiceId = isValidVoiceId(voiceId) ? voiceId : DEFAULT_VOICE;
+    
+    if (validVoiceId !== voiceId) {
+      console.warn(`⚠️  Invalid voice ID "${voiceId}", using default voice instead`);
+    }
+    
     console.log('🔊 ElevenLabs TTS Request:', {
       textLength: text.length,
-      voiceId: voiceId,
+      voiceId: validVoiceId,
       model: modelId
     });
 
-    const audio = await client.textToSpeech.convert(voiceId, {
+    const audio = await client.textToSpeech.convert(validVoiceId, {
       text: text,
       model_id: modelId,
       voice_settings: {
