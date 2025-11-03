@@ -55,22 +55,22 @@ export async function createChatCompletion(messages, model = 'gemini-2.0-flash-e
       hasStream: stream
     });
     
-    // Build request parameters (top-level, not nested in "config")
+    // Build request parameters for @google/genai SDK
     const requestParams = {
       model,
       contents: geminiMessages.contents,
-      generationConfig: {
+      config: {
         temperature: 0.7,
         maxOutputTokens: 4000,
       }
     };
     
-    // Add system instruction if present (as Content object)
+    // Add system instruction if present
     if (geminiMessages.systemInstruction) {
       requestParams.systemInstruction = geminiMessages.systemInstruction;
     }
     
-    // Add tools if provided (top-level)
+    // Add tools if provided
     if (tools) {
       requestParams.tools = tools;
     }
@@ -80,13 +80,13 @@ export async function createChatCompletion(messages, model = 'gemini-2.0-flash-e
       const result = await client.models.generateContentStream(requestParams);
       
       // Return stream-like object compatible with OpenAI
-      return createStreamAdapter(result);
+      return createStreamAdapter(result, model);
     } else {
       // Non-streaming response
       const result = await client.models.generateContent(requestParams);
       
       // Transform Gemini response to OpenAI format
-      return transformGeminiResponse(result);
+      return transformGeminiResponse(result, model);
     }
     
   } catch (error) {
@@ -136,8 +136,10 @@ function transformMessagesToGemini(messages) {
 /**
  * Transform Gemini response to OpenAI-compatible format
  */
-function transformGeminiResponse(geminiResult) {
-  const candidate = geminiResult.candidates?.[0];
+function transformGeminiResponse(geminiResult, model) {
+  const response = geminiResult.response || geminiResult;
+  const candidate = response.candidates?.[0];
+  
   if (!candidate) {
     throw new Error('No response from Gemini');
   }
@@ -160,14 +162,17 @@ function transformGeminiResponse(geminiResult) {
   
   // Return OpenAI-compatible format
   return {
+    id: `chatcmpl-${Date.now()}`,
+    model,
     choices: [{
       message,
-      finish_reason: candidate.finishReason?.toLowerCase() || 'stop'
+      finish_reason: candidate.finishReason?.toLowerCase() || 'stop',
+      index: 0
     }],
     usage: {
-      prompt_tokens: geminiResult.usageMetadata?.promptTokenCount || 0,
-      completion_tokens: geminiResult.usageMetadata?.candidatesTokenCount || 0,
-      total_tokens: geminiResult.usageMetadata?.totalTokenCount || 0
+      prompt_tokens: response.usageMetadata?.promptTokenCount || 0,
+      completion_tokens: response.usageMetadata?.candidatesTokenCount || 0,
+      total_tokens: response.usageMetadata?.totalTokenCount || 0
     }
   };
 }
@@ -175,7 +180,7 @@ function transformGeminiResponse(geminiResult) {
 /**
  * Create stream adapter for Gemini streaming response
  */
-function createStreamAdapter(geminiStream) {
+function createStreamAdapter(geminiStream, model) {
   const adapter = new EventEmitter();
   
   // Process stream asynchronously
