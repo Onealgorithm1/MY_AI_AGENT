@@ -6,7 +6,6 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -16,13 +15,13 @@ export const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.login(email, password);
-          const { user, token } = response.data;
+          const { user } = response.data;
           
-          localStorage.setItem('token', token);
+          // SECURITY: Token is now stored in HTTP-only cookie (set by backend)
+          // No need to store in localStorage
           
           set({
             user,
-            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -40,13 +39,13 @@ export const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.signup(email, password, fullName);
-          const { user, token } = response.data;
+          const { user } = response.data;
           
-          localStorage.setItem('token', token);
+          // SECURITY: Token is now stored in HTTP-only cookie (set by backend)
+          // No need to store in localStorage
           
           set({
             user,
-            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -60,15 +59,21 @@ export const useAuthStore = create(
       },
 
       // Logout
-      logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: null,
-        });
+      logout: async () => {
+        try {
+          // Call backend to clear HTTP-only cookie
+          await authApi.logout();
+        } catch (error) {
+          console.error('Logout API call failed:', error);
+        } finally {
+          // Clear local state regardless of API call result
+          localStorage.removeItem('user');
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null,
+          });
+        }
       },
 
       // Refresh user data
@@ -88,7 +93,6 @@ export const useAuthStore = create(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }

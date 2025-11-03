@@ -86,7 +86,17 @@ router.post('/signup', async (req, res) => {
       [user.id]
     );
 
+    // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
+    const cookieOptions = {
+      httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
+      secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+      sameSite: 'strict', // CSRF defense
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    };
+    res.cookie('jwt', token, cookieOptions);
+
     res.status(201).json({
+      status: 'success',
       message: 'Account created successfully',
       user: {
         id: user.id,
@@ -94,7 +104,6 @@ router.post('/signup', async (req, res) => {
         fullName: user.full_name,
         role: user.role,
       },
-      token,
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -148,7 +157,17 @@ router.post('/login', async (req, res) => {
     // Generate token
     const token = generateToken(user);
 
+    // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
+    const cookieOptions = {
+      httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
+      secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+      sameSite: 'strict', // CSRF defense
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    };
+    res.cookie('jwt', token, cookieOptions);
+
     res.json({
+      status: 'success',
       message: 'Login successful',
       user: {
         id: user.id,
@@ -156,7 +175,6 @@ router.post('/login', async (req, res) => {
         fullName: user.full_name,
         role: user.role,
       },
-      token,
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -254,11 +272,19 @@ router.put('/settings', authenticate, async (req, res) => {
   }
 });
 
-// Logout (client-side only, but we can track it)
+// Logout - Clear HTTP-only cookie
 router.post('/logout', authenticate, async (req, res) => {
-  // In a stateless JWT system, logout is handled client-side by removing the token
-  // But we can log it for analytics
-  res.json({ message: 'Logged out successfully' });
+  // Clear the JWT cookie
+  res.clearCookie('jwt', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+  
+  res.json({ 
+    status: 'success',
+    message: 'Logged out successfully' 
+  });
 });
 
 // Get full user profile

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
+import { fetchCsrfToken } from './services/api';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
@@ -39,6 +40,11 @@ function AdminRoute({ children }) {
 }
 
 function App() {
+  // SECURITY: Fetch CSRF token on app load
+  useEffect(() => {
+    fetchCsrfToken();
+  }, []);
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>

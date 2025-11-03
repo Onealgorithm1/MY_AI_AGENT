@@ -36,11 +36,19 @@ export function verifyToken(token) {
   }
 }
 
-// Extract token from header
+// Extract token from cookie or header
+// SECURITY: Prioritize HTTP-only cookie (secure), fallback to Authorization header (backward compatibility)
 export function extractToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  // First, check HTTP-only cookie (secure method)
+  if (req.cookies && req.cookies.jwt) {
+    return req.cookies.jwt;
   }
-  return authHeader.substring(7);
+  
+  // Fallback to Authorization header for backward compatibility
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  return null;
 }

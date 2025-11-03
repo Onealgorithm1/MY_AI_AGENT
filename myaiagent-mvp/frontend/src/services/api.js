@@ -2,33 +2,65 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// CSRF token storage
+let csrfToken = null;
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // SECURITY: Enable credentials (cookies) to be sent with requests
+  withCredentials: true,
 });
 
-// Request interceptor - add auth token
+// Function to fetch and set CSRF token
+export const fetchCsrfToken = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
+      withCredentials: true,
+    });
+    csrfToken = response.data.csrfToken;
+    return csrfToken;
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    return null;
+  }
+};
+
+// Request interceptor - add CSRF token to state-changing requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Add CSRF token to POST, PUT, PATCH, DELETE requests
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      } else {
+        console.warn('CSRF token missing for state-changing request:', config.method, config.url);
+      }
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle errors
+// Response interceptor - handle errors and CSRF token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    // CSRF token invalid/missing - fetch new token and retry
+    if (error.response?.status === 403 && error.response?.data?.code === 'EBADCSRFTOKEN') {
+      console.log('CSRF token invalid, fetching new token...');
+      await fetchCsrfToken();
+      // Retry the original request with new token
+      const config = error.config;
+      config.headers['X-CSRF-Token'] = csrfToken;
+      return api(config);
+    }
+    
+    // Unauthorized - JWT invalid/expired, clear user data and redirect
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }

@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
+import { doubleCsrf } from 'csrf-csrf';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -84,12 +86,34 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Cookie parsing (REQUIRED for JWT cookies and CSRF)
+app.use(cookieParser());
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Compression
 app.use(compression());
+
+// CSRF Protection (SECURITY: Protects against Cross-Site Request Forgery)
+const csrfSecret = process.env.CSRF_SECRET || process.env.HMAC_SECRET || 'change-this-csrf-secret';
+const {
+  generateToken: generateCsrfToken,
+  doubleCsrfProtection,
+} = doubleCsrf({
+  getSecret: () => csrfSecret,
+  cookieName: '__Host-csrf',
+  cookieOptions: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/',
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+});
 
 // Request logging
 app.use((req, res, next) => {
@@ -126,6 +150,16 @@ app.get('/health', (req, res) => {
 // Serve uploaded files
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
+
+// CSRF Token endpoint (public, no authentication required)
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateCsrfToken(req, res);
+  res.json({ csrfToken: token });
+});
+
+// Apply CSRF protection to all state-changing API requests
+// NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
+app.use('/api/', doubleCsrfProtection);
 
 // API routes
 app.use('/api/auth', authRoutes);
