@@ -37,6 +37,7 @@ import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 import SearchResults from '../components/SearchResults';
 import VoiceSelector from '../components/VoiceSelector';
+import MessageWithAudio from '../components/MessageWithAudio';
 import useTypewriter from '../hooks/useTypewriter';
 
 // Helper function to get base URL for serving uploaded files
@@ -73,16 +74,12 @@ export default function ChatPage() {
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [playingMessageId, setPlayingMessageId] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
   const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
-  const audioRef = useRef(null);
   
   // Typewriter state
   const [typingSpeed, setTypingSpeed] = useState('snappy');
   const [streamingContent, setStreamingContent] = useState('');
-  const pendingAutoPlayRef = useRef(null);
   
   // Typewriter for streaming message
   const { displayedText: typewriterText, isTyping, skip: skipTypewriter } = useTypewriter(
@@ -149,77 +146,6 @@ export default function ChatPage() {
     }
   };
 
-  // TTS Functions
-  const playMessageAudio = async (text, messageId = null) => {
-    if (!text) return;
-    
-    // If already playing this message, pause it
-    if (isSpeaking && playingMessageId === messageId && audioRef.current) {
-      audioRef.current.pause();
-      setIsSpeaking(false);
-      return;
-    }
-    
-    // If paused on this message, resume
-    if (!isSpeaking && playingMessageId === messageId && audioRef.current && !audioRef.current.ended) {
-      audioRef.current.play();
-      setIsSpeaking(true);
-      return;
-    }
-    
-    try {
-      setIsSpeaking(true);
-      setPlayingMessageId(messageId);
-      console.log('🔊 Generating speech for message...');
-      
-      const truncatedText = text.length > 5000 
-        ? text.substring(0, 4997) + '...' 
-        : text;
-      
-      const audioBlob = await tts.synthesize(truncatedText, selectedVoice);
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      if (audioRef.current) {
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
-      }
-      
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        setIsSpeaking(false);
-        setPlayingMessageId(null);
-        console.log('✅ Speech playback completed');
-      };
-      
-      audio.onerror = (e) => {
-        URL.revokeObjectURL(audioUrl);
-        setIsSpeaking(false);
-        setPlayingMessageId(null);
-        console.error('❌ Audio playback error:', e);
-        toast.error('Failed to play audio');
-      };
-      
-      await audio.play();
-      
-    } catch (error) {
-      setIsSpeaking(false);
-      setPlayingMessageId(null);
-      console.error('❌ TTS synthesis failed:', error);
-      
-      if (error.response?.data?.code === 'API_KEY_MISSING') {
-        toast.error('ElevenLabs API key not configured');
-      } else if (error.response?.data?.code === 'INVALID_API_KEY') {
-        toast.error('Invalid ElevenLabs API key');
-      } else if (error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
-        toast.error('Voice synthesis rate limit reached. Please try again later.');
-      } else {
-        toast.error('Could not generate speech');
-      }
-    }
-  };
 
   const handleTtsToggle = async (enabled) => {
     setTtsEnabled(enabled);
@@ -281,35 +207,6 @@ export default function ChatPage() {
     loadPreferences();
   }, []);
 
-  // Auto-play after messages update
-  useEffect(() => {
-    if (pendingAutoPlayRef.current && messages.length > 0) {
-      const assistantMessages = messages.filter(m => m.role === 'assistant');
-      const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
-      
-      // Check if the last message content matches our pending content
-      if (lastAssistantMessage && lastAssistantMessage.content === pendingAutoPlayRef.current) {
-        const content = pendingAutoPlayRef.current;
-        const messageId = lastAssistantMessage.id;
-        pendingAutoPlayRef.current = null; // Clear pending
-        
-        // Small delay to ensure typewriter completes
-        setTimeout(() => {
-          playMessageAudio(content, messageId);
-        }, 300);
-      }
-    }
-  }, [messages]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
-      }
-    };
-  }, []);
 
   // Send message
   const sendMessage = async () => {
@@ -397,13 +294,6 @@ export default function ChatPage() {
               }
               
               if (data.done) {
-                const completedContent = fullResponse;
-                
-                // Store for auto-play after messages reload
-                if (ttsAutoPlay && completedContent) {
-                  pendingAutoPlayRef.current = completedContent;
-                }
-                
                 // Clear streaming after a brief delay to allow typewriter to finish
                 setTimeout(() => {
                   setStreamingMessage('');
@@ -837,7 +727,7 @@ export default function ChatPage() {
                 ttsEnabled 
                   ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
-              } ${isSpeaking ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
+              }`}
               title={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
             >
               {ttsEnabled ? (
@@ -850,12 +740,6 @@ export default function ChatPage() {
                   <VolumeX className="w-4 h-4" />
                   <span className="text-sm">Voice Off</span>
                 </>
-              )}
-              {isSpeaking && (
-                <span className="flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
               )}
             </button>
             
@@ -920,89 +804,55 @@ export default function ChatPage() {
           )}
 
           <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`group flex gap-4 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
-                  </div>
-                )}
+            {messages.map((message, index) => {
+              const isLastAssistantMessage = 
+                message.role === 'assistant' && 
+                index === messages.length - 1;
 
-                <div className="max-w-[80%]">
-                  <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                  </div>
-                  
-                  {message.role === 'assistant' && message.metadata?.searchResults && (
-                    <SearchResults results={message.metadata.searchResults} />
-                  )}
-                  
+              return (
+                <div
+                  key={message.id}
+                  className={`group flex gap-4 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
                   {message.role === 'assistant' && (
-                    <div className="flex items-center gap-3 mt-1.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button
-                        onClick={() => playMessageAudio(message.content, message.id)}
-                        className={`p-1 transition-colors ${
-                          playingMessageId === message.id
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
-                        }`}
-                        title={isSpeaking && playingMessageId === message.id ? 'Pause audio' : 'Play audio'}
-                        aria-label={isSpeaking && playingMessageId === message.id ? 'Pause audio' : 'Play audio'}
-                      >
-                        {isSpeaking && playingMessageId === message.id ? (
-                          <Pause className="w-3.5 h-3.5 animate-pulse" />
-                        ) : (
-                          <Volume2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => copyToClipboard(message.content)}
-                        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                        title="Copy message"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => submitFeedback(message.id, 1)}
-                        className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                        title="Good response"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => submitFeedback(message.id, -1)}
-                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        title="Bad response"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 font-medium ml-auto">
-                        {message.metadata?.autoSelected 
-                          ? `Auto 🤖 (${message.model})` 
-                          : message.model}
-                      </span>
+                    <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
+                    </div>
+                  )}
+
+                  {message.role === 'user' ? (
+                    <div className="max-w-[80%]">
+                      <div className="rounded-2xl px-4 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900">
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <MessageWithAudio
+                      message={message}
+                      voiceId={selectedVoice}
+                      ttsEnabled={ttsEnabled}
+                      ttsAutoPlay={ttsAutoPlay}
+                      shouldAutoPlay={isLastAssistantMessage}
+                      onCopy={copyToClipboard}
+                      onFeedback={submitFeedback}
+                      searchResults={
+                        message.metadata?.searchResults && (
+                          <SearchResults results={message.metadata.searchResults} />
+                        )
+                      }
+                    />
+                  )}
+
+                  {message.role === 'user' && (
+                    <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-white dark:text-gray-900" />
                     </div>
                   )}
                 </div>
-
-                {message.role === 'user' && (
-                  <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="w-5 h-5 text-white dark:text-gray-900" />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {streamingMessage && (
               <div className="flex gap-4 justify-start">

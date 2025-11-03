@@ -72,7 +72,6 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange, className 
         {voices.map((voice) => (
           <option key={voice.voice_id} value={voice.voice_id}>
             {voice.name}
-            {voice.labels?.accent && ` (${voice.labels.accent})`}
           </option>
         ))}
       </select>
