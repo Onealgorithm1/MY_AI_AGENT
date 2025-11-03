@@ -4,27 +4,27 @@
  */
 
 const MODELS = {
-  // Gemini 2.0 Flash - Flagship fast model
-  'gemini-2.0-flash-exp': {
-    name: 'Gemini 2.0 Flash',
+  // Gemini 2.5 Flash - Latest stable fast model
+  'gemini-2.5-flash': {
+    name: 'Gemini 2.5 Flash',
     cost: 'low',
     speed: 'very-fast',
     capabilities: ['text', 'vision', 'audio', 'complex-reasoning', 'multimodal'],
     bestFor: ['all-tasks', 'balanced-performance', 'cost-optimization'],
   },
   
-  // Gemini 1.5 Pro - Advanced reasoning
-  'gemini-1.5-pro': {
-    name: 'Gemini 1.5 Pro',
+  // Gemini 2.5 Pro - Advanced reasoning and long context
+  'gemini-2.5-pro': {
+    name: 'Gemini 2.5 Pro',
     cost: 'medium',
     speed: 'medium',
     capabilities: ['text', 'vision', 'audio', 'advanced-reasoning', 'long-context'],
     bestFor: ['complex-analysis', 'long-context', 'detailed-reasoning'],
   },
   
-  // Gemini 1.5 Flash - Fast and efficient
-  'gemini-1.5-flash': {
-    name: 'Gemini 1.5 Flash',
+  // Gemini 2.0 Flash - Stable and efficient
+  'gemini-2.0-flash': {
+    name: 'Gemini 2.0 Flash',
     cost: 'very-low',
     speed: 'fast',
     capabilities: ['text', 'vision', 'basic-reasoning'],
@@ -62,9 +62,9 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const lowerContent = content.toLowerCase();
   const wordCount = content.split(/\s+/).length;
   
-  // 1. Check for vision tasks (Gemini 2.0 Flash handles multimodal excellently)
+  // 1. Check for vision tasks (Gemini 2.5 Flash handles multimodal excellently)
   if (hasAttachments || VISION_KEYWORDS.some(keyword => lowerContent.includes(keyword))) {
-    return 'gemini-2.0-flash-exp';
+    return 'gemini-2.5-flash';
   }
   
   // 2. Check for complex reasoning
@@ -74,13 +74,13 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const hasMath = /\d+\s*[\+\-\*\/\^]\s*\d+/.test(content) || lowerContent.includes('equation');
   
   if (hasReasoningKeywords && (isLongQuery || hasCodeBlock || hasMath)) {
-    // Use Gemini 1.5 Pro for very complex reasoning, coding, math
-    return 'gemini-1.5-pro';
+    // Use Gemini 2.5 Pro for very complex reasoning, coding, math
+    return 'gemini-2.5-pro';
   }
   
   if (hasReasoningKeywords || hasMath || hasCodeBlock) {
-    // Use Gemini 2.0 Flash for moderate reasoning tasks (very capable)
-    return 'gemini-2.0-flash-exp';
+    // Use Gemini 2.5 Flash for moderate reasoning tasks (very capable)
+    return 'gemini-2.5-flash';
   }
   
   // 3. Check for simple queries (use fastest)
@@ -88,11 +88,11 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const isShortQuery = wordCount < 10;
   
   if (isSimpleQuery && isShortQuery) {
-    return 'gemini-1.5-flash';
+    return 'gemini-2.0-flash';
   }
   
   if (isShortQuery || wordCount < 20) {
-    return 'gemini-1.5-flash';
+    return 'gemini-2.0-flash';
   }
   
   // 4. Check conversation context
@@ -100,12 +100,12 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const needsContext = conversationLength > 10;
   
   if (needsContext && isLongQuery) {
-    // Use Gemini 1.5 Pro for long context understanding (2M tokens!)
-    return 'gemini-1.5-pro';
+    // Use Gemini 2.5 Pro for long context understanding
+    return 'gemini-2.5-pro';
   }
   
-  // 5. Default: Balance cost and quality with Gemini 2.0 Flash
-  return 'gemini-2.0-flash-exp';
+  // 5. Default: Balance cost and quality with Gemini 2.5 Flash
+  return 'gemini-2.5-flash';
 }
 
 /**
@@ -114,7 +114,7 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
  * @returns {Object} - Model metadata
  */
 export function getModelInfo(modelId) {
-  return MODELS[modelId] || MODELS['gemini-2.0-flash-exp'];
+  return MODELS[modelId] || MODELS['gemini-2.5-flash'];
 }
 
 /**

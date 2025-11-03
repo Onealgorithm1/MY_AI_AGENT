@@ -49,7 +49,7 @@ async function triggerAutoNaming(conversationId, userId) {
 // Send message and get AI response
 router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res) => {
   try {
-    const { conversationId, content, model = 'gemini-2.0-flash-exp', stream = false } = req.body;
+    const { conversationId, content, model = 'gemini-2.5-flash', stream = false } = req.body;
 
     if (!conversationId || !content) {
       return res.status(400).json({ error: 'conversationId and content required' });

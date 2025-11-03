@@ -37,7 +37,7 @@ function transformFunctionsToTools(functions) {
  * Chat completion with streaming and function calling (Gemini)
  * Compatible with OpenAI interface for easy migration
  */
-export async function createChatCompletion(messages, model = 'gemini-2.0-flash-exp', stream = false, functions = null) {
+export async function createChatCompletion(messages, model = 'gemini-2.5-flash', stream = false, functions = null) {
   try {
     const client = await getGeminiClient();
     
@@ -235,7 +235,7 @@ export async function analyzeImage(imageUrl, prompt = 'What do you see in this i
     const base64Image = Buffer.from(imageBuffer).toString('base64');
     
     const result = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [
@@ -281,7 +281,7 @@ Rules:
 - Return empty array if no facts found`;
 
     const result = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: JSON.stringify(conversationHistory) }]
@@ -313,7 +313,7 @@ export function estimateTokens(text) {
 /**
  * Build messages with memory context and optional UI awareness
  */
-export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gemini-2.0-flash-exp', uiAwarePrompt = null) {
+export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gemini-2.5-flash', uiAwarePrompt = null) {
   const memoryContext = memoryFacts && memoryFacts.length > 0
     ? memoryFacts.map(f => f.fact).join('\n- ')
     : null;
