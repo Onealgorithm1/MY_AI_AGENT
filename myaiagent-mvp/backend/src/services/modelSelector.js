@@ -1,39 +1,34 @@
 /**
  * Intelligent Model Selector
- * Analyzes user queries and recommends the optimal OpenAI model
+ * Analyzes user queries and recommends the optimal Gemini model
  */
 
 const MODELS = {
-  // Flagship models
-  'gpt-4o': {
-    name: 'GPT-4o',
-    cost: 'high',
-    speed: 'medium',
-    capabilities: ['text', 'vision', 'audio', 'complex-reasoning'],
-    bestFor: ['vision-tasks', 'multimodal', 'complex-analysis', 'long-context'],
-  },
-  'gpt-4o-mini': {
-    name: 'GPT-4o Mini',
+  // Gemini 2.0 Flash - Flagship fast model
+  'gemini-2.0-flash-exp': {
+    name: 'Gemini 2.0 Flash',
     cost: 'low',
-    speed: 'fast',
-    capabilities: ['text', 'vision', 'basic-reasoning'],
-    bestFor: ['simple-queries', 'quick-responses', 'cost-optimization'],
+    speed: 'very-fast',
+    capabilities: ['text', 'vision', 'audio', 'complex-reasoning', 'multimodal'],
+    bestFor: ['all-tasks', 'balanced-performance', 'cost-optimization'],
   },
   
-  // Previous generation
-  'gpt-4-turbo': {
-    name: 'GPT-4 Turbo',
-    cost: 'high',
+  // Gemini 1.5 Pro - Advanced reasoning
+  'gemini-1.5-pro': {
+    name: 'Gemini 1.5 Pro',
+    cost: 'medium',
     speed: 'medium',
-    capabilities: ['text', 'vision', 'complex-reasoning'],
-    bestFor: ['detailed-analysis', 'long-form-content'],
+    capabilities: ['text', 'vision', 'audio', 'advanced-reasoning', 'long-context'],
+    bestFor: ['complex-analysis', 'long-context', 'detailed-reasoning'],
   },
-  'gpt-3.5-turbo': {
-    name: 'GPT-3.5 Turbo',
+  
+  // Gemini 1.5 Flash - Fast and efficient
+  'gemini-1.5-flash': {
+    name: 'Gemini 1.5 Flash',
     cost: 'very-low',
-    speed: 'very-fast',
-    capabilities: ['text', 'basic-reasoning'],
-    bestFor: ['simple-chat', 'quick-answers', 'extreme-cost-optimization'],
+    speed: 'fast',
+    capabilities: ['text', 'vision', 'basic-reasoning'],
+    bestFor: ['simple-queries', 'quick-responses', 'high-volume'],
   },
 };
 
@@ -67,37 +62,37 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const lowerContent = content.toLowerCase();
   const wordCount = content.split(/\s+/).length;
   
-  // 1. Check for vision tasks (requires GPT-4o)
+  // 1. Check for vision tasks (Gemini 2.0 Flash handles multimodal excellently)
   if (hasAttachments || VISION_KEYWORDS.some(keyword => lowerContent.includes(keyword))) {
-    return 'gpt-4o';
+    return 'gemini-2.0-flash-exp';
   }
   
-  // 2. Check for complex reasoning (use GPT-4o for advanced tasks)
+  // 2. Check for complex reasoning
   const hasReasoningKeywords = REASONING_KEYWORDS.some(keyword => lowerContent.includes(keyword));
   const isLongQuery = wordCount > 100;
   const hasCodeBlock = content.includes('```') || lowerContent.includes('code');
   const hasMath = /\d+\s*[\+\-\*\/\^]\s*\d+/.test(content) || lowerContent.includes('equation');
   
   if (hasReasoningKeywords && (isLongQuery || hasCodeBlock || hasMath)) {
-    // Use GPT-4o for very complex reasoning, coding, math
-    return 'gpt-4o';
+    // Use Gemini 1.5 Pro for very complex reasoning, coding, math
+    return 'gemini-1.5-pro';
   }
   
   if (hasReasoningKeywords || hasMath || hasCodeBlock) {
-    // Use GPT-4 Turbo for moderate reasoning tasks
-    return 'gpt-4-turbo';
+    // Use Gemini 2.0 Flash for moderate reasoning tasks (very capable)
+    return 'gemini-2.0-flash-exp';
   }
   
-  // 3. Check for simple queries (use cheapest/fastest)
+  // 3. Check for simple queries (use fastest)
   const isSimpleQuery = SIMPLE_KEYWORDS.some(keyword => lowerContent.includes(keyword));
   const isShortQuery = wordCount < 10;
   
   if (isSimpleQuery && isShortQuery) {
-    return 'gpt-3.5-turbo';
+    return 'gemini-1.5-flash';
   }
   
   if (isShortQuery || wordCount < 20) {
-    return 'gpt-4o-mini';
+    return 'gemini-1.5-flash';
   }
   
   // 4. Check conversation context
@@ -105,12 +100,12 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
   const needsContext = conversationLength > 10;
   
   if (needsContext && isLongQuery) {
-    // Use GPT-4o for long context understanding
-    return 'gpt-4o';
+    // Use Gemini 1.5 Pro for long context understanding (2M tokens!)
+    return 'gemini-1.5-pro';
   }
   
-  // 5. Default: Balance cost and quality with gpt-4o-mini
-  return 'gpt-4o-mini';
+  // 5. Default: Balance cost and quality with Gemini 2.0 Flash
+  return 'gemini-2.0-flash-exp';
 }
 
 /**
@@ -119,7 +114,7 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
  * @returns {Object} - Model metadata
  */
 export function getModelInfo(modelId) {
-  return MODELS[modelId] || MODELS['gpt-4o-mini'];
+  return MODELS[modelId] || MODELS['gemini-2.0-flash-exp'];
 }
 
 /**

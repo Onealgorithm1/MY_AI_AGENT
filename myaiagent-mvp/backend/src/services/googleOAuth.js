@@ -2,7 +2,11 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { GOOGLE_OAUTH_CONFIG } from '../config/googleOAuth.js';
 
-const HMAC_SECRET = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// ✅ BUG FIX: Enforce ENCRYPTION_KEY requirement - no fallback to random bytes!
+const HMAC_SECRET = process.env.ENCRYPTION_KEY;
+if (!HMAC_SECRET) {
+  throw new Error('CRITICAL: ENCRYPTION_KEY environment variable is required for OAuth security. Please add it to your secrets.');
+}
 const STATE_TOKEN_EXPIRY_MS = 10 * 60 * 1000;
 
 export class GoogleOAuthService {

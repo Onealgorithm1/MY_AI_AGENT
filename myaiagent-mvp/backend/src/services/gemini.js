@@ -44,20 +44,7 @@ export async function createChatCompletion(messages, model = 'gemini-2.0-flash-e
     // Transform OpenAI function format to Gemini tools format
     const tools = transformFunctionsToTools(functions);
     
-    // Prepare config
-    const config = {
-      temperature: 0.7,
-      maxOutputTokens: 4000,
-    };
-    
-    // Add tools if provided
-    if (tools) {
-      config.tools = tools;
-    }
-    
     // Transform messages to Gemini format
-    // OpenAI: [{ role: 'system'|'user'|'assistant', content: string }]
-    // Gemini: contents string or array of parts
     const geminiMessages = transformMessagesToGemini(messages);
     
     console.log('🔵 Gemini API Request:', {
@@ -68,25 +55,35 @@ export async function createChatCompletion(messages, model = 'gemini-2.0-flash-e
       hasStream: stream
     });
     
+    // Build request parameters (top-level, not nested in "config")
+    const requestParams = {
+      model,
+      contents: geminiMessages.contents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4000,
+      }
+    };
+    
+    // Add system instruction if present (as Content object)
+    if (geminiMessages.systemInstruction) {
+      requestParams.systemInstruction = geminiMessages.systemInstruction;
+    }
+    
+    // Add tools if provided (top-level)
+    if (tools) {
+      requestParams.tools = tools;
+    }
+    
     if (stream) {
       // Streaming response
-      const result = await client.models.generateContentStream({
-        model,
-        contents: geminiMessages.contents,
-        systemInstruction: geminiMessages.systemInstruction,
-        config
-      });
+      const result = await client.models.generateContentStream(requestParams);
       
       // Return stream-like object compatible with OpenAI
       return createStreamAdapter(result);
     } else {
       // Non-streaming response
-      const result = await client.models.generateContent({
-        model,
-        contents: geminiMessages.contents,
-        systemInstruction: geminiMessages.systemInstruction,
-        config
-      });
+      const result = await client.models.generateContent(requestParams);
       
       // Transform Gemini response to OpenAI format
       return transformGeminiResponse(result);
@@ -119,8 +116,11 @@ function transformMessagesToGemini(messages) {
   
   for (const msg of messages) {
     if (msg.role === 'system') {
-      // Gemini uses separate systemInstruction field
-      systemInstruction = msg.content;
+      // Gemini systemInstruction must be a Content object
+      systemInstruction = {
+        role: 'user',
+        parts: [{ text: msg.content }]
+      };
     } else {
       // Transform user/assistant messages
       contents.push({
