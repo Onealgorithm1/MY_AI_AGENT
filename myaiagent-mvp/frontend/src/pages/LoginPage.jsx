@@ -14,13 +14,22 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const result = await login(email, password);
+    console.log('🔵 Login form submitted with:', { email, password: password ? '***' : 'empty' });
     
-    if (result.success) {
-      toast.success('Welcome back!');
-      navigate('/');
-    } else {
-      toast.error(result.error);
+    try {
+      const result = await login(email, password);
+      
+      console.log('🔵 Login result:', result);
+      
+      if (result.success) {
+        toast.success('Welcome back!');
+        navigate('/');
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      console.error('🔴 Login error caught:', error);
+      toast.error('Login failed - see console for details');
     }
   };
 
