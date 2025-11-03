@@ -186,7 +186,6 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Debug log
     console.log('📋 Action Detection:', {
       query: userQuery.substring(0, 50),
-      isAction: isActionCommand,
       mentionsGoogle,
       hasGoogleAccess,
       shouldPassFunctions,
