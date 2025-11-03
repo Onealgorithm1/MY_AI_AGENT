@@ -1,4 +1,4 @@
-import { Volume2, VolumeX, Loader2, Pause, AlertCircle } from 'lucide-react';
+import { Volume2, VolumeX, Loader2, AlertCircle } from 'lucide-react';
 
 const getIconAndLabel = (state, isError) => {
   if (isError) {
@@ -20,20 +20,8 @@ const getIconAndLabel = (state, isError) => {
     case 'playing':
       return {
         icon: Volume2,
-        label: 'Pause audio',
+        label: 'Stop audio',
         color: 'text-blue-500',
-      };
-    case 'paused':
-      return {
-        icon: Pause,
-        label: 'Restart audio',
-        color: 'text-blue-500',
-      };
-    case 'completed':
-      return {
-        icon: VolumeX,
-        label: 'Replay audio',
-        color: 'text-gray-500',
       };
     case 'idle':
     default:

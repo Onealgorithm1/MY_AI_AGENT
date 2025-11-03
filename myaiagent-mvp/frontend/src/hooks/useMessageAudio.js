@@ -7,10 +7,12 @@ const AUDIO_STATES = {
   IDLE: 'idle',
   LOADING: 'loading',
   PLAYING: 'playing',
-  PAUSED: 'paused',
-  COMPLETED: 'completed',
   ERROR: 'error',
 };
+
+// Global state to track currently playing message
+let currentlyPlayingMessageId = null;
+let currentlyPlayingStopFn = null;
 
 export default function useMessageAudio(messageId, text, voiceId) {
   const [state, setState] = useState(AUDIO_STATES.IDLE);
@@ -82,8 +84,31 @@ export default function useMessageAudio(messageId, text, voiceId) {
     }
   }, [messageId, text, voiceId]);
 
+  const stop = useCallback(() => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.stop();
+      sourceNodeRef.current = null;
+    }
+    
+    cancelAnimationFrame(animationFrameRef.current);
+    pausedAtRef.current = 0;
+    setCurrentWordIndex(-1);
+    setState(AUDIO_STATES.IDLE);
+    
+    // Clear global tracking if this was the playing message
+    if (currentlyPlayingMessageId === messageId) {
+      currentlyPlayingMessageId = null;
+      currentlyPlayingStopFn = null;
+    }
+  }, [messageId]);
+
   const play = useCallback(async () => {
     if (state === AUDIO_STATES.PLAYING) return;
+
+    // Stop any other currently playing message
+    if (currentlyPlayingMessageId && currentlyPlayingMessageId !== messageId && currentlyPlayingStopFn) {
+      currentlyPlayingStopFn();
+    }
 
     if (!audioBufferRef.current) {
       const buffer = await loadAudio();
@@ -109,17 +134,28 @@ export default function useMessageAudio(messageId, text, voiceId) {
           setCurrentWordIndex(-1);
           pausedAtRef.current = 0;
           cancelAnimationFrame(animationFrameRef.current);
+          
+          // Clear global tracking
+          if (currentlyPlayingMessageId === messageId) {
+            currentlyPlayingMessageId = null;
+            currentlyPlayingStopFn = null;
+          }
         }
       };
 
-      const offset = pausedAtRef.current || 0;
-      source.start(0, offset);
+      // Always start from beginning
+      source.start(0, 0);
       
       sourceNodeRef.current = source;
-      startTimeRef.current = audioContextRef.current.currentTime - offset;
+      startTimeRef.current = audioContextRef.current.currentTime;
+      pausedAtRef.current = 0;
       
       setState(AUDIO_STATES.PLAYING);
       setHasPlayed(true);
+      
+      // Set global tracking
+      currentlyPlayingMessageId = messageId;
+      currentlyPlayingStopFn = stop;
       
       animationFrameRef.current = requestAnimationFrame(updateCurrentWord);
     } catch (err) {
@@ -127,55 +163,15 @@ export default function useMessageAudio(messageId, text, voiceId) {
       setError(err.message || 'Failed to play audio');
       setState(AUDIO_STATES.ERROR);
     }
-  }, [state, loadAudio, updateCurrentWord]);
-
-  const pause = useCallback(() => {
-    if (state !== AUDIO_STATES.PLAYING) return;
-
-    if (sourceNodeRef.current && audioContextRef.current) {
-      const currentTime = audioContextRef.current.currentTime - startTimeRef.current + pausedAtRef.current;
-      pausedAtRef.current = currentTime;
-      
-      sourceNodeRef.current.stop();
-      sourceNodeRef.current = null;
-    }
-
-    cancelAnimationFrame(animationFrameRef.current);
-    setState(AUDIO_STATES.PAUSED);
-  }, [state]);
-
-  const resume = useCallback(() => {
-    if (state !== AUDIO_STATES.PAUSED) return;
-    play();
-  }, [state, play]);
-
-  const stop = useCallback(() => {
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.stop();
-      sourceNodeRef.current = null;
-    }
-    
-    cancelAnimationFrame(animationFrameRef.current);
-    pausedAtRef.current = 0;
-    setCurrentWordIndex(-1);
-    setState(AUDIO_STATES.IDLE);
-  }, []);
-
-  const replay = useCallback(() => {
-    pausedAtRef.current = 0;
-    setCurrentWordIndex(-1);
-    play();
-  }, [play]);
+  }, [state, loadAudio, updateCurrentWord, messageId, stop]);
 
   const toggle = useCallback(() => {
     if (state === AUDIO_STATES.IDLE || state === AUDIO_STATES.ERROR) {
       play();
     } else if (state === AUDIO_STATES.PLAYING) {
-      pause();
-    } else if (state === AUDIO_STATES.PAUSED) {
-      replay(); // Restart from beginning instead of resuming
+      stop();
     }
-  }, [state, play, pause, replay]);
+  }, [state, play, stop]);
 
   const retry = useCallback(() => {
     audioBufferRef.current = null;
@@ -207,16 +203,11 @@ export default function useMessageAudio(messageId, text, voiceId) {
     error,
     hasPlayed,
     play,
-    pause,
-    resume,
     stop,
-    replay,
     toggle,
     retry,
     isLoading: state === AUDIO_STATES.LOADING,
     isPlaying: state === AUDIO_STATES.PLAYING,
-    isPaused: state === AUDIO_STATES.PAUSED,
-    isCompleted: state === AUDIO_STATES.COMPLETED,
     isError: state === AUDIO_STATES.ERROR,
     isIdle: state === AUDIO_STATES.IDLE,
   };
