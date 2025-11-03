@@ -148,7 +148,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       );
     }
 
-    // === ✅ BUG FIX: REFINED ACTION DETECTION (Less Aggressive) ===
+    // === ✅ BUG FIX: CONTEXT-AWARE ACTION DETECTION ===
     const userQuery = content.toLowerCase();
     const hasGoogleAccess = !!req.user.google_id;
 
@@ -159,8 +159,15 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'drive', 'document', 'spreadsheet'
     ];
 
-    // Only trigger functions when user EXPLICITLY mentions Google services
-    const mentionsGoogle = googleKeywords.some(kw => userQuery.includes(kw));
+    // Check current message AND recent conversation history for context
+    const mentionsGoogleNow = googleKeywords.some(kw => userQuery.includes(kw));
+    
+    // Also check the last 3 messages for Google service context
+    const recentMessages = conversationHistory.slice(-3).map(m => m.content.toLowerCase()).join(' ');
+    const mentionsGoogleRecent = googleKeywords.some(kw => recentMessages.includes(kw));
+    
+    // Trigger functions if current OR recent conversation mentions Google services
+    const mentionsGoogle = mentionsGoogleNow || mentionsGoogleRecent;
     
     // Only pass functions when user has Google access AND mentions Google services
     const shouldPassFunctions = mentionsGoogle && hasGoogleAccess;
