@@ -68,26 +68,26 @@ export default function MessageWithAudio({
         
         <button
           onClick={() => onCopy(message.content)}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 active:text-gray-700 dark:active:text-gray-100 transition-colors touch-manipulation"
+          className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:text-gray-700 dark:active:text-gray-100 active:bg-gray-200 dark:active:bg-gray-600 transition-colors touch-manipulation"
           title="Copy message"
         >
-          <Copy className="w-3.5 h-3.5" />
+          <Copy className="w-4 h-4 md:w-3.5 md:h-3.5" />
         </button>
         
         <button
           onClick={() => onFeedback(message.id, 1)}
-          className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 active:text-green-700 dark:active:text-green-300 transition-colors touch-manipulation"
+          className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 active:text-green-700 dark:active:text-green-300 active:bg-green-100 dark:active:bg-green-900/30 transition-colors touch-manipulation"
           title="Good response"
         >
-          <ThumbsUp className="w-3.5 h-3.5" />
+          <ThumbsUp className="w-4 h-4 md:w-3.5 md:h-3.5" />
         </button>
         
         <button
           onClick={() => onFeedback(message.id, -1)}
-          className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 active:text-red-700 dark:active:text-red-300 transition-colors touch-manipulation"
+          className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:text-red-700 dark:active:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 transition-colors touch-manipulation"
           title="Bad response"
         >
-          <ThumbsDown className="w-3.5 h-3.5" />
+          <ThumbsDown className="w-4 h-4 md:w-3.5 md:h-3.5" />
         </button>
         
         <span className="text-xs text-gray-400 dark:text-gray-500 font-medium ml-auto">
