@@ -212,9 +212,9 @@ export default function ChatPage() {
         }
         if (data.tts_voice_id) {
           // Validate voice ID format (Google TTS format with BCP-47 locale support)
-          // Examples: en-US-Neural2-C, sr-Latn-RS-Standard-A, cmn-Hans-CN-Neural2-A
-          // Accepts language code, optional script code (Latn, Hans, etc.), region, quality tier, variant
-          const isValidVoiceId = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){2,}-[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(data.tts_voice_id);
+          // Examples: en-US-Neural2-C (4 segments), sr-Latn-RS-Standard-A (5 segments)
+          // Accepts 2-3 letter language code, followed by 2-4 dash-separated segments
+          const isValidVoiceId = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,}){3,}$/.test(data.tts_voice_id);
           
           if (isValidVoiceId) {
             setSelectedVoice(data.tts_voice_id);
