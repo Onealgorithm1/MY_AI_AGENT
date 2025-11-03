@@ -82,6 +82,7 @@ export default function ChatPage() {
   // Typewriter state
   const [typingSpeed, setTypingSpeed] = useState('snappy');
   const [streamingContent, setStreamingContent] = useState('');
+  const pendingAutoPlayRef = useRef(null);
   
   // Typewriter for streaming message
   const { displayedText: typewriterText, isTyping, skip: skipTypewriter } = useTypewriter(
@@ -89,12 +90,6 @@ export default function ChatPage() {
     {
       speed: typingSpeed,
       enabled: streamingContent.length > 0,
-      onComplete: () => {
-        // Auto-play TTS if enabled and message is complete
-        if (ttsAutoPlay && streamingContent) {
-          playMessageAudio(streamingContent);
-        }
-      }
     }
   );
 
@@ -286,6 +281,26 @@ export default function ChatPage() {
     loadPreferences();
   }, []);
 
+  // Auto-play after messages update
+  useEffect(() => {
+    if (pendingAutoPlayRef.current && messages.length > 0) {
+      const assistantMessages = messages.filter(m => m.role === 'assistant');
+      const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+      
+      // Check if the last message content matches our pending content
+      if (lastAssistantMessage && lastAssistantMessage.content === pendingAutoPlayRef.current) {
+        const content = pendingAutoPlayRef.current;
+        const messageId = lastAssistantMessage.id;
+        pendingAutoPlayRef.current = null; // Clear pending
+        
+        // Small delay to ensure typewriter completes
+        setTimeout(() => {
+          playMessageAudio(content, messageId);
+        }, 300);
+      }
+    }
+  }, [messages]);
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -382,6 +397,13 @@ export default function ChatPage() {
               }
               
               if (data.done) {
+                const completedContent = fullResponse;
+                
+                // Store for auto-play after messages reload
+                if (ttsAutoPlay && completedContent) {
+                  pendingAutoPlayRef.current = completedContent;
+                }
+                
                 // Clear streaming after a brief delay to allow typewriter to finish
                 setTimeout(() => {
                   setStreamingMessage('');
@@ -395,8 +417,6 @@ export default function ChatPage() {
                 if (data.action) {
                   handleAIAction(data.action);
                 }
-                
-                // Note: Auto-play TTS is handled by typewriter onComplete callback
               }
             } catch (e) {
               // Skip invalid JSON
