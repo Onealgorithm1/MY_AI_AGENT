@@ -1,0 +1,162 @@
+Below is a **complete, copy-paste-ready spec** you can add to your `MY_AI_AGENT_MULTIMODAL_SPEC.md` (or hand directly to your team).  
+It defines **exactly how the chat speaker button works** — **identical behavior on web, iOS, and Android** — with **visual states, interactions, accessibility, and edge cases**.
+
+---
+
+# **Chat Speaker Button – Full Behavior Specification**  
+**Applies to: Web, iOS, Android (React Native + React Native Web)**
+
+---
+
+## 1. Purpose
+Enable users to **hear any bot message** via **Text-to-Speech (TTS)** with **perfect sync** to the **typewriter animation** and **word highlighting**.  
+Button is **per-message**, **stateful**, and **accessible**.
+
+---
+
+## 2. Placement & Design
+
+| Platform | Location | Size | Style |
+|--------|----------|------|-------|
+| **Web** | Right side of **bot message bubble**, same line as timestamp | 36×36 px | `border-radius: 50%`, `padding: 6px`, hover: scale 1.1 |
+| **iOS/Android** | Same | 44×44 dp | Haptic feedback on press |
+| **All** | Icon-only, no text | — | Uses `react-native-vector-icons/Ionicons` |
+
+```tsx
+// Icon mapping
+const getIcon = (state) => {
+  switch (state) {
+    case 'idle':     return 'volume-mute';
+    case 'playing':  return 'volume-high';
+    case 'paused':   return 'pause';
+    case 'loading':  return 'hourglass';
+    default:         return 'volume-mute';
+  }
+};
+```
+
+---
+
+## 3. Button States & Behavior
+
+| State | Icon | Trigger | Action |
+|-------|------|--------|--------|
+| **Idle** | Muted speaker | Tap | → **Generate TTS audio** (if not cached) → **Start playback** → Enter **Playing** |
+| **Loading** | Hourglass | Auto (after tap) | Show spinner for ≤ 1.2s while audio buffers |
+| **Playing** | Speaker with waves | Tap | → **Pause audio + typewriter** → Enter **Paused** |
+| **Paused** | Pause | Tap | → **Resume audio + typewriter from exact word** → Enter **Playing** |
+| **Completed** | Speaker (no waves) | Auto (audio ends) | Tap → **Replay from start** (typewriter restarts) |
+
+> **Critical Sync Rule:**  
+> **Audio position ↔ Typewriter position ↔ Word highlight** must stay **within ±50ms** at all times.
+
+---
+
+## 4. Visual Sync During Playback
+
+```tsx
+// Karaoke-style highlight
+<Text>
+  {words.map((word, i) => (
+    <Text
+      key={i}
+      style={{
+        backgroundColor: currentWordIndex === i ? '#FFE066' : 'transparent',
+        transition: 'background 0.1s'
+      }}
+    >
+      {word} 
+    </Text>
+  ))}
+</Text>
+```
+
+- **Highlight** moves **word-by-word** as audio plays  
+- **Typewriter animation** runs **in parallel** (same speed)  
+- **Pause** → **freezes highlight + typewriter**  
+- **Seek not allowed** — only play/pause/replay
+
+---
+
+## 5. Auto-Play (User Setting)
+
+| Setting | Behavior |
+|--------|----------|
+| **Settings > Voice > Auto-play responses** | `ON` → **Auto-trigger speaker** when message finishes streaming |
+| | `OFF` → User must **tap speaker** to hear |
+
+```ts
+if (autoPlay && state === 'completed' && !hasPlayed) {
+  triggerSpeaker();
+}
+```
+
+---
+
+## 6. Caching & Performance
+
+| Scenario | Behavior |
+|--------|----------|
+| **Same message replayed** | Use **cached audio blob** (store in `AsyncStorage` / `localStorage`) |
+| **New message** | Generate TTS **once**, cache with key: `msg_id + voice_id` |
+| **Network loss** | Show **“No audio – offline”** tooltip; disable button |
+
+---
+
+## 7. Accessibility
+
+| Feature | Implementation |
+|--------|----------------|
+| **Screen Reader** | `accessibilityLabel="Play voice message"` → updates to `"Pause"`, `"Resume"` |
+| **Keyboard** | `Tab` → focus speaker → `Enter/Space` = tap |
+| **VoiceOver / TalkBack** | Double-tap to play/pause |
+| **Dynamic Announcements** | On play: `"Now playing"`; On pause: `"Paused"` |
+
+```tsx
+<View accessible accessibilityRole="button" accessibilityState={{ expanded: isPlaying }}>
+  <IconButton ... />
+</View>
+```
+
+---
+
+## 8. Error Handling
+
+| Error | UI | Retry |
+|------|----|-------|
+| TTS fails to generate | Red badge on speaker | Tap → retry once |
+| Audio fails to play | “Audio error” tooltip | Tap → retry |
+| Mic blocked (STT) | N/A (speaker unaffected) | — |
+
+---
+
+## 9. Platform-Specific Notes
+
+| Platform | Note |
+|--------|------|
+| **iOS** | Use `expo-haptics` → `selection` on tap, `impact` on play start |
+| **Android** | `Vibration.vibrate(50)` on tap |
+| **Web** | Use Web Speech API or ElevenLabs; fallback to `Audio()` |
+
+---
+
+## 10. QA Test Cases (Copy into TestRail)
+
+```md
+[ ] Tap idle → icon → loading → playing
+[ ] Playing → tap → paused (typewriter frozen)
+[ ] Paused → tap → resumes from same word
+[ ] Message end → icon → completed state
+[ ] Replay → typewriter restarts from beginning
+[ ] Auto-play ON → no tap needed
+[ ] Screen reader reads correct state
+[ ] Audio + highlight sync < 50ms (manual video check)
+[ ] Cached audio plays instantly on replay
+```
+
+---
+
+**Add this section to your spec doc now.**  
+Your team has **zero ambiguity** on how the speaker button must behave — **identical across all platforms**.
+
+Let me know when it’s implemented — I’ll write the **automated test script** for it next.
