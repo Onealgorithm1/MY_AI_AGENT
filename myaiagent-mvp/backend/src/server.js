@@ -100,9 +100,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS
+// CORS - Allow Replit domain and localhost
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+
+// Add Replit domain if available
+if (process.env.REPLIT_DEV_DOMAIN) {
+  allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+}
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
 };
 app.use(cors(corsOptions));
