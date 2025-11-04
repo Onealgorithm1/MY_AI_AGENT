@@ -28,6 +28,11 @@ const GoogleCallbackPage = () => {
     authApi.me()
       .then(response => {
         const user = response.data.user;
+        
+        // Properly update auth state and persist to localStorage
+        const authStore = useAuthStore.getState();
+        authStore.user = user;
+        authStore.isAuthenticated = true;
         useAuthStore.setState({
           user,
           isAuthenticated: true,

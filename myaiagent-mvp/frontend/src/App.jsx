@@ -47,8 +47,11 @@ function App() {
     const initializeApp = async () => {
       await fetchCsrfToken();
       
+      // Skip auth verification on OAuth callback pages
+      const isOAuthCallback = window.location.pathname.startsWith('/auth/google/');
+      
       // If frontend thinks user is authenticated, verify with backend
-      if (isAuthenticated && user) {
+      if (isAuthenticated && user && !isOAuthCallback) {
         try {
           const { auth } = await import('./services/api');
           await auth.me();
