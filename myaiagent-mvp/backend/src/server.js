@@ -103,29 +103,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS - Allow Replit domain and localhost
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+// CORS - Only needed in development when frontend and backend are on different ports
+if (process.env.NODE_ENV !== 'production') {
+  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
 
-// Add Replit domain if available
-if (process.env.REPLIT_DEV_DOMAIN) {
-  allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+  // Add Replit development domain if available
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+  }
+
+  const corsOptions = {
+    origin: (origin, callback) => {
+      // Allow requests with no origin (same-origin requests, mobile apps, curl, Postman)
+      if (!origin) {
+        callback(null, true);
+      } 
+      // Allow requests from explicitly allowed origins
+      else if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } 
+      // Reject all other origins in development
+      else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  };
+  app.use(cors(corsOptions));
+} else {
+  // In production, frontend and backend are served from same origin on Replit Autoscale
+  // CORS is not needed and should be disabled for security
+  app.use(cors({
+    origin: false,
+    credentials: true,
+  }));
 }
-
-// In production on Replit Autoscale, frontend and backend are same origin
-// Allow requests from same origin + configured origins
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    // or if origin is in allowed list
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-};
-app.use(cors(corsOptions));
 
 // Cookie parsing (REQUIRED for JWT cookies and CSRF)
 app.use(cookieParser());
