@@ -5,7 +5,7 @@ integrations = ["google-mail:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["unzip"]
+packages = ["unzip", "openssh"]
 
 [workflows]
 runButton = "Project"
