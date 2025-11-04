@@ -45,6 +45,7 @@ import toolsRoutes from './routes/tools.js';
 import gmailRoutes from './routes/gmail.js';
 import ttsRoutes from './routes/tts.js';
 import sttRoutes from './routes/stt.js';
+import plankaRoutes from './routes/planka.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -231,6 +232,7 @@ app.use('/api/tools', toolsRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/stt', sttRoutes);
+app.use('/api/planka', plankaRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
