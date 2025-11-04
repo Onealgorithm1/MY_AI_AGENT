@@ -5,10 +5,10 @@ const GOOGLE_TTS_API_BASE = 'https://texttospeech.googleapis.com/v1';
 // Get available Google voices using REST API
 export async function getVoices() {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     
     if (!apiKey) {
-      throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to your secrets.');
+      throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
     }
     
     const response = await axios.get(`${GOOGLE_TTS_API_BASE}/voices`, {
@@ -46,10 +46,10 @@ export async function generateSpeechGoogle(
   languageCode = 'en-US'
 ) {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     
     if (!apiKey) {
-      throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to your secrets.');
+      throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
     }
     
     console.log('🔊 Google TTS Request:', {
@@ -95,7 +95,7 @@ export async function generateSpeechGoogle(
 // Check if Google TTS is available
 export async function isGoogleTTSAvailable() {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       return false;
     }

@@ -4,10 +4,10 @@ const GOOGLE_STT_API_BASE = 'https://speech.googleapis.com/v1';
 
 export async function transcribeAudioGoogle(audioBuffer, languageCode = 'en-US') {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     
     if (!apiKey) {
-      throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to your secrets.');
+      throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
     }
     
     console.log('🎤 Google STT Request:', {
@@ -58,7 +58,7 @@ export async function transcribeAudioGoogle(audioBuffer, languageCode = 'en-US')
 
 export async function isGoogleSTTAvailable() {
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       return false;
     }
