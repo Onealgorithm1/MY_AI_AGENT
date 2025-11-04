@@ -82,9 +82,9 @@ export class PlankaService {
     const boardId = boardResult.rows[0].id;
 
     await query(
-      `INSERT INTO board_membership (board_id, user_id, role, can_comment, created_at, updated_at)
-       VALUES ($1, $2, 'editor', true, NOW(), NOW())`,
-      [boardId, plankaUserId]
+      `INSERT INTO board_membership (project_id, board_id, user_id, role, can_comment, created_at, updated_at)
+       VALUES ($1, $2, $3, 'editor', true, NOW(), NOW())`,
+      [projectId, boardId, plankaUserId]
     );
 
     const listNames = ['To Do', 'In Progress', 'Done'];
