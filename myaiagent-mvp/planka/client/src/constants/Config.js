@@ -4,7 +4,9 @@
  */
 
 const SERVER_BASE_URL =
-  import.meta.env.VITE_SERVER_BASE_URL || (import.meta.env.DEV ? 'http://localhost:1337' : '');
+  (typeof window !== 'undefined' && window.__PLANKA_SERVER_BASE_URL__) ||
+  import.meta.env.VITE_SERVER_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:1337' : '');
 
 const ACCESS_TOKEN_KEY = 'accessToken';
 const ACCESS_TOKEN_VERSION_KEY = 'accessTokenVersion';

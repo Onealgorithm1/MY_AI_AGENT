@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables
 dotenv.config();
@@ -244,9 +245,38 @@ app.use('/api/stt', sttRoutes);
 app.use('/api/planka', plankaRoutes);
 app.use('/api/planka-auth', plankaAuthRoutes);
 
-// Serve Planka UI - serve the built index.html file
-app.get('/planka-ui*', (req, res) => {
-  res.sendFile(path.join(plankaPublicPath, 'build', 'index.html'));
+// Proxy Planka's full API to the Planka server (for full UI functionality)
+app.use('/api/planka-server', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/planka-server': '/api',
+  },
+  onError: (err, req, res) => {
+    console.error('Planka API proxy error:', err.message);
+    res.status(503).json({ error: 'Planka service temporarily unavailable' });
+  },
+}));
+
+// Serve Planka UI - serve the built index.html file with API config injection
+app.get('/planka-ui*', async (req, res) => {
+  try {
+    const htmlPath = path.join(plankaPublicPath, 'build', 'index.html');
+    const fs = await import('fs');
+    
+    const html = await fs.promises.readFile(htmlPath, 'utf8');
+    // Inject the API base URL configuration before the main script
+    const configScript = `
+      <script>
+        window.__PLANKA_SERVER_BASE_URL__ = '/api/planka-server';
+      </script>
+    `;
+    const modifiedHtml = html.replace('</head>', `${configScript}</head>`);
+    res.send(modifiedHtml);
+  } catch (err) {
+    console.error('Error serving Planka UI:', err);
+    res.status(500).send('Error loading Planka');
+  }
 });
 
 // Serve static files in production
