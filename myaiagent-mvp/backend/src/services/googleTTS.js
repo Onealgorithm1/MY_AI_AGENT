@@ -1,34 +1,24 @@
-import textToSpeech from '@google-cloud/text-to-speech';
+import axios from 'axios';
 
-// Initialize Google TTS client
-let ttsClient = null;
+const GOOGLE_TTS_API_BASE = 'https://texttospeech.googleapis.com/v1';
 
-async function getGoogleTTSClient() {
-  if (!ttsClient) {
-    const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('Google Cloud API key not configured. Please add GOOGLE_CLOUD_API_KEY to your secrets.');
-    }
-    
-    // Initialize client with API key
-    ttsClient = new textToSpeech.TextToSpeechClient({
-      apiKey: apiKey,
-    });
-    
-    console.log('✅ Google TTS client initialized with API key');
-  }
-  return ttsClient;
-}
-
-// Get available Google voices
+// Get available Google voices using REST API
 export async function getVoices() {
   try {
-    const client = await getGoogleTTSClient();
-    const [result] = await client.listVoices({});
+    const apiKey = process.env.GOOGLE_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to your secrets.');
+    }
+    
+    const response = await axios.get(`${GOOGLE_TTS_API_BASE}/voices`, {
+      params: { key: apiKey }
+    });
+    
+    const voices = response.data.voices || [];
     
     // Filter and return popular voices
-    const popularVoices = result.voices.filter(voice => {
+    const popularVoices = voices.filter(voice => {
       const name = voice.name || '';
       // Include English voices and some popular multilingual ones
       return name.includes('en-US') || name.includes('en-GB') || 
@@ -44,19 +34,23 @@ export async function getVoices() {
                 voice.name.includes('Neural2') ? 'Latest' : 'Standard'
     }));
   } catch (error) {
-    console.error('Get Google TTS voices error:', error.message);
-    throw new Error('Failed to get voices: ' + error.message);
+    console.error('Get Google TTS voices error:', error.response?.data || error.message);
+    throw new Error('Failed to get voices: ' + (error.response?.data?.error?.message || error.message));
   }
 }
 
-// Generate speech with Google TTS
+// Generate speech with Google TTS using REST API
 export async function generateSpeechGoogle(
   text,
   voiceId = 'en-US-Neural2-F',
   languageCode = 'en-US'
 ) {
   try {
-    const client = await getGoogleTTSClient();
+    const apiKey = process.env.GOOGLE_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('Google API key not configured. Please add GOOGLE_API_KEY to your secrets.');
+    }
     
     console.log('🔊 Google TTS Request:', {
       textLength: text.length,
@@ -64,7 +58,7 @@ export async function generateSpeechGoogle(
       languageCode
     });
 
-    const request = {
+    const requestBody = {
       input: { text },
       voice: {
         languageCode,
@@ -78,20 +72,41 @@ export async function generateSpeechGoogle(
       }
     };
 
-    const [response] = await client.synthesizeSpeech(request);
+    const response = await axios.post(
+      `${GOOGLE_TTS_API_BASE}/text:synthesize`,
+      requestBody,
+      {
+        params: { key: apiKey },
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
     
-    return response.audioContent;
+    // The response contains base64-encoded audio in audioContent field
+    const audioBase64 = response.data.audioContent;
+    
+    // Convert base64 to buffer
+    return Buffer.from(audioBase64, 'base64');
   } catch (error) {
-    console.error('Google TTS error:', error.message);
-    throw new Error('Failed to generate speech: ' + error.message);
+    console.error('Google TTS error:', error.response?.data || error.message);
+    throw new Error('Failed to generate speech: ' + (error.response?.data?.error?.message || error.message));
   }
 }
 
 // Check if Google TTS is available
 export async function isGoogleTTSAvailable() {
   try {
-    await getGoogleTTSClient();
-    return true;
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      return false;
+    }
+    
+    // Try to fetch voices as a health check
+    const response = await axios.get(`${GOOGLE_TTS_API_BASE}/voices`, {
+      params: { key: apiKey },
+      timeout: 5000
+    });
+    
+    return response.status === 200;
   } catch (error) {
     console.error('Google TTS not available:', error.message);
     return false;
