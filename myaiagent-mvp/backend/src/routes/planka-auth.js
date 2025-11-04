@@ -39,18 +39,20 @@ router.get('/auto-login', authenticate, async (req, res) => {
       );
     }
 
-    // Generate Planka access token
-    const tokenResult = await query(
-      `INSERT INTO access_token (user_id, created_at)
-       VALUES ($1, NOW())
+    // Generate Planka session with access token
+    const crypto = await import('crypto');
+    const accessToken = crypto.randomBytes(32).toString('hex');
+    
+    await query(
+      `INSERT INTO session (user_id, access_token, remote_address, created_at, updated_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
        RETURNING id`,
-      [plankaUser.rows[0].id]
+      [plankaUser.rows[0].id, accessToken, req.ip || '127.0.0.1']
     );
 
-    const accessToken = tokenResult.rows[0].id;
-
-    // Redirect to Planka with auto-login token
-    const plankaUrl = `https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3002?accessToken=${accessToken}`;
+    // Redirect to Planka UI (served by this backend) with auto-login token
+    const origin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    const plankaUrl = `${origin}/planka-ui?accessToken=${accessToken}`;
     res.redirect(plankaUrl);
   } catch (error) {
     console.error('Planka auto-login error:', error);

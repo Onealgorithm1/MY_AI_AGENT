@@ -803,6 +803,26 @@ export default function ChatPage() {
                     <CheckSquare className="w-4 h-4" />
                     <span>Tasks & Projects</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      window.open('/api/planka-auth/auto-login', '_blank');
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Open Kanban Board</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/preferences');
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Preferences</span>
+                  </button>
                 </div>
               )}
             </div>

@@ -67,8 +67,14 @@ export class PlankaService {
     );
 
     const boardResult = await query(
-      `INSERT INTO board (project_id, position, name, created_at, updated_at)
-       VALUES ($1, 65536, 'My Tasks', NOW(), NOW())
+      `INSERT INTO board (
+        project_id, position, name, 
+        default_view, default_card_type, 
+        limit_card_types_to_default_one, always_display_card_creator,
+        expand_task_lists_by_default,
+        created_at, updated_at
+       )
+       VALUES ($1, 65536, 'My Tasks', 'kanban', 'project', false, false, false, NOW(), NOW())
        RETURNING id`,
       [projectId]
     );
