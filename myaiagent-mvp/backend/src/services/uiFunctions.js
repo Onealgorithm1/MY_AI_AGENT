@@ -77,7 +77,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'webSearch',
-    description: 'Search the web for current information, news, facts, or real-time data. Use this when you need to answer questions about recent events, current statistics, live data, or information that changes frequently. Examples: "Who won the 2024 Super Bowl?", "What is the current weather in New York?", "Latest news about AI", "Current stock price of Apple". DO NOT use for general knowledge questions you already know.',
+    description: 'Search the web for current information, news, facts, statistics, or real-time data. ALWAYS use this function when the user asks questions containing keywords like: "search", "look up", "find", "current", "latest", "today", "now", "recent", "what is happening", or when asking about events after 2023, prices, weather, sports scores, news, or anything time-sensitive. Examples: "Who won the 2024 Super Bowl?", "Search for latest AI news", "What is the current weather?", "Find information about...", "Look up stock prices", "Latest updates on...". If the user explicitly asks you to search or if the information might be outdated, you MUST use this function.',
     parameters: {
       type: 'object',
       properties: {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, Search } from 'lucide-react';
 import MessageSpeakerButton from './MessageSpeakerButton';
 import WordHighlighter from './WordHighlighter';
 import useMessageAudio from '../hooks/useMessageAudio';
@@ -37,7 +37,12 @@ export default function MessageWithAudio({
 
   return (
     <div className="max-w-[80%]">
-      <div className="rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+      <div className="rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white relative">
+        {searchResults && (
+          <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1.5 shadow-lg">
+            <Search className="w-3 h-3" />
+          </div>
+        )}
         <div className="whitespace-pre-wrap">
           {state === 'playing' && wordTimings ? (
             <WordHighlighter

@@ -6,6 +6,8 @@ export async function performWebSearch(searchQuery, numResults = 5) {
   try {
     let apiKey, searchEngineId;
 
+    console.log('🔍 Web Search Request:', { query: searchQuery, numResults });
+
     const apiKeyResult = await query(
       `SELECT key_value FROM api_secrets 
        WHERE key_name = 'GOOGLE_SEARCH_API_KEY' 
@@ -25,9 +27,10 @@ export async function performWebSearch(searchQuery, numResults = 5) {
     if (apiKeyResult.rows.length > 0) {
       apiKey = decryptSecret(apiKeyResult.rows[0].key_value);
     } else {
-      apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+      // Try environment variables, fallback to GEMINI_API_KEY
+      apiKey = process.env.GOOGLE_SEARCH_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
       if (!apiKey) {
-        throw new Error('Google Search API key not configured. Please add it to environment variables or Admin Dashboard.');
+        throw new Error('Google Search API key not configured. Please add GOOGLE_SEARCH_API_KEY, GEMINI_API_KEY, or configure via Admin Dashboard.');
       }
     }
 
@@ -36,7 +39,7 @@ export async function performWebSearch(searchQuery, numResults = 5) {
     } else {
       searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
       if (!searchEngineId) {
-        throw new Error('Google Search Engine ID not configured. Please add it to environment variables or Admin Dashboard.');
+        throw new Error('Google Search Engine ID not configured. Please add GOOGLE_SEARCH_ENGINE_ID to environment variables or Admin Dashboard. Create one at: https://programmablesearchengine.google.com/');
       }
     }
 
@@ -52,12 +55,16 @@ export async function performWebSearch(searchQuery, numResults = 5) {
 
     const results = response.data.items || [];
     
-    const formattedResults = results.map(item => ({
+    const formattedResults = results.map((item, index) => ({
       title: item.title,
       link: item.link,
       snippet: item.snippet,
       displayLink: item.displayLink,
+      rank: index + 1,
+      image: item.pagemap?.cse_image?.[0]?.src || item.pagemap?.cse_thumbnail?.[0]?.src || null,
     }));
+
+    console.log(`✅ Web Search Success: Found ${formattedResults.length} results for "${searchQuery}"`);
 
     return {
       success: true,
@@ -66,14 +73,20 @@ export async function performWebSearch(searchQuery, numResults = 5) {
       totalResults: response.data.searchInformation?.totalResults || 0,
     };
   } catch (error) {
-    console.error('Web search error:', error.message);
+    console.error('❌ Web search error:', error.response?.data || error.message);
     
     if (error.response?.status === 429) {
       throw new Error('Search API rate limit exceeded. Please try again later.');
     }
     
     if (error.response?.status === 400) {
-      throw new Error('Invalid search query or API configuration');
+      const errorMsg = error.response?.data?.error?.message || 'Invalid search query or API configuration';
+      throw new Error(errorMsg);
+    }
+
+    if (error.response?.status === 403) {
+      const errorMsg = error.response?.data?.error?.message || 'Search API access denied';
+      throw new Error(errorMsg);
     }
 
     throw new Error(error.message || 'Web search failed');

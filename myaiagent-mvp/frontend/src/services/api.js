@@ -288,4 +288,15 @@ export const stt = {
   },
 };
 
+// Web Search endpoints
+export const webSearch = {
+  search: async (query, numResults = 5) => {
+    const response = await api.post('/tools/web-search', {
+      query,
+      numResults,
+    });
+    return response.data;
+  },
+};
+
 export default api;

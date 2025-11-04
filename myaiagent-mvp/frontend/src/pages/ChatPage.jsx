@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken, tts, auth as authApi } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken, tts, auth as authApi, webSearch as webSearchApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -32,10 +32,13 @@ import {
   VolumeX,
   Pause,
   Play,
+  Search,
+  Globe,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 import SearchResults from '../components/SearchResults';
+import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
 import useTypewriter from '../hooks/useTypewriter';
@@ -81,6 +84,8 @@ export default function ChatPage() {
   // Typewriter state
   const [typingSpeed, setTypingSpeed] = useState('snappy');
   const [streamingContent, setStreamingContent] = useState('');
+  const [isManualSearching, setIsManualSearching] = useState(false);
+  const [manualSearchResults, setManualSearchResults] = useState(null);
   
   // Typewriter for streaming message
   const { displayedText: typewriterText, isTyping, skip: skipTypewriter } = useTypewriter(
@@ -583,6 +588,36 @@ export default function ChatPage() {
     }
   };
 
+  // Handle manual web search
+  const handleManualSearch = async () => {
+    const searchQuery = inputMessage.trim();
+    if (!searchQuery) {
+      const userQuery = prompt('Enter your search query:');
+      if (!userQuery) return;
+      setInputMessage(userQuery);
+      performManualSearch(userQuery);
+    } else {
+      performManualSearch(searchQuery);
+      setInputMessage('');
+    }
+  };
+
+  const performManualSearch = async (query) => {
+    setIsManualSearching(true);
+    setManualSearchResults(null);
+    
+    try {
+      const results = await webSearchApi.search(query, 5);
+      setManualSearchResults(results);
+      toast.success(`Found ${results.results?.length || 0} results for "${query}"`);
+    } catch (error) {
+      console.error('Manual search error:', error);
+      toast.error(error.response?.data?.error || 'Web search failed');
+    } finally {
+      setIsManualSearching(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
@@ -947,6 +982,33 @@ export default function ChatPage() {
               </div>
             )}
 
+            {/* Manual Search Indicator */}
+            {isManualSearching && (
+              <div className="flex justify-center px-4">
+                <SearchingIndicator query={inputMessage} />
+              </div>
+            )}
+
+            {/* Manual Search Results */}
+            {!isManualSearching && manualSearchResults && (
+              <div className="flex justify-center px-4">
+                <div className="max-w-3xl w-full">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Manual Search Results
+                    </h3>
+                    <button
+                      onClick={() => setManualSearchResults(null)}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <SearchResults results={manualSearchResults} />
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -975,6 +1037,23 @@ export default function ChatPage() {
                   <MicOff className="w-5 h-5" />
                 ) : (
                   <Mic className="w-5 h-5" />
+                )}
+              </button>
+
+              <button
+                onClick={handleManualSearch}
+                disabled={isManualSearching}
+                className={`p-2 rounded-lg transition-colors ${
+                  isManualSearching
+                    ? 'text-blue-400 animate-pulse cursor-wait'
+                    : 'text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                }`}
+                title="Manual web search"
+              >
+                {isManualSearching ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Globe className="w-5 h-5" />
                 )}
               </button>
 
