@@ -1,7 +1,9 @@
 import express from 'express';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 import { authenticate } from '../middleware/auth.js';
-import { transcribeAudioGoogle } from '../services/googleSTT.js';
+import { transcribeAudio } from '../services/openai.js';
 
 const router = express.Router();
 
