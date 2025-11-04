@@ -28,6 +28,13 @@ The application employs a client-server architecture with React and Vite for the
 -   **Voice Chat**: Real-time communication using WebSockets and OpenAI's Realtime API.
 -   **File Upload**: Supports various file types with integrated AI vision.
 -   **Memory System**: AI extracts and stores user-specific facts for personalization and proactive use.
+-   **Project Management Integration**: Built-in task management powered by Planka's open-source system with AI-driven task creation and management:
+    - **Per-User Isolation**: Each user gets a dedicated Planka project/board with isolated To Do, In Progress, and Done lists
+    - **AI Task Creation**: AI can create tasks/cards directly from conversations with function calling
+    - **Subtask Support**: Hierarchical task organization with subtask creation and tracking
+    - **Conversation Linking**: Tasks automatically linked to the conversation where they were created
+    - **Multi-Tenant Security**: Complete isolation with authorization checks at all levels (cards, tasks, conversations)
+    - **REST API**: Full CRUD operations via `/api/planka/*` endpoints with proper 403 error handling
 -   **Admin Dashboard**: Provides user management, API usage statistics, and comprehensive API key management.
 -   **Security**: Implements Helmet, CORS, encrypted storage for API secrets, and secure password verification.
 -   **Intelligent Model Selection**: Dynamically selects optimal Gemini models based on query complexity.
