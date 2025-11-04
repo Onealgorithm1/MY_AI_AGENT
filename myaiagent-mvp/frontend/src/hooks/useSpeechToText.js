@@ -59,6 +59,7 @@ export default function useSpeechToText() {
         } catch (err) {
           console.error('Error processing audio:', err);
           setError(err.message || 'Failed to transcribe audio');
+          setIsRecording(false);
           setIsProcessing(false);
           reject(err);
         }

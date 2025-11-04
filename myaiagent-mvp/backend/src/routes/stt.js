@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { transcribeAudioGoogle } from '../services/googleSTT.js';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-router.post('/transcribe', authenticateToken, upload.single('audio'), async (req, res) => {
+router.post('/transcribe', authenticate, upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file provided' });
