@@ -44,6 +44,7 @@ import eventsRoutes from './routes/events.js';
 import toolsRoutes from './routes/tools.js';
 import gmailRoutes from './routes/gmail.js';
 import ttsRoutes from './routes/tts.js';
+import sttRoutes from './routes/stt.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -69,6 +70,8 @@ app.use(helmet({
         'ws:', 
         'https://api.openai.com',
         'https://generativelanguage.googleapis.com',
+        'https://speech.googleapis.com',
+        'https://texttospeech.googleapis.com',
         'https://api.elevenlabs.io',
         'https://api.elevenlabs.com'
       ],
@@ -205,6 +208,7 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/stt', sttRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
