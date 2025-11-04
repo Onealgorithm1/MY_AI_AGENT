@@ -12,6 +12,7 @@ const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
+const ProjectManagementPage = lazy(() => import('./pages/ProjectManagementPage'));
 
 function LoadingFallback() {
   return (
@@ -104,6 +105,14 @@ function App() {
           element={
             <PrivateRoute>
               <PreferencesPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/project-management"
+          element={
+            <PrivateRoute>
+              <ProjectManagementPage />
             </PrivateRoute>
           }
         />

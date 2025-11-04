@@ -34,6 +34,7 @@ import {
   Play,
   Search,
   Globe,
+  CheckSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
@@ -75,6 +76,7 @@ export default function ChatPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -766,13 +768,44 @@ export default function ChatPage() {
                 {user?.fullName}
               </p>
             </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              title="Profile Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowSettingsDropdown(true)}
+                onMouseLeave={() => setShowSettingsDropdown(false)}
+                className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              {showSettingsDropdown && (
+                <div 
+                  className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+                  onMouseEnter={() => setShowSettingsDropdown(true)}
+                  onMouseLeave={() => setShowSettingsDropdown(false)}
+                >
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Profile</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/project-management');
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Project Management</span>
+                  </button>
+                </div>
+              )}
+            </div>
             {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button
                 onClick={() => navigate('/admin')}
