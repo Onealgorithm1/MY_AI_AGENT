@@ -18,26 +18,6 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
-      '/planka-ui': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/build': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/favicons': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/user-avatars': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/background-images': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
     },
   },
   build: {

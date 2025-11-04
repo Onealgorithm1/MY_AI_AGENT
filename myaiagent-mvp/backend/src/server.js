@@ -9,7 +9,6 @@ import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables
 dotenv.config();
@@ -46,8 +45,6 @@ import toolsRoutes from './routes/tools.js';
 import gmailRoutes from './routes/gmail.js';
 import ttsRoutes from './routes/tts.js';
 import sttRoutes from './routes/stt.js';
-import plankaRoutes from './routes/planka.js';
-import plankaAuthRoutes from './routes/planka-auth.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -207,14 +204,6 @@ app.get('/health', (req, res) => {
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// Serve Planka static files directly
-const plankaPublicPath = path.join(__dirname, '../../planka/server/public');
-app.use('/build', express.static(path.join(plankaPublicPath, 'build')));
-app.use('/favicons', express.static(path.join(plankaPublicPath, 'favicons')));
-app.use('/user-avatars', express.static(path.join(plankaPublicPath, 'user-avatars')));
-app.use('/background-images', express.static(path.join(plankaPublicPath, 'background-images')));
-app.use('/preloaded-favicons', express.static(path.join(plankaPublicPath, 'preloaded-favicons')));
-
 // CSRF Token endpoint (public, no authentication required)
 app.get('/api/csrf-token', (req, res) => {
   const token = generateCsrfToken(req, res);
@@ -242,42 +231,6 @@ app.use('/api/tools', toolsRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/stt', sttRoutes);
-app.use('/api/planka', plankaRoutes);
-app.use('/api/planka-auth', plankaAuthRoutes);
-
-// Proxy Planka's full API to the Planka server (for full UI functionality)
-app.use('/api/planka-server', createProxyMiddleware({
-  target: 'http://localhost:3002',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/planka-server': '/api',
-  },
-  onError: (err, req, res) => {
-    console.error('Planka API proxy error:', err.message);
-    res.status(503).json({ error: 'Planka service temporarily unavailable' });
-  },
-}));
-
-// Serve Planka UI - serve the built index.html file with API config injection
-app.get('/planka-ui*', async (req, res) => {
-  try {
-    const htmlPath = path.join(plankaPublicPath, 'build', 'index.html');
-    const fs = await import('fs');
-    
-    const html = await fs.promises.readFile(htmlPath, 'utf8');
-    // Inject the API base URL configuration before the main script
-    const configScript = `
-      <script>
-        window.__PLANKA_SERVER_BASE_URL__ = '/api/planka-server';
-      </script>
-    `;
-    const modifiedHtml = html.replace('</head>', `${configScript}</head>`);
-    res.send(modifiedHtml);
-  } catch (err) {
-    console.error('Error serving Planka UI:', err);
-    res.status(500).send('Error loading Planka');
-  }
-});
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

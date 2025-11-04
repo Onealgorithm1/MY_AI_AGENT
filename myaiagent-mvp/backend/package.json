@@ -10,32 +10,26 @@
     "setup-db": "node src/scripts/setup-database.js",
     "seed": "node src/scripts/seed-data.js"
   },
-  "keywords": [
-    "ai",
-    "chat",
-    "voice",
-    "openai"
-  ],
+  "keywords": ["ai", "chat", "voice", "openai"],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.5",
-    "bcryptjs": "^2.4.3",
-    "compression": "^1.7.4",
-    "cookie-parser": "^1.4.6",
-    "cors": "^2.8.5",
-    "csrf-csrf": "^3.0.4",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
-    "form-data": "^4.0.0",
-    "helmet": "^7.1.0",
-    "http-proxy-middleware": "^3.0.5",
+    "ws": "^8.16.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
+    "bcryptjs": "^2.4.3",
     "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
     "uuid": "^9.0.1",
-    "ws": "^8.16.0"
+    "axios": "^1.6.5",
+    "form-data": "^4.0.0",
+    "cookie-parser": "^1.4.6",
+    "csrf-csrf": "^3.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

@@ -28,13 +28,6 @@ The application employs a client-server architecture with React and Vite for the
 -   **Voice Chat**: Real-time communication using WebSockets and OpenAI's Realtime API.
 -   **File Upload**: Supports various file types with integrated AI vision.
 -   **Memory System**: AI extracts and stores user-specific facts for personalization and proactive use.
--   **Project Management Integration**: Built-in task management powered by Planka's open-source system with AI-driven task creation and management:
-    - **Per-User Isolation**: Each user gets a dedicated Planka project/board with isolated To Do, In Progress, and Done lists
-    - **AI Task Creation**: AI can create tasks/cards directly from conversations with function calling
-    - **Subtask Support**: Hierarchical task organization with subtask creation and tracking
-    - **Conversation Linking**: Tasks automatically linked to the conversation where they were created
-    - **Multi-Tenant Security**: Complete isolation with authorization checks at all levels (cards, tasks, conversations)
-    - **REST API**: Full CRUD operations via `/api/planka/*` endpoints with proper 403 error handling
 -   **Admin Dashboard**: Provides user management, API usage statistics, and comprehensive API key management.
 -   **Security**: Implements Helmet, CORS, encrypted storage for API secrets, and secure password verification.
 -   **Intelligent Model Selection**: Dynamically selects optimal Gemini models based on query complexity.
@@ -55,18 +48,11 @@ The application employs a client-server architecture with React and Vite for the
 
 ## External Dependencies
 -   **Google Gemini API**: Primary AI model for chat, vision, and text generation.
--   **Google Vertex AI**: For advanced features including native Google Search grounding with Gemini 2.0 models (with automatic fallback to Gemini API if credentials unavailable).
--   **Google Cloud TTS/STT**: Text-to-Speech (1,886 voices) and Speech-to-Speech capabilities.
+-   **Google Vertex AI**: For advanced features including native Google Search grounding with Gemini 2.0 models.
+-   **Google Cloud TTS/STT**: Text-to-Speech (1,886 voices) and Speech-to-Text capabilities.
 -   **PostgreSQL**: Primary database.
 -   **Google Custom Search API**: For manual web search functionality.
 -   **Google OAuth 2.0**: For integration with Google services (Gmail, Calendar, Drive, Docs, Sheets).
-
-## Recent Updates (November 2025)
--   **Vertex AI Fallback**: Added automatic fallback to standard Gemini API when Vertex AI credentials are unavailable, ensuring AI functionality remains operational.
--   **Settings Dropdown Menu**: Replaced direct profile navigation with a hover-activated dropdown menu on the settings icon, providing quick access to Profile, Project Management, and Planka UI pages.
--   **Project Management Page**: Created dedicated page for viewing and managing tasks with kanban-style board (To Do, In Progress, Done lists).
--   **Task Management UI**: Full CRUD interface for tasks including create, edit, delete, and move between lists with real-time updates.
--   **Full Planka Integration**: Deployed complete standalone Planka server on port 3002 with SSL-enabled Neon PostgreSQL connection, providing access to the full-featured project management UI alongside the custom integration.
 
 ## Search & Grounding Architecture
 The application implements a sophisticated dual-search system:
