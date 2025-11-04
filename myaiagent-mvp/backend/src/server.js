@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables
 dotenv.config();
@@ -233,6 +234,45 @@ app.use('/api/gmail', gmailRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/stt', sttRoutes);
 app.use('/api/planka', plankaRoutes);
+
+// Proxy to Planka UI server on port 3002
+app.use('/planka-ui', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/planka-ui': '',
+  },
+  onError: (err, req, res) => {
+    console.error('Planka proxy error:', err.message);
+    res.status(503).json({ error: 'Planka service unavailable' });
+  },
+}));
+
+// Proxy Planka static assets (build folder, favicons, etc.)
+app.use('/build', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+  logLevel: 'debug',
+  onError: (err, req, res) => {
+    console.error('Build assets proxy error:', err.message);
+    res.status(503).send('Build assets unavailable');
+  },
+}));
+
+app.use('/favicons', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+}));
+
+app.use('/user-avatars', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+}));
+
+app.use('/background-images', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+}));
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
