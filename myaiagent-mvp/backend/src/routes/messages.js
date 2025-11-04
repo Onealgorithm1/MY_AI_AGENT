@@ -243,9 +243,19 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       let functionArgs = '';
 
       // Use Vertex AI with grounding if needed, otherwise use standard Gemini
-      const completion = useVertexAI
-        ? await createVertexChatCompletion(messages, vertexModel, true, true)
-        : await createChatCompletion(messages, selectedModel, true, functionsToPass);
+      let completion;
+      try {
+        completion = useVertexAI
+          ? await createVertexChatCompletion(messages, vertexModel, true, true)
+          : await createChatCompletion(messages, selectedModel, true, functionsToPass);
+      } catch (vertexError) {
+        if (useVertexAI && (vertexError.message.includes('GoogleAuthError') || vertexError.message.includes('authenticate'))) {
+          console.log('⚠️ Vertex AI auth failed, falling back to standard Gemini API');
+          completion = await createChatCompletion(messages, selectedModel, true, functionsToPass);
+        } else {
+          throw vertexError;
+        }
+      }
 
       completion.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
@@ -383,9 +393,19 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     } else {
       // Non-streaming response with function calling support
-      const completion = useVertexAI
-        ? await createVertexChatCompletion(messages, vertexModel, false, true)
-        : await createChatCompletion(messages, selectedModel, false, functionsToPass);
+      let completion;
+      try {
+        completion = useVertexAI
+          ? await createVertexChatCompletion(messages, vertexModel, false, true)
+          : await createChatCompletion(messages, selectedModel, false, functionsToPass);
+      } catch (vertexError) {
+        if (useVertexAI && (vertexError.message.includes('GoogleAuthError') || vertexError.message.includes('authenticate'))) {
+          console.log('⚠️ Vertex AI auth failed, falling back to standard Gemini API');
+          completion = await createChatCompletion(messages, selectedModel, false, functionsToPass);
+        } else {
+          throw vertexError;
+        }
+      }
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
       
