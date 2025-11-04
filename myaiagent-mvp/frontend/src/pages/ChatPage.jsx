@@ -74,7 +74,7 @@ export default function ChatPage() {
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
+  const [selectedVoice, setSelectedVoice] = useState('en-US-Neural2-F');
   const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
   
   // Typewriter state
@@ -211,15 +211,24 @@ export default function ChatPage() {
           setTtsEnabled(data.tts_enabled);
         }
         if (data.tts_voice_id) {
-          // Validate voice ID format (ElevenLabs IDs are alphanumeric, 15-30 chars)
-          const isValidVoiceId = /^[a-zA-Z0-9]{15,30}$/.test(data.tts_voice_id);
+          // Validate voice ID format (Google TTS format: en-US-Neural2-F)
+          const isGoogleVoice = /^[a-zA-Z]{2}-[a-zA-Z]{2}-[a-zA-Z0-9\-]+$/.test(data.tts_voice_id);
+          const isOldElevenLabsVoice = /^[a-zA-Z0-9]{15,30}$/.test(data.tts_voice_id);
           
-          if (isValidVoiceId) {
+          if (isGoogleVoice) {
             setSelectedVoice(data.tts_voice_id);
+          } else if (isOldElevenLabsVoice) {
+            // Migrate old ElevenLabs voice ID to Google TTS
+            console.warn('Migrating old ElevenLabs voice ID to Google TTS');
+            const defaultVoice = 'en-US-Neural2-F'; // Google Neural2 Female
+            setSelectedVoice(defaultVoice);
+            // Save the new voice ID
+            await authApi.updatePreferences({ tts_voice_id: defaultVoice });
+            toast.info('Switched to Google Text-to-Speech. Please select your preferred voice.');
           } else {
             // Invalid voice ID detected - reset to default and save
             console.warn('Invalid voice ID detected, resetting to default');
-            const defaultVoice = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+            const defaultVoice = 'en-US-Neural2-F'; // Google Neural2 Female
             setSelectedVoice(defaultVoice);
             // Save the corrected voice ID
             await authApi.updatePreferences({ tts_voice_id: defaultVoice });

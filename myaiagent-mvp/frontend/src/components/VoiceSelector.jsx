@@ -29,16 +29,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange, className 
     } catch (error) {
       console.error('Failed to fetch voices:', error);
       
-      if (error.response?.data?.code === 'API_KEY_MISSING') {
-        setError('API key not configured');
-        toast.error('ElevenLabs API key missing. Please add it in Admin Dashboard.');
-      } else if (error.response?.data?.code === 'INVALID_API_KEY') {
-        setError('Invalid API key');
-        toast.error('Invalid ElevenLabs API key');
-      } else {
-        setError('Failed to load voices');
-        toast.error('Could not load voice options');
-      }
+      setError('Failed to load voices');
+      toast.error('Could not load voice options');
     } finally {
       setLoading(false);
     }
