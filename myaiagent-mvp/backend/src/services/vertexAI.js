@@ -39,6 +39,13 @@ async function getVertexAIConfig() {
     if (credsResult.rows.length > 0) {
       const decryptedCreds = decryptSecret(credsResult.rows[0].key_value);
       credentials = JSON.parse(decryptedCreds);
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      // Fallback to environment variable
+      try {
+        credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+      } catch (error) {
+        console.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON from environment');
+      }
     }
 
     if (projectResult.rows.length > 0) {

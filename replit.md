@@ -30,9 +30,11 @@ The application employs a client-server architecture with React and Vite for the
 -   **Memory System**: AI extracts and stores user-specific facts for personalization and proactive use.
 -   **Admin Dashboard**: Provides user management, API usage statistics, and comprehensive API key management.
 -   **Security**: Implements Helmet, CORS, encrypted storage for API secrets, and secure password verification.
--   **Intelligent Model Selection**: Dynamically selects optimal OpenAI models based on query complexity.
+-   **Intelligent Model Selection**: Dynamically selects optimal Gemini models based on query complexity.
 -   **Streaming Function Calling**: Enables AI to execute UI actions during streaming conversations.
--   **Web Search Capability**: AI can perform web searches using Google Custom Search, displaying results with citations.
+-   **Web Search Capability**: Dual search system with both manual and automatic grounding:
+    - **Manual Search**: Google Custom Search API via dedicated search button
+    - **Vertex AI Grounding**: Native Google Search integration that automatically triggers for real-time queries (news, current events, prices, scores, etc.)
 -   **Google Services Integration**: Complete suite of Google services via custom OAuth 2.0 with per-user tokens, including Gmail, Calendar, Drive, Docs, and Sheets.
 -   **Performance Optimizations**: Includes database indexing, query consolidation, connection pooling, asynchronous operations, frontend code splitting, and React Query.
 -   **Self-Awareness & Intelligence**: Features enhanced memory, per-conversation analytics, and feedback-driven model improvements.
@@ -45,8 +47,24 @@ The application employs a client-server architecture with React and Vite for the
 -   Memory counter in the sidebar and toggleable conversation insights panel.
 
 ## External Dependencies
--   **OpenAI API**: Used for GPT-4o (chat, vision), Realtime API (voice), Whisper (speech-to-text), and TTS (text-to-speech).
--   **ElevenLabs API**: (Optional) For premium Text-to-Speech.
+-   **Google Gemini API**: Primary AI model for chat, vision, and text generation.
+-   **Google Vertex AI**: For advanced features including native Google Search grounding with Gemini 2.0 models.
+-   **Google Cloud TTS/STT**: Text-to-Speech (1,886 voices) and Speech-to-Text capabilities.
 -   **PostgreSQL**: Primary database.
--   **Google Custom Search API**: For web search functionality.
+-   **Google Custom Search API**: For manual web search functionality.
 -   **Google OAuth 2.0**: For integration with Google services (Gmail, Calendar, Drive, Docs, Sheets).
+
+## Search & Grounding Architecture
+The application implements a sophisticated dual-search system:
+
+1. **Manual Search** (Google Custom Search API):
+   - Triggered via dedicated Globe button in chat interface
+   - Displays formatted results with rankings, thumbnails, and "Open All" functionality
+   - Suitable for explicit search requests
+
+2. **Automatic Grounding** (Vertex AI + Native Google Search):
+   - Automatically detects queries needing real-time information
+   - Keywords trigger automatic search: "latest", "current", "today", "news", "recent", "who won", "price", "weather", "score", etc.
+   - Gemini 2.0 models seamlessly ground responses with web data
+   - No separate results display - information integrated into AI response
+   - Requires Vertex AI service account credentials

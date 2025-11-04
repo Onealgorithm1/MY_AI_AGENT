@@ -8,6 +8,7 @@ import {
   buildMessagesWithMemory,
   estimateTokens 
 } from '../services/gemini.js'; // ✅ MIGRATED TO GEMINI
+import { createVertexChatCompletion, isVertexAIConfigured } from '../services/vertexAI.js';
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
@@ -199,6 +200,34 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       functionsCount: functionsToPass ? functionsToPass.length : 0
     });
 
+    // === ✅ VERTEX AI GROUNDING DETECTION ===
+    // Check if query benefits from real-time web search
+    const groundingKeywords = [
+      'latest', 'current', 'today', 'now', 'recent', 'news',
+      'who won', 'what happened', 'search for', 'find', 'look up',
+      'price', 'stock', 'weather', 'score', 'update', '2024', '2025'
+    ];
+    
+    const needsGrounding = groundingKeywords.some(kw => userQuery.includes(kw));
+    const vertexAIAvailable = await isVertexAIConfigured();
+    
+    // CRITICAL: Only use Vertex AI if no UI functions are required
+    // If functionsToPass is set, user needs Gmail/Google functions which Vertex AI doesn't support
+    const useVertexAI = needsGrounding && vertexAIAvailable && !functionsToPass;
+
+    // Map Gemini model names to Vertex AI equivalents
+    const vertexModelMap = {
+      'gemini-2.5-flash': 'gemini-2.0-flash-001',
+      'gemini-2.5-pro': 'gemini-2.0-pro',
+      'gemini-2.0-flash': 'gemini-2.0-flash-001'
+    };
+
+    const vertexModel = vertexModelMap[selectedModel] || 'gemini-2.0-flash-001';
+
+    if (useVertexAI) {
+      console.log('🌐 Using Vertex AI with Google Search grounding for:', userQuery.substring(0, 50));
+    }
+
     if (stream) {
       // Streaming response
       res.setHeader('Content-Type', 'text/event-stream');
@@ -213,7 +242,10 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       let functionName = '';
       let functionArgs = '';
 
-      const completion = await createChatCompletion(messages, selectedModel, true, functionsToPass);
+      // Use Vertex AI with grounding if needed, otherwise use standard Gemini
+      const completion = useVertexAI
+        ? await createVertexChatCompletion(messages, vertexModel, true, true)
+        : await createChatCompletion(messages, selectedModel, true, functionsToPass);
 
       completion.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
@@ -351,7 +383,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     } else {
       // Non-streaming response with function calling support
-      const completion = await createChatCompletion(messages, selectedModel, false, functionsToPass);
+      const completion = useVertexAI
+        ? await createVertexChatCompletion(messages, vertexModel, false, true)
+        : await createChatCompletion(messages, selectedModel, false, functionsToPass);
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
       
