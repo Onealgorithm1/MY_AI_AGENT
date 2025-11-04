@@ -23,6 +23,10 @@ args = "backend"
 task = "workflow.run"
 args = "frontend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "planka"
+
 [[workflows.workflow]]
 name = "backend"
 author = "agent"
@@ -46,6 +50,18 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "planka"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd myaiagent-mvp/planka/server && npm start"
+waitForPort = 3002
 
 [[ports]]
 localPort = 3000

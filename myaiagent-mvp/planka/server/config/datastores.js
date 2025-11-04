@@ -52,5 +52,6 @@ module.exports.datastores = {
 
     adapter: 'sails-postgresql',
     url: process.env.DATABASE_URL,
+    ssl: process.env.KNEX_REJECT_UNAUTHORIZED_SSL_CERTIFICATE === 'false' ? { rejectUnauthorized: false } : true,
   },
 };

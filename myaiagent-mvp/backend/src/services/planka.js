@@ -5,8 +5,15 @@ export class PlankaService {
     const username = `${userEmail.split('@')[0]}_${appUserId.substring(0, 8)}`;
     
     const result = await query(
-      `INSERT INTO user_account (email, name, username, role, created_at, updated_at)
-       VALUES ($1, $2, $3, 'user', NOW(), NOW())
+      `INSERT INTO user_account (
+         email, name, username, role, 
+         subscribe_to_own_cards, subscribe_to_card_when_commenting,
+         turn_off_recent_card_highlighting, enable_favorites_by_default,
+         default_editor_mode, default_home_view, default_projects_order,
+         is_sso_user, is_deactivated,
+         created_at, updated_at
+       )
+       VALUES ($1, $2, $3, 'user', true, true, false, false, 'regular', 'projects', 'position', false, false, NOW(), NOW())
        ON CONFLICT (email) DO UPDATE 
        SET name = EXCLUDED.name, updated_at = NOW()
        RETURNING id`,
@@ -45,8 +52,8 @@ export class PlankaService {
     }
 
     const projectResult = await query(
-      `INSERT INTO project (name, created_at, updated_at)
-       VALUES ($1, NOW(), NOW())
+      `INSERT INTO project (name, is_hidden, created_at, updated_at)
+       VALUES ($1, false, NOW(), NOW())
        RETURNING id`,
       [projectName]
     );
