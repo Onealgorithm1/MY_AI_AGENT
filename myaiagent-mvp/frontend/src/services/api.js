@@ -80,7 +80,10 @@ api.interceptors.response.use(
       const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/signup';
       const isLoginAttempt = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup');
       
-      if (!isAuthPage && !isLoginAttempt) {
+      // Don't logout on TTS errors (ElevenLabs quota exceeded returns 401)
+      const isTTSError = error.config?.url?.includes('/tts/');
+      
+      if (!isAuthPage && !isLoginAttempt && !isTTSError) {
         // Clear all auth-related storage
         localStorage.removeItem('user');
         localStorage.removeItem('auth-storage');
