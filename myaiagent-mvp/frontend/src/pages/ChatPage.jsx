@@ -39,6 +39,7 @@ import SearchResults from '../components/SearchResults';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
 import useTypewriter from '../hooks/useTypewriter';
+import useSpeechToText from '../hooks/useSpeechToText';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -89,6 +90,16 @@ export default function ChatPage() {
       enabled: streamingContent.length > 0,
     }
   );
+  
+  // Speech-to-text hook
+  const { 
+    isRecording, 
+    isProcessing, 
+    error: sttError, 
+    startRecording, 
+    stopRecording, 
+    cancelRecording 
+  } = useSpeechToText();
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
@@ -555,6 +566,22 @@ export default function ChatPage() {
       sendMessage();
     }
   };
+  
+  // Handle microphone button click
+  const handleMicClick = async () => {
+    if (isRecording) {
+      try {
+        const transcript = await stopRecording();
+        if (transcript) {
+          setInputMessage(prev => prev ? `${prev} ${transcript}` : transcript);
+        }
+      } catch (error) {
+        toast.error(sttError || 'Failed to transcribe audio');
+      }
+    } else {
+      await startRecording();
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -932,11 +959,30 @@ export default function ChatPage() {
                 <Paperclip className="w-5 h-5" />
               </button>
 
+              <button
+                onClick={handleMicClick}
+                disabled={isProcessing}
+                className={`p-2 rounded-lg transition-colors ${
+                  isRecording
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={isRecording ? 'Stop recording' : 'Start recording'}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isRecording ? (
+                  <MicOff className="w-5 h-5" />
+                ) : (
+                  <Mic className="w-5 h-5" />
+                )}
+              </button>
+
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Message AI..."
+                placeholder={isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Message AI...'}
                 rows={1}
                 className="flex-1 resize-none px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent"
                 style={{ maxHeight: '200px' }}

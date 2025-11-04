@@ -271,4 +271,21 @@ export const tts = {
   },
 };
 
+// STT endpoints
+export const stt = {
+  transcribe: async (audioBlob, languageCode = 'en-US') => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('languageCode', languageCode);
+    
+    const response = await api.post('/stt/transcribe', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data.transcript;
+  },
+};
+
 export default api;
