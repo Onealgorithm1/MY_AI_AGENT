@@ -81,7 +81,11 @@ api.interceptors.response.use(
       const isLoginAttempt = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup');
       
       if (!isAuthPage && !isLoginAttempt) {
+        // Clear all auth-related storage
         localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
+        
+        // Force a full redirect to login (this will clear all state)
         window.location.href = '/login';
       }
     }

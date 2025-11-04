@@ -40,9 +40,29 @@ function AdminRoute({ children }) {
 }
 
 function App() {
-  // SECURITY: Fetch CSRF token on app load
+  const { isAuthenticated, user } = useAuthStore();
+
+  // SECURITY: Fetch CSRF token and verify auth on app load
   useEffect(() => {
-    fetchCsrfToken();
+    const initializeApp = async () => {
+      await fetchCsrfToken();
+      
+      // If frontend thinks user is authenticated, verify with backend
+      if (isAuthenticated && user) {
+        try {
+          const { auth } = await import('./services/api');
+          await auth.me();
+          // Token is valid, user stays logged in
+        } catch (error) {
+          // Token invalid or expired, clear auth state
+          console.log('Session expired, logging out');
+          localStorage.removeItem('auth-storage');
+          useAuthStore.setState({ user: null, isAuthenticated: false });
+        }
+      }
+    };
+    
+    initializeApp();
   }, []);
 
   return (
