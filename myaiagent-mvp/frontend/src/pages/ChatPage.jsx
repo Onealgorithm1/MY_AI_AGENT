@@ -805,7 +805,7 @@ export default function ChatPage() {
                   </button>
                   <button
                     onClick={() => {
-                      window.open('https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3002', '_blank');
+                      window.open('/api/planka-auth/auto-login', '_blank');
                       setShowSettingsDropdown(false);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
