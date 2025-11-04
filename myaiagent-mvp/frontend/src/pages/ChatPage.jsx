@@ -803,6 +803,16 @@ export default function ChatPage() {
                     <CheckSquare className="w-4 h-4" />
                     <span>Project Management</span>
                   </button>
+                  <a
+                    href="https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3002"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowSettingsDropdown(false)}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Open Planka</span>
+                  </a>
                 </div>
               )}
             </div>
