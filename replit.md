@@ -63,9 +63,10 @@ The application employs a client-server architecture with React and Vite for the
 
 ## Recent Updates (November 2025)
 -   **Vertex AI Fallback**: Added automatic fallback to standard Gemini API when Vertex AI credentials are unavailable, ensuring AI functionality remains operational.
--   **Settings Dropdown Menu**: Replaced direct profile navigation with a hover-activated dropdown menu on the settings icon, providing quick access to Profile and Project Management pages.
+-   **Settings Dropdown Menu**: Replaced direct profile navigation with a hover-activated dropdown menu on the settings icon, providing quick access to Profile, Project Management, and Planka UI pages.
 -   **Project Management Page**: Created dedicated page for viewing and managing tasks with kanban-style board (To Do, In Progress, Done lists).
 -   **Task Management UI**: Full CRUD interface for tasks including create, edit, delete, and move between lists with real-time updates.
+-   **Full Planka Integration**: Deployed complete standalone Planka server on port 3002 with SSL-enabled Neon PostgreSQL connection, providing access to the full-featured project management UI alongside the custom integration.
 
 ## Search & Grounding Architecture
 The application implements a sophisticated dual-search system:
