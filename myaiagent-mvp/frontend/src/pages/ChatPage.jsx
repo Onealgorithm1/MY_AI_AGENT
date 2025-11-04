@@ -804,7 +804,7 @@ export default function ChatPage() {
                     <span>Project Management</span>
                   </button>
                   <a
-                    href="https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3002"
+                    href="/api/planka-auth/auto-login"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setShowSettingsDropdown(false)}

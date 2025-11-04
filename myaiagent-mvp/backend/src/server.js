@@ -47,6 +47,7 @@ import gmailRoutes from './routes/gmail.js';
 import ttsRoutes from './routes/tts.js';
 import sttRoutes from './routes/stt.js';
 import plankaRoutes from './routes/planka.js';
+import plankaAuthRoutes from './routes/planka-auth.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -234,6 +235,7 @@ app.use('/api/gmail', gmailRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/stt', sttRoutes);
 app.use('/api/planka', plankaRoutes);
+app.use('/api/planka-auth', plankaAuthRoutes);
 
 // Proxy to Planka UI server on port 3002
 app.use('/planka-ui', createProxyMiddleware({
