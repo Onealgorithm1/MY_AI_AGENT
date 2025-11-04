@@ -5,31 +5,18 @@ let ttsClient = null;
 
 async function getGoogleTTSClient() {
   if (!ttsClient) {
-    // Check for service account credentials in environment
-    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
     
-    if (!credentialsJson) {
-      throw new Error('Google Cloud credentials not configured. Please add GOOGLE_APPLICATION_CREDENTIALS_JSON to your secrets.');
+    if (!apiKey) {
+      throw new Error('Google Cloud API key not configured. Please add GOOGLE_CLOUD_API_KEY to your secrets.');
     }
     
-    try {
-      // Parse the JSON credentials
-      const credentials = JSON.parse(credentialsJson);
-      
-      // Initialize client with explicit credentials
-      ttsClient = new textToSpeech.TextToSpeechClient({
-        credentials: {
-          client_email: credentials.client_email,
-          private_key: credentials.private_key,
-        },
-        projectId: credentials.project_id,
-      });
-      
-      console.log('✅ Google TTS client initialized successfully');
-    } catch (error) {
-      console.error('Failed to parse Google credentials:', error.message);
-      throw new Error('Invalid Google Cloud credentials format. Please check your GOOGLE_APPLICATION_CREDENTIALS_JSON secret.');
-    }
+    // Initialize client with API key
+    ttsClient = new textToSpeech.TextToSpeechClient({
+      apiKey: apiKey,
+    });
+    
+    console.log('✅ Google TTS client initialized with API key');
   }
   return ttsClient;
 }
