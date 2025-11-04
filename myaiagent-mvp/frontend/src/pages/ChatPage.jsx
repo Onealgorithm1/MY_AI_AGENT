@@ -63,7 +63,7 @@ export default function ChatPage() {
 
   const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-exp');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
   const [editingConvId, setEditingConvId] = useState(null);
@@ -733,9 +733,9 @@ export default function ChatPage() {
               className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
             >
               <option value="auto">🤖 Auto (AI picks best model)</option>
-              <option value="gemini-2.0-flash-exp">✨ Gemini 2.0 Flash • Fast & Powerful</option>
-              <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro • Advanced Reasoning</option>
-              <option value="gemini-1.5-flash">⚡ Gemini 1.5 Flash • Ultra Fast</option>
+              <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash • Latest & Fast</option>
+              <option value="gemini-2.5-pro">🧠 Gemini 2.5 Pro • Most Powerful</option>
+              <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash • Efficient</option>
             </select>
           </div>
 
