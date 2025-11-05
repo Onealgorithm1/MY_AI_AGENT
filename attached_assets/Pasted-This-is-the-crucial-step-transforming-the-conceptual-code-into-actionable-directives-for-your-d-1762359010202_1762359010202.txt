@@ -1,0 +1,92 @@
+This is the crucial step: transforming the conceptual code into **actionable directives** for your development team.
+
+Based on Nexus's final code and the architectural decision to manage complex state externally, here is the updated memo that clearly directs your team on **what to build** for the enhanced STT experience.
+
+-----
+
+## 🛠️ Directive to Development Team: Implementing Real-Time STT
+
+### Subject: URGENT: Implementation Plan for Real-Time Streaming STT & UI State Management
+
+Team,
+
+The following directives detail the mandatory implementation of the enhanced Speech-to-Text (STT) workflow. This requires moving state control to the parent component and implementing the WebSockets stream to meet our goal of near-zero perceived latency.
+
+-----
+
+## Phase 1: Backend & Core STT Streaming (Architecture)
+
+The single biggest priority to address latency is implementing the streaming connection.
+
+### 1\. **Implement WebSocket Handling Service**
+
+  * **Goal:** Create a backend service (e.g., in Node.js or Python) that acts as a secure proxy between the **Frontend** and the **Google Cloud STT API**.
+  * **Protocol:** This service must manage a **WebSocket connection** with the frontend to receive raw audio chunks in real-time.
+  * **STT API Call:** The service must be capable of continuously piping this incoming audio stream directly to the Google Cloud STT API's streaming endpoint, which is required for low latency and partial results.
+
+### 2\. **Manage Streaming Results**
+
+  * **Partial Results:** The backend must parse the STT API's streaming responses, specifically looking for **interim results** (the partial transcript).
+  * **Forwarding:** Immediately forward the interim results back to the frontend via the open WebSocket connection. This data is used to update the `partialTranscript` state in real-time.
+  * **Final Result:** When the STT API signals the final result (or VAD/timeout is detected), send the final, complete transcript to the frontend, which will trigger the final message send to Nexus.
+
+-----
+
+## Phase 2: Frontend State Management (ChatPage Component)
+
+The parent component (e.g., `ChatPage`) must own and manage the complex voice lifecycle states.
+
+### 1\. **Establish Parent State**
+
+Introduce the following three states in the parent component:
+
+  * `isListening`: **Boolean.** Tracks if the microphone is active.
+  * `isTranscribing`: **Boolean.** Tracks the delay between the audio stream closing and receiving the final transcript.
+  * `partialTranscript`: **String.** Holds the real-time text received from the WebSocket.
+
+### 2\. **Implement WebSocket/STT Logic Hooks**
+
+  * Create functions (`onVoiceInput`, `onStopListening`) in the parent component that manage the WebSocket lifecycle and update the states (`setIsListening`, `setIsTranscribing`, `setPartialTranscript`).
+  * Ensure the final, complete transcript received from the WebSocket is used to call the main **`onSendMessage(finalTranscript)`** function, thus triggering Nexus's response.
+
+### 3\. **Pass States as Props**
+
+Pass the three established voice states (`isListening`, `isTranscribing`, `partialTranscript`) and the two handlers (`onVoiceInput`, `onStopListening`) down as props to the `ChatInput` component.
+
+-----
+
+## Phase 3: Update `ChatInput.jsx` (UI Implementation)
+
+The `ChatInput` component provided by Nexus is now purely presentational. **The development team must remove all local `useState` declarations related to voice management (e.g., `setIsListening`, `setPartialTranscript`)** and rely solely on the props passed from the parent.
+
+### 1\. **Remove Local Voice State**
+
+Delete the following lines from the `ChatInput` component:
+
+```javascript
+const [isListening, setIsListening] = useState(false);
+const [isTranscribing, setIsTranscribing] = useState(false);
+const [partialTranscript, setPartialTranscript] = useState('');
+```
+
+### 2\. **Update Handlers**
+
+Modify the button handlers to directly call the prop functions:
+
+```javascript
+// Change startVoiceInput() and stopVoiceListening() to use the passed props:
+const handleMicClick = () => {
+    // Rely entirely on props for state and actions
+    if (isListening) {
+        onStopListening(); 
+    } else {
+        onVoiceInput();
+    }
+};
+```
+
+### 3\. **Finalize Rendering Logic**
+
+Confirm the conditional rendering for the input field and the mic button relies exclusively on the **passed props** (`isListening`, `isTranscribing`, etc.) to execute the state swaps designed by Nexus.
+
+Implementing this multi-phase plan will resolve the core latency issue while maintaining Nexus's executive persona and highly professional output style.

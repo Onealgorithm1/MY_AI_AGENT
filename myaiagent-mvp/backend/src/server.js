@@ -52,6 +52,7 @@ import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
 import { createTelemetryWebSocketServer } from './websocket/telemetry.js';
+import { createSTTWebSocketServer } from './websocket/sttStream.js';
 
 // Import Performance Monitoring
 import { performanceMonitoringMiddleware } from './middleware/performanceMonitoring.js';
@@ -324,6 +325,7 @@ const server = http.createServer(app);
 // Initialize WebSocket servers
 createVoiceWebSocketServer(server);
 createTelemetryWebSocketServer(server);
+createSTTWebSocketServer(server);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
