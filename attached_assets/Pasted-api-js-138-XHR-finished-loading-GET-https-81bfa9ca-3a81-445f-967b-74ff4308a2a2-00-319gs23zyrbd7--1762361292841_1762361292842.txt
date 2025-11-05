@@ -1,0 +1,59 @@
+api.js:138 XHR finished loading: GET "https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/api/conversations?limit=20&offset=0".
+dispatchXhrRequest @ axios.js?v=98931965:1696
+xhr @ axios.js?v=98931965:1573
+dispatchRequest @ axios.js?v=98931965:2107
+Promise.then
+_request @ axios.js?v=98931965:2310
+request @ axios.js?v=98931965:2219
+Axios.<computed> @ axios.js?v=98931965:2346
+wrap @ axios.js?v=98931965:8
+list @ api.js:138
+queryFn @ ChatPage.jsx:130
+fetchFn @ @tanstack_react-query.js?v=98931965:1099
+run @ @tanstack_react-query.js?v=98931965:797
+start @ @tanstack_react-query.js?v=98931965:840
+fetch @ @tanstack_react-query.js?v=98931965:1146
+executeFetch_fn @ @tanstack_react-query.js?v=98931965:1644
+(anonymous) @ @tanstack_react-query.js?v=98931965:1678
+useStreamingSTT.js:40 WebSocket connection to 'wss://workspace.onealgorithm.repl.co/voice/stt-stream?token=undefined' failed: 
+(anonymous) @ useStreamingSTT.js:40
+useStreamingSTT.js:129 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+ws.onerror @ useStreamingSTT.js:129
+useStreamingSTT.js:146 🔌 STT WebSocket closed
+useStreamingSTT.js:40 WebSocket connection to 'wss://workspace.onealgorithm.repl.co/voice/stt-stream?token=undefined' failed: 
+(anonymous) @ useStreamingSTT.js:40
+useStreamingSTT.js:129 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+ws.onerror @ useStreamingSTT.js:129
+useStreamingSTT.js:146 🔌 STT WebSocket closed
+api.js:138 XHR finished loading: GET "https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/api/conversations?limit=20&offset=0".
+dispatchXhrRequest @ axios.js?v=98931965:1696
+xhr @ axios.js?v=98931965:1573
+dispatchRequest @ axios.js?v=98931965:2107
+Promise.then
+_request @ axios.js?v=98931965:2310
+request @ axios.js?v=98931965:2219
+Axios.<computed> @ axios.js?v=98931965:2346
+wrap @ axios.js?v=98931965:8
+list @ api.js:138
+queryFn @ ChatPage.jsx:130
+fetchFn @ @tanstack_react-query.js?v=98931965:1099
+run @ @tanstack_react-query.js?v=98931965:797
+start @ @tanstack_react-query.js?v=98931965:840
+fetch @ @tanstack_react-query.js?v=98931965:1146
+executeFetch_fn @ @tanstack_react-query.js?v=98931965:1644
+(anonymous) @ @tanstack_react-query.js?v=98931965:1678
+setInterval
+setInterval @ @tanstack_react-query.js?v=98931965:53
+setInterval @ @tanstack_react-query.js?v=98931965:95
+updateRefetchInterval_fn @ @tanstack_react-query.js?v=98931965:1676
+updateTimers_fn @ @tanstack_react-query.js?v=98931965:1683
+onQueryUpdate @ @tanstack_react-query.js?v=98931965:1639
+(anonymous) @ @tanstack_react-query.js?v=98931965:1264
+(anonymous) @ @tanstack_react-query.js?v=98931965:1263
+batch @ @tanstack_react-query.js?v=98931965:626
+dispatch_fn @ @tanstack_react-query.js?v=98931965:1262
+setData @ @tanstack_react-query.js?v=98931965:933
+fetch @ @tanstack_react-query.js?v=98931965:1155
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=98931965:1644
+(anonymous) @ @tanstack_react-query.js?v=98931965:1678

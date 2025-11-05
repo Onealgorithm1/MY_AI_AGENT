@@ -1,0 +1,207 @@
+chunk-WERSD76P.js?v=98931965:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=98931965:4393
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+warnOnce @ react-router-dom.js?v=98931965:4393
+chat:1 Mixed Content: The page at 'https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/chat' was loaded over HTTPS, but requested an insecure element 'http://static1.squarespace.com/static/5deda2c30803c10a0125b1cb/t/6316428f02387924a2e6fb0f/1662403219685/Geoffrey+Rubino+Obituary+Denver%2C+CO.png?format=1500w'. This request was automatically upgraded to HTTPS, For more information see https://blog.chromium.org/2019/10/no-more-mixed-messages-about-https.html
+api.js:42 ✅ CSRF token added to request: post /conversations
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+    at performUnitOfWork (chunk-WERSD76P.js?v=98931965:19198:20)
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+    at performUnitOfWork (chunk-WERSD76P.js?v=98931965:19198:20)
+chunk-WERSD76P.js?v=98931965:14032 The above error occurred in the <ChatPage> component:
+
+    at ChatPage (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/pages/ChatPage.jsx?t=1762361848422:69:20)
+    at PrivateRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:59:25)
+    at RenderedRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4088:5)
+    at Routes (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4558:5)
+    at Suspense
+    at ErrorBoundary (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/components/ErrorBoundary.jsx:8:5)
+    at App (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:94:37)
+    at Router (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4501:15)
+    at BrowserRouter (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:5247:5)
+    at QueryClientProvider (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=98931965:3086:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-WERSD76P.js?v=98931965:14032
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/error:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+chunk-WERSD76P.js?v=98931965:14032 The above error occurred in the <ChatPage> component:
+
+    at ChatPage (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/pages/ChatPage.jsx?t=1762361848422:69:20)
+    at PrivateRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:59:25)
+    at RenderedRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4088:5)
+    at Routes (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4558:5)
+    at Suspense
+    at ErrorBoundary (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/components/ErrorBoundary.jsx:8:5)
+    at App (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:94:37)
+    at Router (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4501:15)
+    at BrowserRouter (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:5247:5)
+    at QueryClientProvider (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=98931965:3086:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-WERSD76P.js?v=98931965:14032
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/error:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+useStreamingSTT.js?t=1762361848422:154 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js?t=1762361848422:154:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+chunk-WERSD76P.js?v=98931965:14032 The above error occurred in the <ChatPage> component:
+
+    at ChatPage (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/pages/ChatPage.jsx?t=1762361848422:69:20)
+    at PrivateRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:59:25)
+    at RenderedRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4088:5)
+    at Routes (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4558:5)
+    at Suspense
+    at ErrorBoundary (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/components/ErrorBoundary.jsx:8:5)
+    at App (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:94:37)
+    at Router (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4501:15)
+    at BrowserRouter (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:5247:5)
+    at QueryClientProvider (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=98931965:3086:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-WERSD76P.js?v=98931965:14032
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/error:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+useStreamingSTT.js:165 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js:165:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+useStreamingSTT.js:165 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js:165:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+chunk-WERSD76P.js?v=98931965:14032 The above error occurred in the <ChatPage> component:
+
+    at ChatPage (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/pages/ChatPage.jsx?t=1762361854156:69:20)
+    at PrivateRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:59:25)
+    at RenderedRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4088:5)
+    at Routes (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4558:5)
+    at Suspense
+    at ErrorBoundary (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/components/ErrorBoundary.jsx:8:5)
+    at App (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:94:37)
+    at Router (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4501:15)
+    at BrowserRouter (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:5247:5)
+    at QueryClientProvider (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=98931965:3086:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-WERSD76P.js?v=98931965:14032
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/error:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+useStreamingSTT.js:165 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js:165:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+useStreamingSTT.js:165 Uncaught ReferenceError: token is not defined
+    at useStreamingSTT (useStreamingSTT.js:165:7)
+    at ChatPage (ChatPage.jsx:108:7)
+    at renderWithHooks (chunk-WERSD76P.js?v=98931965:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=98931965:14582:28)
+    at mountLazyComponent (chunk-WERSD76P.js?v=98931965:14833:23)
+    at beginWork (chunk-WERSD76P.js?v=98931965:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=98931965:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=98931965:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=98931965:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=98931965:19765:15)
+chunk-WERSD76P.js?v=98931965:14032 The above error occurred in the <ChatPage> component:
+
+    at ChatPage (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/pages/ChatPage.jsx?t=1762361854156:69:20)
+    at PrivateRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:59:25)
+    at RenderedRoute (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4088:5)
+    at Routes (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4558:5)
+    at Suspense
+    at ErrorBoundary (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/components/ErrorBoundary.jsx:8:5)
+    at App (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/src/App.jsx?t=1762361839013:94:37)
+    at Router (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:4501:15)
+    at BrowserRouter (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=98931965:5247:5)
+    at QueryClientProvider (https://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=98931965:3086:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-WERSD76P.js?v=98931965:14032
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/event:1  Failed to load resource: the server responded with a status of 403 (Forbidden)
+api/telemetry/error:1  Failed to load resource: the server responded with a status of 403 (Forbidden)

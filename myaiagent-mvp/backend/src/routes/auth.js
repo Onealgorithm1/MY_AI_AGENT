@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { hashPassword, verifyPassword, generateToken } from '../utils/auth.js';
+import { hashPassword, verifyPassword, generateToken, generateWebSocketToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import cache from '../services/cacheService.js';
@@ -288,6 +288,23 @@ router.post('/logout', authenticate, async (req, res) => {
     status: 'success',
     message: 'Logged out successfully' 
   });
+});
+
+// Get WebSocket token - Short-lived token for WebSocket authentication
+// This endpoint allows authenticated users to get a temporary token for WebSocket connections
+// since HTTP-only cookies can't be sent in WebSocket query parameters
+router.get('/ws-token', authenticate, async (req, res) => {
+  try {
+    const wsToken = generateWebSocketToken(req.user);
+    
+    res.json({
+      token: wsToken,
+      expiresIn: 300, // 5 minutes in seconds
+    });
+  } catch (error) {
+    console.error('WebSocket token generation error:', error);
+    res.status(500).json({ error: 'Failed to generate WebSocket token' });
+  }
 });
 
 // Get full user profile

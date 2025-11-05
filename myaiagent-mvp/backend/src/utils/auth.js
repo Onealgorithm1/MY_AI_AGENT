@@ -38,6 +38,21 @@ export function generateToken(user) {
   });
 }
 
+// Generate short-lived WebSocket token (5 minutes)
+// Used for WebSocket authentication when HTTP-only cookies can't be used
+export function generateWebSocketToken(user) {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    ws: true, // Mark as WebSocket token
+  };
+  
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: '5m', // 5 minutes
+  });
+}
+
 // Verify JWT token
 export function verifyToken(token) {
   try {

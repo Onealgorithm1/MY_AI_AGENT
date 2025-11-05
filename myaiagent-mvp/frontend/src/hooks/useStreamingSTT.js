@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
+import { auth as authApi } from '../services/api';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
 
@@ -13,7 +13,6 @@ export default function useStreamingSTT() {
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const finalTranscriptResolveRef = useRef(null);
-  const { token } = useAuthStore();
 
   /**
    * Start voice input - opens WebSocket and starts streaming audio
@@ -22,6 +21,17 @@ export default function useStreamingSTT() {
     try {
       setError(null);
       setPartialTranscript('');
+      
+      // Get WebSocket token from backend (short-lived, 5 min expiry)
+      let wsToken;
+      try {
+        const tokenResponse = await authApi.getWebSocketToken();
+        wsToken = tokenResponse.data.token;
+      } catch (tokenError) {
+        console.error('Failed to get WebSocket token:', tokenError);
+        setError('Authentication failed. Please try logging in again.');
+        return;
+      }
       
       // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -35,8 +45,8 @@ export default function useStreamingSTT() {
       
       streamRef.current = stream;
 
-      // Connect to STT WebSocket
-      const wsUrl = `${WS_URL}/stt-stream?token=${token}`;
+      // Connect to STT WebSocket with fresh token
+      const wsUrl = `${WS_URL}/stt-stream?token=${wsToken}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 

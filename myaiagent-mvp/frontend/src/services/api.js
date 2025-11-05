@@ -130,6 +130,8 @@ export const auth = {
     api.put('/auth/preferences', { preferences }),
   resetPreferences: () =>
     api.delete('/auth/preferences'),
+  getWebSocketToken: () =>
+    api.get('/auth/ws-token'),
 };
 
 // Conversation endpoints
