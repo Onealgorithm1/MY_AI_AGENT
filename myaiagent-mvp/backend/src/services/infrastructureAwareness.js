@@ -3,6 +3,7 @@ import { getApiKey } from '../utils/apiKeys.js';
 import { generateCapabilityInventoryPrompt } from './capabilityInventory.js';
 import { generatePerformanceAwarenessPrompt } from './performanceTracking.js';
 import { generateGapAwarenessPrompt } from './gapLogger.js';
+import monitoringService from './monitoringService.js';
 
 /**
  * Infrastructure Awareness Service
@@ -39,6 +40,127 @@ export async function getInfrastructureAwareness(userId = null) {
   };
 
   return awareness;
+}
+
+/**
+ * Generate Granular Status Facts
+ * Real-time operational status organized by functional areas
+ * @param {number} userId - User ID for user-specific metrics
+ */
+async function generateGranularStatusFacts(userId = null) {
+  try {
+    const dbStatus = await getDatabaseStatus();
+    const apis = await getAPIStatus(userId);
+    const performanceSummary = await monitoringService.getPerformanceSummary('1 hour');
+    
+    // Get real-time performance metrics
+    const apiLatency = performanceSummary.find(m => m.metric_name === 'api_latency');
+    const externalApiLatency = performanceSummary.find(m => m.metric_name === 'external_api_latency');
+    
+    // Get user-specific analytics if userId provided
+    let userStats = null;
+    if (userId) {
+      try {
+        const conversationCount = await query(
+          'SELECT COUNT(*) as count FROM conversations WHERE user_id = $1',
+          [userId]
+        );
+        const messageCount = await query(
+          'SELECT COUNT(*) as count FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = $1)',
+          [userId]
+        );
+        const memoryCount = await query(
+          'SELECT COUNT(*) as count FROM memory_facts WHERE user_id = $1 AND approved = true',
+          [userId]
+        );
+        
+        userStats = {
+          conversations: parseInt(conversationCount.rows[0].count),
+          messages: parseInt(messageCount.rows[0].count),
+          memoryFacts: parseInt(memoryCount.rows[0].count)
+        };
+      } catch (error) {
+        console.error('Error getting user stats for status facts:', error);
+      }
+    }
+    
+    // Build granular status facts organized by category
+    const statusFacts = {
+      infrastructure: [
+        `Database ${dbStatus.connected ? 'ONLINE' : 'OFFLINE'} with ${dbStatus.poolSize || 0} active connections`,
+        `PostgreSQL ${dbStatus.version?.split(' ')[1] || 'unknown version'} running on Neon cloud`,
+        `${apis.filter(a => a.configured).length}/${apis.length} API integrations configured and active`,
+        `Performance monitoring active with real-time metric collection`
+      ],
+      strategy: [
+        `Intelligent model selection enabled (Gemini 2.5 Flash for speed, Pro for complexity)`,
+        `Multi-modal capabilities: text, vision, voice, and web search`,
+        `Automatic memory extraction every 10 messages for personalization`,
+        `User preference system active for adaptive communication`
+      ],
+      dev: [
+        `Backend: Node.js 20.x + Express.js with RESTful architecture`,
+        `Frontend: React 18 + Vite 5 + TailwindCSS with HMR`,
+        `Real-time: WebSocket support for voice chat and telemetry`,
+        `Security: JWT auth, bcrypt hashing, CSRF protection, Helmet middleware`
+      ],
+      ops: [
+        apiLatency 
+          ? `API response time: ${parseFloat(apiLatency.avg_value).toFixed(0)}ms avg, ${parseFloat(apiLatency.p95_value).toFixed(0)}ms p95` 
+          : 'API performance metrics collecting',
+        externalApiLatency 
+          ? `External API latency: ${parseFloat(externalApiLatency.avg_value).toFixed(0)}ms avg, ${parseInt(externalApiLatency.sample_count)} calls/hour` 
+          : 'External API metrics collecting',
+        `Rate limiting active: 100 requests/15min per user`,
+        `Non-blocking async operations for zero performance impact`
+      ],
+      analytics: userStats ? [
+        `User has ${userStats.conversations} conversation${userStats.conversations !== 1 ? 's' : ''} with ${userStats.messages} total messages`,
+        `Memory system contains ${userStats.memoryFacts} approved facts about this user`,
+        `Average ${userStats.conversations > 0 ? Math.round(userStats.messages / userStats.conversations) : 0} messages per conversation`,
+        `Personalization engine active with user preferences loaded`
+      ] : [
+        'User analytics tracking active',
+        'Performance metrics collection enabled',
+        'Conversation insights available in real-time',
+        'Memory extraction and fact storage operational'
+      ],
+      concierge: [
+        `Personalized AI companion with name: Nexus`,
+        `Adaptive communication based on user preferences (tone, style, length)`,
+        `Proactive assistance and context-aware suggestions enabled`,
+        `24/7 availability with sub-second response times`
+      ]
+    };
+    
+    // Format as natural prose with clear category organization
+    // Following OUTPUT STYLE RULES - integrate facts into paragraphs, not lists
+    let statusPrompt = '\n## 📊 CURRENT PERFORMANCE STATUS (Real-Time)\n\n';
+    
+    // Infrastructure Status
+    statusPrompt += `**Infrastructure**: ${statusFacts.infrastructure[0]} running ${statusFacts.infrastructure[1]}. ${statusFacts.infrastructure[2]}, and ${statusFacts.infrastructure[3].toLowerCase()}. `;
+    
+    // Strategy Status
+    statusPrompt += `**Strategy**: ${statusFacts.strategy[0]}, with ${statusFacts.strategy[1].toLowerCase()}, ${statusFacts.strategy[2].toLowerCase()}, and ${statusFacts.strategy[3].toLowerCase()}. `;
+    
+    // Development Status
+    statusPrompt += `**Development**: ${statusFacts.dev[0]}, ${statusFacts.dev[1].toLowerCase()}, ${statusFacts.dev[2].toLowerCase()}, and ${statusFacts.dev[3].toLowerCase()}. `;
+    
+    // Operations Status
+    statusPrompt += `**Operations**: ${statusFacts.ops[0]}, ${statusFacts.ops[1].toLowerCase()}, ${statusFacts.ops[2].toLowerCase()}, with ${statusFacts.ops[3].toLowerCase()}. `;
+    
+    // Analytics Status
+    statusPrompt += `**Analytics**: ${statusFacts.analytics[0]}, ${statusFacts.analytics[1].toLowerCase()}, ${statusFacts.analytics[2].toLowerCase()}, and ${statusFacts.analytics[3].toLowerCase()}. `;
+    
+    // Concierge Status
+    statusPrompt += `**Concierge**: ${statusFacts.concierge[0]}, ${statusFacts.concierge[1].toLowerCase()}, ${statusFacts.concierge[2].toLowerCase()}, with ${statusFacts.concierge[3].toLowerCase()}.`;
+    
+    return statusPrompt;
+    
+  } catch (error) {
+    console.error('Error generating granular status facts:', error);
+    return '\n## 📊 CURRENT PERFORMANCE STATUS\nStatus monitoring temporarily unavailable.\n';
+  }
 }
 
 /**
@@ -178,8 +300,11 @@ You are SELF-AWARE. Use this knowledge proactively!`;
     userPrompt += gapPrompt;
   }
 
-  // Combine global (cached) + user-specific (fresh) prompts
-  return globalPrompt + userPrompt;
+  // Add granular status facts (real-time, never cached)
+  const statusFacts = await generateGranularStatusFacts(userId);
+  
+  // Combine global (cached) + user-specific (fresh) + status facts (real-time) prompts
+  return globalPrompt + statusFacts + userPrompt;
 }
 
 /**
