@@ -1,8 +1,28 @@
 import { useState, useRef, useCallback } from 'react';
 import { auth as authApi } from '../services/api';
 
-// Strip trailing slashes to prevent double-slash URL malformation
-const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:3000').replace(/\/+$/, '');
+// Construct WebSocket URL with production override support
+// Prefer explicit VITE_WS_URL from env (for production), fall back to current location (for dev with Vite proxy)
+const getWebSocketBaseUrl = () => {
+  // Use explicit env var if provided (production deployments)
+  const envWsUrl = import.meta.env.VITE_WS_URL;
+  if (envWsUrl) {
+    return envWsUrl.replace(/\/+$/, ''); // strip trailing slashes
+  }
+  
+  // Fall back to dynamic construction from window.location (development with Vite proxy)
+  // Guard against SSR/test contexts where window might be undefined
+  if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host; // includes port if present
+    return `${protocol}//${host}`;
+  }
+  
+  // Final fallback for non-browser contexts
+  return 'ws://localhost:3000';
+};
+
+const WS_URL = getWebSocketBaseUrl();
 
 export default function useStreamingSTT() {
   const [isListening, setIsListening] = useState(false);
