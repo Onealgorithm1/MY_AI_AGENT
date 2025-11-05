@@ -265,22 +265,29 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Only pass functions when user has Google access AND mentions Google services
     const shouldPassFunctions = mentionsGoogle && hasGoogleAccess;
 
-    // Filter to only Gmail-related functions when Gmail is mentioned
+    // Pass all relevant Google service functions when user has Google access
     let functionsToPass = null;
     if (shouldPassFunctions) {
-      // Only pass relevant functions based on what's mentioned
-      if (userQuery.includes('email') || userQuery.includes('gmail') || userQuery.includes('mail') || userQuery.includes('inbox')) {
-        // Gmail functions only
-        functionsToPass = UI_FUNCTIONS.filter(f => 
-          f.name.toLowerCase().includes('email') || 
-          f.name === 'readEmails' || 
-          f.name === 'searchEmails' ||
-          f.name === 'webSearch' // Always include web search
+      // Include all Google service functions (Gmail, Calendar, Drive, Docs, Sheets)
+      // This ensures the AI can use any Google service the user needs
+      functionsToPass = UI_FUNCTIONS.filter(f => {
+        const name = f.name.toLowerCase();
+        return (
+          // Gmail functions
+          name.includes('email') ||
+          // Calendar functions
+          name.includes('calendar') || name.includes('event') ||
+          // Drive functions
+          name.includes('drive') || name.includes('file') ||
+          // Docs functions
+          name.includes('doc') ||
+          // Sheets functions
+          name.includes('sheet') ||
+          // Always include web search and UI navigation
+          name === 'websearch' || name === 'navigate' || name === 'changemodel' ||
+          name === 'createnewchat' || name === 'renameconversation' || name === 'deleteconversation'
         );
-      } else {
-        // All Google functions
-        functionsToPass = UI_FUNCTIONS;
-      }
+      });
     }
 
     // Debug log
