@@ -580,6 +580,9 @@ export default function ChatPage() {
       // Start listening
       try {
         await startListening();
+        if (sttError) {
+          toast.error(sttError);
+        }
       } catch (error) {
         toast.error('Failed to start voice input. Please check your microphone permissions.');
       }
@@ -1056,13 +1059,13 @@ export default function ChatPage() {
               </button>
 
               <div className="flex-1 relative">
-                {/* Partial transcript display */}
-                {isListening && partialTranscript && (
-                  <div className="absolute -top-10 left-0 right-0 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm">
+                {/* Partial transcript display - shows real-time speech recognition */}
+                {isListening && (
+                  <div className="absolute -top-12 left-0 right-0 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm z-10">
                     <div className="flex items-center gap-2">
                       <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
                       <span className="text-sm text-blue-700 dark:text-blue-300 italic">
-                        {partialTranscript}
+                        {partialTranscript || 'Listening... (Google Cloud STT credentials required)'}
                       </span>
                     </div>
                   </div>
