@@ -27,7 +27,7 @@ The application employs a client-server architecture with React and Vite for the
 -   **User Profile Management**: Includes editing, picture uploads, phone validation, and enhanced password management.
 -   **Chat Interface**: Supports streaming responses, multiple conversations, dynamic model selection, and intelligent automatic chat naming.
 -   **Voice Chat**: Real-time communication using WebSockets and OpenAI's Realtime API.
--   **Streaming Speech-to-Text**: Real-time audio transcription with partial transcript display as users speak, dramatically reducing perceived latency (~500ms vs 3-5 seconds). WebSocket-based architecture streams audio chunks to Google Cloud STT API and receives interim results for live feedback. Telemetry isolated with fire-and-forget pattern to ensure streaming reliability.
+-   **Speech-to-Text**: Audio transcription using Google Cloud Speech-to-Text API via REST endpoint. Users record audio through their microphone, and when finished, the complete audio file is sent to `/api/stt/transcribe` for transcription. Uses GEMINI_API_KEY for authentication. Implemented as REST-based approach for compatibility with Replit's infrastructure (WebSocket connections to backend port 3000 are blocked in Replit environment).
 -   **File Upload**: Supports various file types with integrated AI vision.
 -   **Memory System**: AI extracts and stores user-specific facts for personalization and proactive use.
 -   **Admin Dashboard**: Provides user management, API usage statistics, and comprehensive API key management.
@@ -56,24 +56,15 @@ The application employs a client-server architecture with React and Vite for the
     - **AI Self-Awareness API**: Four dedicated endpoints for AI to query its own performance metrics, detect anomalies, and diagnose issues
     - **Infrastructure Integration**: System metrics injected into AI's performance awareness prompt (latency percentiles, sample counts, health assessments)
     - **Database Schema**: Time-series metrics storage with indexing, baseline tracking, and anomaly logging tables
--   **WebSocket Health Monitoring System**: Complete visibility into real-time connection health across all WebSocket endpoints:
+-   **WebSocket Health Monitoring System**: Complete visibility into real-time connection health across WebSocket endpoints:
     - **Connection Tracking**: Records every WebSocket connection attempt with success/failure reasons and detailed error context
-    - **Three Endpoint Coverage**: Full monitoring of /stt-stream (Speech-to-Text), /voice (Voice Chat), and /ws/telemetry (Frontend Telemetry)
+    - **Endpoint Coverage**: Full monitoring of /voice (Voice Chat) and /ws/telemetry (Frontend Telemetry)
     - **Error Classification**: Tracks authentication failures, missing credentials, API errors, stream errors, and connection drops
     - **Anomaly Detection**: Tiered severity thresholds (>5% warning, >10% moderate, >20% critical error rates) with automatic alerting
     - **Fire-and-Forget Telemetry**: Zero-impact monitoring that never blocks WebSocket handlers or degrades real-time performance
     - **AI Self-Diagnosis**: Nexus autonomously detects WebSocket failures and reports credential issues, connection problems, or service degradation
     - **Infrastructure Awareness**: WebSocket health status integrated into Nexus's system prompt showing connection counts, error rates, and active anomalies
-    - **Session Analytics**: Tracks session duration, message counts, and usage patterns across all real-time features
--   **WebSocket Development Proxy Configuration** (Replit Environment):
-    - **Vite Proxy Setup**: Development frontend uses Vite proxy to route WebSocket connections from frontend (port 5000) to backend (port 3000)
-    - **Proxied Endpoints**: `/stt-stream`, `/voice`, `/ws/telemetry` all configured with `ws: true` in `vite.config.js`
-    - **Dynamic URL Construction**: Frontend hooks (`useStreamingSTT.js`, `useTelemetry.js`) use smart URL fallback:
-      1. Prefer `VITE_WS_URL` env variable (for production deployments with explicit backend hostname)
-      2. Fall back to `window.location` (for development - connects to Vite dev server which proxies to backend)
-      3. Guard against SSR/test contexts where `window` is undefined
-    - **Environment Configuration**: `VITE_WS_URL` intentionally not set in development `.env` to enable Vite proxy routing
-    - **Production Support**: Set `VITE_WS_URL=wss://your-backend.com` in production environment to bypass proxy and connect directly to backend
+    - **Session Analytics**: Tracks session duration, message counts, and usage patterns across real-time features
 
 **UI/UX Decisions**:
 -   "Auto 🤖" mode for intelligent model selection.
