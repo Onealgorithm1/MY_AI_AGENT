@@ -65,6 +65,15 @@ The application employs a client-server architecture with React and Vite for the
     - **AI Self-Diagnosis**: Nexus autonomously detects WebSocket failures and reports credential issues, connection problems, or service degradation
     - **Infrastructure Awareness**: WebSocket health status integrated into Nexus's system prompt showing connection counts, error rates, and active anomalies
     - **Session Analytics**: Tracks session duration, message counts, and usage patterns across all real-time features
+-   **WebSocket Development Proxy Configuration** (Replit Environment):
+    - **Vite Proxy Setup**: Development frontend uses Vite proxy to route WebSocket connections from frontend (port 5000) to backend (port 3000)
+    - **Proxied Endpoints**: `/stt-stream`, `/voice`, `/ws/telemetry` all configured with `ws: true` in `vite.config.js`
+    - **Dynamic URL Construction**: Frontend hooks (`useStreamingSTT.js`, `useTelemetry.js`) use smart URL fallback:
+      1. Prefer `VITE_WS_URL` env variable (for production deployments with explicit backend hostname)
+      2. Fall back to `window.location` (for development - connects to Vite dev server which proxies to backend)
+      3. Guard against SSR/test contexts where `window` is undefined
+    - **Environment Configuration**: `VITE_WS_URL` intentionally not set in development `.env` to enable Vite proxy routing
+    - **Production Support**: Set `VITE_WS_URL=wss://your-backend.com` in production environment to bypass proxy and connect directly to backend
 
 **UI/UX Decisions**:
 -   "Auto 🤖" mode for intelligent model selection.
