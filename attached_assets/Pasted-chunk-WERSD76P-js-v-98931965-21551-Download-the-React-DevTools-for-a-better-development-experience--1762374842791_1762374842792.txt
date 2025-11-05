@@ -1,0 +1,61 @@
+chunk-WERSD76P.js?v=98931965:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=98931965:4393
+logDeprecation @ react-router-dom.js?v=98931965:4396
+logV6DeprecationWarnings @ react-router-dom.js?v=98931965:4399
+(anonymous) @ react-router-dom.js?v=98931965:5271
+commitHookEffectListMount @ chunk-WERSD76P.js?v=98931965:16915
+commitPassiveMountOnFiber @ chunk-WERSD76P.js?v=98931965:18156
+commitPassiveMountEffects_complete @ chunk-WERSD76P.js?v=98931965:18129
+commitPassiveMountEffects_begin @ chunk-WERSD76P.js?v=98931965:18119
+commitPassiveMountEffects @ chunk-WERSD76P.js?v=98931965:18109
+flushPassiveEffectsImpl @ chunk-WERSD76P.js?v=98931965:19490
+flushPassiveEffects @ chunk-WERSD76P.js?v=98931965:19447
+(anonymous) @ chunk-WERSD76P.js?v=98931965:19328
+workLoop @ chunk-WERSD76P.js?v=98931965:197
+flushWork @ chunk-WERSD76P.js?v=98931965:176
+performWorkUntilDeadline @ chunk-WERSD76P.js?v=98931965:384
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+warnOnce @ react-router-dom.js?v=98931965:4393
+logDeprecation @ react-router-dom.js?v=98931965:4396
+logV6DeprecationWarnings @ react-router-dom.js?v=98931965:4402
+(anonymous) @ react-router-dom.js?v=98931965:5271
+commitHookEffectListMount @ chunk-WERSD76P.js?v=98931965:16915
+commitPassiveMountOnFiber @ chunk-WERSD76P.js?v=98931965:18156
+commitPassiveMountEffects_complete @ chunk-WERSD76P.js?v=98931965:18129
+commitPassiveMountEffects_begin @ chunk-WERSD76P.js?v=98931965:18119
+commitPassiveMountEffects @ chunk-WERSD76P.js?v=98931965:18109
+flushPassiveEffectsImpl @ chunk-WERSD76P.js?v=98931965:19490
+flushPassiveEffects @ chunk-WERSD76P.js?v=98931965:19447
+(anonymous) @ chunk-WERSD76P.js?v=98931965:19328
+workLoop @ chunk-WERSD76P.js?v=98931965:197
+flushWork @ chunk-WERSD76P.js?v=98931965:176
+performWorkUntilDeadline @ chunk-WERSD76P.js?v=98931965:384
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+useStreamingSTT.js:73 🔍 Attempting to connect WebSocket to URL: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3000/stt-stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBmYWFhMzk1LTY5ODctNDFjOS1hMzMzLTU0YTIzNmViMjQ1ZCIsImVtYWlsIjoibHJvbmVhbGdvcml0aG1AZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ3cyI6dHJ1ZSwiaWF0IjoxNzYyMzc0ODE2LCJleHAiOjE3NjIzNzUxMTZ9.X9CWg-B6Qoipem8xKSEKHhsKiWBXrJyK_aDYCZ3J1qo
+useStreamingSTT.js:74 🔍 WS_URL base value: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3000
+useStreamingSTT.js:76 WebSocket connection to 'wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev:3000/stt-stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBmYWFhMzk1LTY5ODctNDFjOS1hMzMzLTU0YTIzNmViMjQ1ZCIsImVtYWlsIjoibHJvbmVhbGdvcml0aG1AZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ3cyI6dHJ1ZSwiaWF0IjoxNzYyMzc0ODE2LCJleHAiOjE3NjIzNzUxMTZ9.X9CWg-B6Qoipem8xKSEKHhsKiWBXrJyK_aDYCZ3J1qo' failed: 
+(anonymous) @ useStreamingSTT.js:76
+useStreamingSTT.js:165 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+ws.onerror @ useStreamingSTT.js:165
+useStreamingSTT.js:182 🔌 STT WebSocket closed
