@@ -98,16 +98,22 @@ class STTStreamingService {
                     firstPartialTime = Date.now();
                     const latency = firstPartialTime - sessionStartTime;
                     
-                    // Send telemetry
-                    await monitoringService.recordMetric({
-                      userId: user.id,
-                      metricType: 'latency',
-                      metricName: 'stt_streaming_first_partial',
-                      value: latency,
-                      unit: 'ms',
-                      endpoint: '/stt-stream',
-                      method: 'WS',
-                    });
+                    // Send telemetry (non-blocking, completely isolated)
+                    try {
+                      monitoringService.recordMetric({
+                        userId: user.id,
+                        metricType: 'latency',
+                        metricName: 'stt_streaming_first_partial',
+                        value: latency,
+                        unit: 'ms',
+                        endpoint: '/stt-stream',
+                        method: 'WS',
+                      }).catch(err => {
+                        console.error('Failed to record STT telemetry (first partial - async):', err.message);
+                      });
+                    } catch (err) {
+                      console.error('Failed to record STT telemetry (first partial - sync):', err.message);
+                    }
 
                     console.log(`⚡ First partial result in ${latency}ms`);
                   }
@@ -124,19 +130,26 @@ class STTStreamingService {
                   if (result.isFinal) {
                     const totalTime = Date.now() - sessionStartTime;
                     
-                    await monitoringService.recordMetric({
-                      userId: user.id,
-                      metricType: 'latency',
-                      metricName: 'stt_streaming_total',
-                      value: totalTime,
-                      unit: 'ms',
-                      endpoint: '/stt-stream',
-                      method: 'WS',
-                      tags: JSON.stringify({
-                        audioChunks: audioChunksReceived,
-                        transcriptLength: transcript.length,
-                      }),
-                    });
+                    // Send telemetry (non-blocking, completely isolated)
+                    try {
+                      monitoringService.recordMetric({
+                        userId: user.id,
+                        metricType: 'latency',
+                        metricName: 'stt_streaming_total',
+                        value: totalTime,
+                        unit: 'ms',
+                        endpoint: '/stt-stream',
+                        method: 'WS',
+                        tags: JSON.stringify({
+                          audioChunks: audioChunksReceived,
+                          transcriptLength: transcript.length,
+                        }),
+                      }).catch(err => {
+                        console.error('Failed to record STT telemetry (total - async):', err.message);
+                      });
+                    } catch (err) {
+                      console.error('Failed to record STT telemetry (total - sync):', err.message);
+                    }
 
                     console.log(`✅ Final transcript (${totalTime}ms): "${transcript}"`);
                   }
