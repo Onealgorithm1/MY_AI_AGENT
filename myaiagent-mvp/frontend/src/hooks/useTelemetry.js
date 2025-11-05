@@ -12,7 +12,8 @@ export function useTelemetry(pageName) {
 
     if (!user) return;
 
-    const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+    // Strip trailing slashes to prevent double-slash URL malformation
+    const WS_BASE_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:3000').replace(/\/+$/, '');
     const wsUrl = `${WS_BASE_URL}/ws/telemetry`;
     
     const connectWebSocket = () => {
