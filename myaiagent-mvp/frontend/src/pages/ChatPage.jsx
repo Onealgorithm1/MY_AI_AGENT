@@ -416,9 +416,7 @@ export default function ChatPage() {
     }
   };
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
+  // Rename conversation
   const handleRename = async (convId, newTitle) => {
     try {
       await conversationsApi.update(convId, { title: newTitle });
