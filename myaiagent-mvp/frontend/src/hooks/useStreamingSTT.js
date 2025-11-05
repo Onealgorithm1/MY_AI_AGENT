@@ -91,9 +91,6 @@ export default function useStreamingSTT() {
           formData.append('languageCode', 'en-US');
 
           const response = await axios.post(`${API_URL}/stt/transcribe`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
             withCredentials: true,
           });
 
@@ -138,6 +135,7 @@ export default function useStreamingSTT() {
   return {
     isListening,
     isTranscribing,
+    partialTranscript: '', // Not available with REST approach
     error,
     startListening,
     stopListening,
