@@ -2,24 +2,20 @@ import { useState, useRef, useCallback } from 'react';
 import { auth as authApi } from '../services/api';
 
 // Construct WebSocket URL with production override support
-// Prefer explicit VITE_WS_URL from env (for production), fall back to current location (for dev with Vite proxy)
+// In development: Returns empty string to create relative URLs that Vite proxy can intercept
+// In production: Uses VITE_WS_URL for absolute backend URL
 const getWebSocketBaseUrl = () => {
-  // Use explicit env var if provided (production deployments)
+  // Use explicit env var if provided (production deployments with separate backend)
   const envWsUrl = import.meta.env.VITE_WS_URL;
   if (envWsUrl) {
+    console.log('🌐 Using production WebSocket URL:', envWsUrl);
     return envWsUrl.replace(/\/+$/, ''); // strip trailing slashes
   }
   
-  // Fall back to dynamic construction from window.location (development with Vite proxy)
-  // Guard against SSR/test contexts where window might be undefined
-  if (typeof window !== 'undefined' && window.location) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host; // includes port if present
-    return `${protocol}//${host}`;
-  }
-  
-  // Final fallback for non-browser contexts
-  return 'ws://localhost:3000';
+  // Development mode: Return empty string to force relative URLs
+  // This allows Vite proxy to intercept /stt-stream and forward to localhost:3000
+  console.log('🔧 Development mode: Using relative WebSocket URL (Vite proxy routing)');
+  return '';
 };
 
 const WS_URL = getWebSocketBaseUrl();
