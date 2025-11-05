@@ -118,6 +118,16 @@ router.get('/feedback/:featureRequestId', authenticateToken, async (req, res) =>
   }
 });
 
+router.get('/summary', authenticateToken, async (req, res) => {
+  try {
+    const summary = await getSelfImprovementSummary();
+    res.json(summary);
+  } catch (error) {
+    console.error('Failed to get self-improvement summary:', error);
+    res.status(500).json({ error: 'Failed to get self-improvement summary' });
+  }
+});
+
 router.get('/improvements', authenticateToken, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
