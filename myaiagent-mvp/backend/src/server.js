@@ -50,6 +50,9 @@ import selfImprovementRoutes from './routes/selfImprovement.js';
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
 
+// Import Performance Monitoring
+import { performanceMonitoringMiddleware } from './middleware/performanceMonitoring.js';
+
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 5000 : 3000);
 
@@ -149,6 +152,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Compression
 app.use(compression());
+
+// Performance Monitoring (AI Companion Self-Awareness)
+// Automatically tracks API latency, error rates, and system metrics
+app.use(performanceMonitoringMiddleware);
 
 // CSRF Protection (SECURITY: Protects against Cross-Site Request Forgery)
 const csrfSecret = process.env.CSRF_SECRET || process.env.HMAC_SECRET;
