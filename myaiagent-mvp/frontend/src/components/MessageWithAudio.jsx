@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Copy, ThumbsUp, ThumbsDown, Search } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, Search, Loader2, Radio } from 'lucide-react';
 import MessageSpeakerButton from './MessageSpeakerButton';
 import WordHighlighter from './WordHighlighter';
 import useMessageAudio from '../hooks/useMessageAudio';
@@ -19,6 +19,7 @@ export default function MessageWithAudio({
     currentWordIndex,
     wordTimings,
     error,
+    latencyMs,
     toggle,
     play,
     retry,
@@ -59,6 +60,40 @@ export default function MessageWithAudio({
       {searchResults && (
         <div className="mt-2">
           {searchResults}
+        </div>
+      )}
+
+      {/* TTS Status Indicator */}
+      {ttsEnabled && (state === 'loading' || state === 'playing') && (
+        <div className="flex flex-col gap-2 mt-2 ml-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+          <div className="flex items-center gap-2">
+            {state === 'loading' && (
+              <>
+                <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                <span className="text-blue-700 dark:text-blue-300 font-medium">
+                  Synthesizing Speech...
+                </span>
+              </>
+            )}
+            {state === 'playing' && (
+              <>
+                <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
+                <span className="text-blue-700 dark:text-blue-300 font-medium">
+                  Playing Audio
+                </span>
+              </>
+            )}
+          </div>
+          
+          {/* Latency metrics display */}
+          {latencyMs != null && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-blue-700 dark:text-blue-300">Response Time:</span>
+              <span className="text-blue-700 dark:text-blue-300 font-mono font-semibold">
+                {latencyMs < 1000 ? `${latencyMs}ms` : `${(latencyMs / 1000).toFixed(2)}s`}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

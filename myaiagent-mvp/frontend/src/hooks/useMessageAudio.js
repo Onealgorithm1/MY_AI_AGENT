@@ -20,6 +20,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [error, setError] = useState(null);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [latencyMs, setLatencyMs] = useState(null);
   
   const audioRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -57,6 +58,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
 
     setState(AUDIO_STATES.LOADING);
     setError(null);
+    setLatencyMs(null); // Reset latency at start of load
 
     const loadStartTime = performance.now();
     let wasFromCache = false;
@@ -72,10 +74,15 @@ export default function useMessageAudio(messageId, text, voiceId) {
         // Track API call time (includes network + backend processing)
         telemetryService.trackPerformance('tts_api_call_time', apiDuration);
         
+        // Store latency for UI display (fresh synthesis)
+        setLatencyMs(Math.round(apiDuration));
+        
         await cacheAudio(messageId, voiceId, audioBlob);
         wasFromCache = false;
       } else {
         wasFromCache = true;
+        // For cached audio, set latency to 0 to indicate instant load
+        setLatencyMs(0);
       }
 
       if (!audioContextRef.current) {
@@ -248,6 +255,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
     wordTimings: wordTimingsRef.current,
     error,
     hasPlayed,
+    latencyMs,
     play,
     stop,
     toggle,

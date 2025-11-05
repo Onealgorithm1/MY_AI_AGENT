@@ -17,6 +17,8 @@ export default function useStreamingAudio(messageId, voiceId) {
   const [state, setState] = useState(AUDIO_STATES.IDLE);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [latencyMs, setLatencyMs] = useState(null);
+  const [totalLatencyMs, setTotalLatencyMs] = useState(null);
   
   const audioContextRef = useRef(null);
   const audioQueueRef = useRef([]);
@@ -110,6 +112,8 @@ export default function useStreamingAudio(messageId, voiceId) {
     setState(AUDIO_STATES.LOADING);
     setError(null);
     setProgress({ current: 0, total: 0 });
+    setLatencyMs(null); // Reset latency for new session
+    setTotalLatencyMs(null); // Reset total latency
     streamStartTimeRef.current = Date.now();
     firstChunkTimeRef.current = null;
 
@@ -159,6 +163,9 @@ export default function useStreamingAudio(messageId, voiceId) {
             if (firstChunkTimeRef.current === null) {
               firstChunkTimeRef.current = Date.now() - streamStartTimeRef.current;
               
+              // Update latency state for UI display
+              setLatencyMs(Math.round(firstChunkTimeRef.current));
+              
               telemetryService.sendEvent('performance', {
                 metric: 'tts_streaming_first_chunk_time',
                 value: firstChunkTimeRef.current,
@@ -188,6 +195,10 @@ export default function useStreamingAudio(messageId, voiceId) {
       }
 
       console.log('🎬 Stream complete, all chunks received');
+      
+      // Calculate and store total latency
+      const totalTime = Date.now() - streamStartTimeRef.current;
+      setTotalLatencyMs(Math.round(totalTime));
 
     } catch (err) {
       console.error('Failed to stream audio:', err);
@@ -215,6 +226,8 @@ export default function useStreamingAudio(messageId, voiceId) {
     state,
     error,
     progress,
+    latencyMs,
+    totalLatencyMs,
     streamAudio,
     stop,
     isLoading: state === AUDIO_STATES.LOADING,
