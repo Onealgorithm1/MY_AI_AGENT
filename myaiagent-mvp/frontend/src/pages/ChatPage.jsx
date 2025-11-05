@@ -42,7 +42,7 @@ import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
 import useTypewriter from '../hooks/useTypewriter';
-import useSpeechToText from '../hooks/useSpeechToText';
+import useStreamingSTT from '../hooks/useStreamingSTT';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -96,15 +96,16 @@ export default function ChatPage() {
     }
   );
   
-  // Speech-to-text hook
+  // Streaming Speech-to-text hook
   const { 
-    isRecording, 
-    isProcessing, 
+    isListening, 
+    isTranscribing, 
+    partialTranscript,
     error: sttError, 
-    startRecording, 
-    stopRecording, 
-    cancelRecording 
-  } = useSpeechToText();
+    startListening, 
+    stopListening, 
+    cancelListening 
+  } = useStreamingSTT();
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
@@ -561,11 +562,12 @@ export default function ChatPage() {
     }
   };
   
-  // Handle microphone button click
+  // Handle microphone button click for streaming STT
   const handleMicClick = async () => {
-    if (isRecording) {
+    if (isListening) {
+      // Stop listening and wait for final transcript
       try {
-        const transcript = await stopRecording();
+        const transcript = await stopListening();
         if (transcript) {
           setInputMessage(prev => prev ? `${prev} ${transcript}` : transcript);
         }
@@ -573,7 +575,8 @@ export default function ChatPage() {
         toast.error(sttError || 'Failed to transcribe audio');
       }
     } else {
-      await startRecording();
+      // Start listening
+      await startListening();
     }
   };
 
@@ -1012,17 +1015,17 @@ export default function ChatPage() {
 
               <button
                 onClick={handleMicClick}
-                disabled={isProcessing}
+                disabled={isTranscribing}
                 className={`p-2 rounded-lg transition-colors ${
-                  isRecording
+                  isListening
                     ? 'bg-red-500 text-white animate-pulse'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={isRecording ? 'Stop recording' : 'Start recording'}
+                } ${isTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={isListening ? 'Stop recording' : 'Start recording'}
               >
-                {isProcessing ? (
+                {isTranscribing ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
-                ) : isRecording ? (
+                ) : isListening ? (
                   <MicOff className="w-5 h-5" />
                 ) : (
                   <Mic className="w-5 h-5" />
@@ -1046,15 +1049,30 @@ export default function ChatPage() {
                 )}
               </button>
 
-              <textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder={isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Message AI...'}
-                rows={1}
-                className="flex-1 resize-none px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent"
-                style={{ maxHeight: '200px' }}
-              />
+              <div className="flex-1 relative">
+                {/* Partial transcript display */}
+                {isListening && partialTranscript && (
+                  <div className="absolute -top-10 left-0 right-0 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
+                      <span className="text-sm text-blue-700 dark:text-blue-300 italic">
+                        {partialTranscript}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder={isListening ? 'Listening...' : isTranscribing ? 'Transcribing...' : 'Message AI...'}
+                  rows={1}
+                  disabled={isListening || isTranscribing}
+                  className="w-full resize-none px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  style={{ maxHeight: '200px' }}
+                />
+              </div>
 
               <button
                 onClick={sendMessage}

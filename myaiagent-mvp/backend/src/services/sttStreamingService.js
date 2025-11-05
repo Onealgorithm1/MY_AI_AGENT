@@ -1,7 +1,7 @@
 import speech from '@google-cloud/speech';
 import { query } from '../utils/database.js';
 import { decryptSecret } from './secrets.js';
-import telemetryService from './telemetryService.js';
+import monitoringService from './monitoringService.js';
 
 class STTStreamingService {
   constructor() {
@@ -99,7 +99,7 @@ class STTStreamingService {
                     const latency = firstPartialTime - sessionStartTime;
                     
                     // Send telemetry
-                    telemetryService.recordMetric({
+                    await monitoringService.recordMetric({
                       userId: user.id,
                       metricType: 'latency',
                       metricName: 'stt_streaming_first_partial',
@@ -124,7 +124,7 @@ class STTStreamingService {
                   if (result.isFinal) {
                     const totalTime = Date.now() - sessionStartTime;
                     
-                    telemetryService.recordMetric({
+                    await monitoringService.recordMetric({
                       userId: user.id,
                       metricType: 'latency',
                       metricName: 'stt_streaming_total',
