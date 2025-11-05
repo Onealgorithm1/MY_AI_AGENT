@@ -530,7 +530,7 @@ async function getAPIStatus(userId) {
       description: 'Advanced AI with Google Search grounding',
       required: false,
       useGenericLookup: false,
-      googleCloudKey: 'VERTEX_AI_PROJECT_ID'
+      googleCloudKey: ['VERTEX_AI_PROJECT_ID', 'VERTEX_AI_LOCATION']
     },
     { 
       name: 'Google Cloud TTS', 
@@ -571,7 +571,12 @@ async function getAPIStatus(userId) {
       if (api.useGenericLookup) {
         key = process.env[api.envVar] || await getApiKey(api.envVar.toLowerCase().replace('_key', '').replace('_', '-'));
       } else if (api.googleCloudKey) {
-        key = googleCloudKeys[api.googleCloudKey];
+        if (Array.isArray(api.googleCloudKey)) {
+          // For services requiring multiple keys (like Vertex AI), check all are present
+          key = api.googleCloudKey.every(k => googleCloudKeys[k]);
+        } else {
+          key = googleCloudKeys[api.googleCloudKey];
+        }
       }
       
       return {
