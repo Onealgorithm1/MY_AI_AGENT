@@ -1,4 +1,5 @@
 import { query } from '../utils/database.js';
+import monitoringService from './monitoringService.js';
 
 /**
  * Performance Tracking Service
@@ -17,6 +18,7 @@ export async function getAIPerformanceMetrics(userId) {
       memoryMetrics: await getMemoryMetrics(userId),
       feedbackMetrics: await getFeedbackMetrics(userId),
       modelUsageMetrics: await getModelUsageMetrics(userId),
+      systemMetrics: await getSystemPerformanceMetrics(),
       timestamp: new Date().toISOString()
     };
 
@@ -24,6 +26,43 @@ export async function getAIPerformanceMetrics(userId) {
   } catch (error) {
     console.error('Error getting AI performance metrics:', error);
     return null;
+  }
+}
+
+/**
+ * Get system-level performance metrics
+ * Shows the AI how fast/slow the infrastructure is performing
+ */
+async function getSystemPerformanceMetrics() {
+  try {
+    const summary = await monitoringService.getPerformanceSummary('1 hour');
+    
+    // Extract key metrics
+    const apiLatency = summary.find(m => m.metric_name === 'api_latency');
+    const externalApiLatency = summary.find(m => m.metric_name === 'external_api_latency');
+    const geminiLatency = summary.find(m => m.metric_name === 'gemini_latency');
+    
+    return {
+      api: apiLatency ? {
+        avgLatency: parseFloat(apiLatency.avg_value).toFixed(0),
+        p95Latency: parseFloat(apiLatency.p95_value).toFixed(0),
+        p99Latency: parseFloat(apiLatency.p99_value).toFixed(0),
+        sampleCount: parseInt(apiLatency.sample_count)
+      } : null,
+      externalApis: externalApiLatency ? {
+        avgLatency: parseFloat(externalApiLatency.avg_value).toFixed(0),
+        p95Latency: parseFloat(externalApiLatency.p95_value).toFixed(0),
+        sampleCount: parseInt(externalApiLatency.sample_count)
+      } : null,
+      gemini: geminiLatency ? {
+        avgLatency: parseFloat(geminiLatency.avg_value).toFixed(0),
+        p95Latency: parseFloat(geminiLatency.p95_value).toFixed(0),
+        sampleCount: parseInt(geminiLatency.sample_count)
+      } : null
+    };
+  } catch (error) {
+    console.error('Error getting system performance metrics:', error);
+    return { api: null, externalApis: null, gemini: null };
   }
 }
 
@@ -104,6 +143,43 @@ ${metrics.feedbackMetrics.totalFeedback > 0 ? `
 - **Auto-Selected**: ${metrics.modelUsageMetrics.autoSelectedCount} times
 - **Manually Selected**: ${metrics.modelUsageMetrics.manuallySelectedCount} times
 - **Average Tokens per Response**: ${metrics.modelUsageMetrics.avgTokensPerResponse || 0}
+
+### ⚡ System Performance (Real-Time Infrastructure Monitoring)
+${metrics.systemMetrics.api ? `
+**API Response Times** (Last Hour):
+- Average Latency: ${metrics.systemMetrics.api.avgLatency}ms
+- 95th Percentile: ${metrics.systemMetrics.api.p95Latency}ms
+- 99th Percentile: ${metrics.systemMetrics.api.p99Latency}ms
+- Requests Tracked: ${metrics.systemMetrics.api.sampleCount}
+
+**Performance Assessment**: ${parseInt(metrics.systemMetrics.api.p95Latency) < 500 
+  ? '🟢 Excellent - API is responding quickly'
+  : parseInt(metrics.systemMetrics.api.p95Latency) < 1000 
+  ? '🟡 Good - API response times are acceptable'
+  : '🔴 Slow - API experiencing latency issues'}
+` : '**API Performance**: No data available yet (system just started)'}
+
+${metrics.systemMetrics.gemini ? `
+**Gemini AI Response Times**:
+- Average: ${metrics.systemMetrics.gemini.avgLatency}ms
+- 95th Percentile: ${metrics.systemMetrics.gemini.p95Latency}ms
+- Calls Tracked: ${metrics.systemMetrics.gemini.sampleCount}
+
+**AI Performance**: ${parseInt(metrics.systemMetrics.gemini.avgLatency) < 2000 
+  ? '🟢 Fast AI responses'
+  : parseInt(metrics.systemMetrics.gemini.avgLatency) < 5000 
+  ? '🟡 Normal AI response times'
+  : '🔴 Slow AI responses - may affect user experience'}
+` : ''}
+
+${metrics.systemMetrics.externalApis ? `
+**External API Calls** (Gmail, Search, etc.):
+- Average Latency: ${metrics.systemMetrics.externalApis.avgLatency}ms
+- 95th Percentile: ${metrics.systemMetrics.externalApis.p95Latency}ms
+- Calls Tracked: ${metrics.systemMetrics.externalApis.sampleCount}
+` : ''}
+
+**What This Means**: You can now see your own infrastructure performance in real-time. If response times are slow, you can proactively notify users about delays or suggest alternative actions.
 
 ---
 

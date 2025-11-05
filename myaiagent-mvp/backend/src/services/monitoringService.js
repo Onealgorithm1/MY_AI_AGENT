@@ -283,12 +283,45 @@ class MonitoringService {
         return { hasAnomaly: false, reason: 'No recent data' };
       }
 
-      // Calculate recent average
-      const recentAvg = recentMetrics.reduce((sum, m) => sum + parseFloat(m.value), 0) / recentMetrics.length;
-      const recentMax = Math.max(...recentMetrics.map(m => parseFloat(m.value)));
+      // Calculate recent statistics
+      const recentValues = recentMetrics.map(m => parseFloat(m.value));
+      const recentAvg = recentValues.reduce((sum, v) => sum + v, 0) / recentValues.length;
+      const recentMax = Math.max(...recentValues);
+      const recentMin = Math.min(...recentValues);
+      
+      // Calculate standard deviation of recent data
+      const recentVariance = recentValues.reduce((sum, v) => sum + Math.pow(v - recentAvg, 2), 0) / recentValues.length;
+      const recentStdDev = Math.sqrt(recentVariance);
 
       // Detect anomalies
       const anomalies = [];
+      
+      // Z-score analysis: Detect outliers using standard deviation
+      const zScore = baseline.std_deviation > 0 
+        ? (recentMax - baseline.avg_value) / baseline.std_deviation 
+        : 0;
+      
+      if (zScore > 3) {
+        anomalies.push({
+          type: 'statistical_outlier',
+          severity: 'critical',
+          description: `${metricName} statistical outlier: ${recentMax.toFixed(2)} (z-score: ${zScore.toFixed(2)})`,
+          baseline_value: baseline.avg_value,
+          anomaly_value: recentMax,
+          z_score: zScore.toFixed(2),
+          deviation_percentage: ((recentMax - baseline.avg_value) / baseline.avg_value * 100).toFixed(2)
+        });
+      } else if (zScore > 2) {
+        anomalies.push({
+          type: 'statistical_outlier',
+          severity: 'high',
+          description: `${metricName} anomaly detected: ${recentMax.toFixed(2)} (z-score: ${zScore.toFixed(2)})`,
+          baseline_value: baseline.avg_value,
+          anomaly_value: recentMax,
+          z_score: zScore.toFixed(2),
+          deviation_percentage: ((recentMax - baseline.avg_value) / baseline.avg_value * 100).toFixed(2)
+        });
+      }
 
       // Spike detection: Recent max > baseline p99 by 50%
       if (recentMax > baseline.p99_value * 1.5) {
@@ -305,7 +338,7 @@ class MonitoringService {
       // Average increase: Recent avg > baseline avg by 30%
       if (recentAvg > baseline.avg_value * 1.3) {
         anomalies.push({
-          type: 'threshold_breach',
+          type: 'sustained_increase',
           severity: 'medium',
           description: `${metricName} sustained increase: ${recentAvg.toFixed(2)} (baseline avg: ${baseline.avg_value.toFixed(2)})`,
           baseline_value: baseline.avg_value,
@@ -313,12 +346,57 @@ class MonitoringService {
           deviation_percentage: ((recentAvg - baseline.avg_value) / baseline.avg_value * 100).toFixed(2)
         });
       }
+      
+      // Trend detection: Check if values are consistently increasing
+      if (recentValues.length >= 10) {
+        const halfPoint = Math.floor(recentValues.length / 2);
+        const firstHalf = recentValues.slice(0, halfPoint);
+        const secondHalf = recentValues.slice(halfPoint);
+        const firstAvg = firstHalf.reduce((sum, v) => sum + v, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((sum, v) => sum + v, 0) / secondHalf.length;
+        
+        if (secondAvg > firstAvg * 1.2) {
+          anomalies.push({
+            type: 'upward_trend',
+            severity: 'low',
+            description: `${metricName} showing upward trend: ${((secondAvg - firstAvg) / firstAvg * 100).toFixed(2)}% increase`,
+            baseline_value: firstAvg,
+            anomaly_value: secondAvg,
+            deviation_percentage: ((secondAvg - firstAvg) / firstAvg * 100).toFixed(2)
+          });
+        }
+      }
+      
+      // Variance increase: Recent variability > baseline variability
+      if (baseline.std_deviation > 0 && recentStdDev > baseline.std_deviation * 1.5) {
+        anomalies.push({
+          type: 'increased_variance',
+          severity: 'low',
+          description: `${metricName} increased variability detected: stddev ${recentStdDev.toFixed(2)} vs baseline ${baseline.std_deviation.toFixed(2)}`,
+          baseline_value: baseline.std_deviation,
+          anomaly_value: recentStdDev,
+          deviation_percentage: ((recentStdDev - baseline.std_deviation) / baseline.std_deviation * 100).toFixed(2)
+        });
+      }
 
       return {
         hasAnomaly: anomalies.length > 0,
         anomalies,
-        recentStats: { avg: recentAvg, max: recentMax },
-        baseline
+        recentStats: { 
+          avg: recentAvg, 
+          max: recentMax, 
+          min: recentMin,
+          stdDev: recentStdDev,
+          sampleSize: recentValues.length
+        },
+        baseline,
+        analysis: {
+          zScore: zScore.toFixed(2),
+          deviationFromBaseline: ((recentAvg - baseline.avg_value) / baseline.avg_value * 100).toFixed(2) + '%',
+          varianceChange: baseline.std_deviation > 0 
+            ? ((recentStdDev - baseline.std_deviation) / baseline.std_deviation * 100).toFixed(2) + '%'
+            : 'N/A'
+        }
       };
     } catch (error) {
       console.error('Anomaly detection error:', error);
@@ -445,16 +523,53 @@ class MonitoringService {
   }
 
   /**
-   * Get active anomalies
+   * Get active anomalies with filtering
+   * @param {string} timeRange - Time range to query (e.g., '1 hour', '24 hours')
+   * @param {string} minSeverity - Minimum severity to include ('low', 'medium', 'high', 'critical')
+   * @param {number} limit - Maximum number of anomalies to return
    */
-  async getActiveAnomalies(limit = 10) {
+  async getActiveAnomalies(timeRange = '24 hours', minSeverity = 'low', limit = 50) {
     try {
+      // Severity hierarchy for filtering
+      const severityLevels = { low: 1, medium: 2, high: 3, critical: 4 };
+      const minSeverityLevel = severityLevels[minSeverity] || 1;
+      
       const result = await pool.query(
-        `SELECT * FROM performance_anomalies 
+        `SELECT 
+          id,
+          metric_name,
+          anomaly_type,
+          severity,
+          baseline_value,
+          anomaly_value,
+          deviation_percentage,
+          description,
+          tags,
+          detected_at,
+          status
+         FROM performance_anomalies 
          WHERE status = 'active'
-         ORDER BY severity DESC, detected_at DESC 
-         LIMIT $1`,
-        [limit]
+           AND detected_at >= NOW() - INTERVAL '${timeRange}'
+           AND (
+             CASE severity
+               WHEN 'critical' THEN 4
+               WHEN 'high' THEN 3
+               WHEN 'medium' THEN 2
+               WHEN 'low' THEN 1
+               ELSE 0
+             END
+           ) >= $1
+         ORDER BY 
+           CASE severity
+             WHEN 'critical' THEN 4
+             WHEN 'high' THEN 3
+             WHEN 'medium' THEN 2
+             WHEN 'low' THEN 1
+             ELSE 0
+           END DESC,
+           detected_at DESC 
+         LIMIT $2`,
+        [minSeverityLevel, limit]
       );
       return result.rows;
     } catch (error) {
