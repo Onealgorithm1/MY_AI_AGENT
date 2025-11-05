@@ -47,9 +47,11 @@ import ttsRoutes from './routes/tts.js';
 import sttRoutes from './routes/stt.js';
 import selfImprovementRoutes from './routes/selfImprovement.js';
 import telemetryRoutes from './routes/telemetry.js';
+import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
+import { createTelemetryWebSocketServer } from './websocket/telemetry.js';
 
 // Import Performance Monitoring
 import { performanceMonitoringMiddleware } from './middleware/performanceMonitoring.js';
@@ -242,6 +244,7 @@ app.use('/api/tts', ttsRoutes);
 app.use('/api/stt', sttRoutes);
 app.use('/api/self-improvement', selfImprovementRoutes);
 app.use('/api/telemetry', telemetryRoutes);
+app.use('/api/ai-self-awareness', aiSelfAwarenessRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -318,8 +321,9 @@ app.use((err, req, res, next) => {
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize WebSocket server for voice
+// Initialize WebSocket servers
 createVoiceWebSocketServer(server);
+createTelemetryWebSocketServer(server);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
