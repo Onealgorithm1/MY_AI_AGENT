@@ -12,8 +12,95 @@ import { createVertexChatCompletion, isVertexAIConfigured } from '../services/ve
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
+import { extractMemoryFacts } from '../services/gemini.js';
 
 const router = express.Router();
+
+// In-memory tracker to prevent concurrent memory extraction
+const memoryExtractionInProgress = new Set();
+
+// Helper function to trigger automatic memory extraction with debouncing
+async function triggerAutoMemoryExtraction(conversationId, userId) {
+  try {
+    // Check if extraction is already in progress for this conversation
+    if (memoryExtractionInProgress.has(conversationId)) {
+      console.log(`⏳ Memory extraction already in progress for conversation ${conversationId}, skipping`);
+      return;
+    }
+    
+    // Count total messages in conversation
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM messages WHERE conversation_id = $1',
+      [conversationId]
+    );
+    
+    const totalMessages = parseInt(countResult.rows[0].count);
+    
+    // Extract memory every 10 messages (at 10, 20, 30, etc.)
+    if (totalMessages % 10 === 0) {
+      // Mark as in progress
+      memoryExtractionInProgress.add(conversationId);
+      
+      setImmediate(async () => {
+        try {
+          console.log(`🧠 Auto-extracting memory from conversation ${conversationId} (${totalMessages} messages)...`);
+          
+          // Get recent conversation messages for extraction
+          const messages = await query(
+            `SELECT role, content FROM messages 
+             WHERE conversation_id = $1 
+             ORDER BY created_at DESC
+             LIMIT 20`,
+            [conversationId]
+          );
+
+          if (messages.rows.length === 0) return;
+
+          // Extract facts using AI
+          const extractedFacts = await extractMemoryFacts(messages.rows.reverse());
+
+          // Save facts (auto-approved since this is automatic extraction)
+          let savedCount = 0;
+          for (const factData of extractedFacts) {
+            const result = await query(
+              `INSERT INTO memory_facts 
+               (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               ON CONFLICT DO NOTHING
+               RETURNING *`,
+              [
+                userId,
+                factData.fact,
+                factData.category || 'general',
+                conversationId,
+                false,
+                true, // Auto-approve automatic extractions
+                factData.confidence || 0.7,
+              ]
+            );
+
+            if (result.rows.length > 0) {
+              savedCount++;
+            }
+          }
+
+          if (savedCount > 0) {
+            console.log(`✅ Auto-extracted ${savedCount} new memory facts at message ${totalMessages}`);
+          }
+        } catch (error) {
+          // Silently fail - memory extraction is not critical
+          console.error('Auto memory extraction failed (non-critical):', error.message);
+        } finally {
+          // Always remove from in-progress set
+          memoryExtractionInProgress.delete(conversationId);
+        }
+      });
+    }
+  } catch (error) {
+    // Silently fail - don't disrupt message flow
+    console.error('Auto memory extraction trigger error:', error);
+  }
+}
 
 // Helper function to trigger auto-naming after a few messages
 async function triggerAutoNaming(conversationId, userId) {
@@ -96,12 +183,12 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       [conversationId, 'user', content, selectedModel]
     );
 
-    // Get conversation history
+    // Get extended conversation history (100 messages for deeper context)
     const historyResult = await query(
       `SELECT role, content FROM messages 
        WHERE conversation_id = $1 
        ORDER BY created_at ASC
-       LIMIT 20`,
+       LIMIT 100`,
       [conversationId]
     );
 
@@ -110,19 +197,24 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       content: m.content,
     }));
 
-    // Get user's memory facts
+    // Get user's memory facts (50 most relevant with scoring)
     const memoryResult = await query(
-      `SELECT fact, category FROM memory_facts 
+      `SELECT fact, category, times_referenced, confidence 
+       FROM memory_facts 
        WHERE user_id = $1 AND approved = true
-       ORDER BY last_referenced_at DESC
-       LIMIT 10`,
+       ORDER BY 
+         times_referenced DESC,
+         confidence DESC,
+         last_referenced_at DESC
+       LIMIT 50`,
       [req.user.id]
     );
 
     const memoryFacts = memoryResult.rows;
 
-    // Build UI-aware context with complete user information
-    const uiAwareSystemPrompt = generateUIAwarePrompt(req.uiContext, {
+    // Build UI-aware context with complete user information and infrastructure awareness
+    const uiAwareSystemPrompt = await generateUIAwarePrompt(req.uiContext, {
+      id: req.user.id,
       fullName: req.user.full_name,
       email: req.user.email,
       role: req.user.role,
@@ -370,6 +462,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
         // Trigger auto-naming if appropriate
         triggerAutoNaming(conversationId, req.user.id);
+        
+        // Trigger automatic memory extraction
+        triggerAutoMemoryExtraction(conversationId, req.user.id);
 
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         res.end();
@@ -428,6 +523,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           // Trigger auto-naming if appropriate
           triggerAutoNaming(conversationId, req.user.id);
           
+          // Trigger automatic memory extraction
+          triggerAutoMemoryExtraction(conversationId, req.user.id);
+          
           res.json({
             message: aiResponse,
             action: {
@@ -483,6 +581,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       // Trigger auto-naming if appropriate
       triggerAutoNaming(conversationId, req.user.id);
+      
+      // Trigger automatic memory extraction
+      triggerAutoMemoryExtraction(conversationId, req.user.id);
 
       res.json({
         message: assistantMessage.rows[0],
