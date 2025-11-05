@@ -48,6 +48,11 @@ export default function useStreamingSTT() {
 
       // Connect to STT WebSocket with fresh token
       const wsUrl = `${WS_URL}/stt-stream?token=${wsToken}`;
+      
+      // CRITICAL DIAGNOSTIC LOGGING - Shows exact URL being used
+      console.log('🔍 Attempting to connect WebSocket to URL:', wsUrl);
+      console.log('🔍 WS_URL base value:', WS_URL);
+      
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
