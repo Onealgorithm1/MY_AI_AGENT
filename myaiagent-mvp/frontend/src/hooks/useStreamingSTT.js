@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { auth as authApi } from '../services/api';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+// Strip trailing slashes to prevent double-slash URL malformation
+const WS_URL = (import.meta.env.VITE_WS_URL || 'ws://localhost:3000').replace(/\/+$/, '');
 
 export default function useStreamingSTT() {
   const [isListening, setIsListening] = useState(false);
