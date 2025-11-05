@@ -56,6 +56,15 @@ The application employs a client-server architecture with React and Vite for the
     - **AI Self-Awareness API**: Four dedicated endpoints for AI to query its own performance metrics, detect anomalies, and diagnose issues
     - **Infrastructure Integration**: System metrics injected into AI's performance awareness prompt (latency percentiles, sample counts, health assessments)
     - **Database Schema**: Time-series metrics storage with indexing, baseline tracking, and anomaly logging tables
+-   **WebSocket Health Monitoring System**: Complete visibility into real-time connection health across all WebSocket endpoints:
+    - **Connection Tracking**: Records every WebSocket connection attempt with success/failure reasons and detailed error context
+    - **Three Endpoint Coverage**: Full monitoring of /stt-stream (Speech-to-Text), /voice (Voice Chat), and /ws/telemetry (Frontend Telemetry)
+    - **Error Classification**: Tracks authentication failures, missing credentials, API errors, stream errors, and connection drops
+    - **Anomaly Detection**: Tiered severity thresholds (>5% warning, >10% moderate, >20% critical error rates) with automatic alerting
+    - **Fire-and-Forget Telemetry**: Zero-impact monitoring that never blocks WebSocket handlers or degrades real-time performance
+    - **AI Self-Diagnosis**: Nexus autonomously detects WebSocket failures and reports credential issues, connection problems, or service degradation
+    - **Infrastructure Awareness**: WebSocket health status integrated into Nexus's system prompt showing connection counts, error rates, and active anomalies
+    - **Session Analytics**: Tracks session duration, message counts, and usage patterns across all real-time features
 
 **UI/UX Decisions**:
 -   "Auto 🤖" mode for intelligent model selection.
