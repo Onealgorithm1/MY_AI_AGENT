@@ -48,6 +48,7 @@ import sttRoutes from './routes/stt.js';
 import selfImprovementRoutes from './routes/selfImprovement.js';
 import telemetryRoutes from './routes/telemetry.js';
 import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
+import emailRoutes from './routes/emails.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -56,6 +57,9 @@ import { createSTTWebSocketServer } from './websocket/sttStream.js';
 
 // Import Performance Monitoring
 import { performanceMonitoringMiddleware } from './middleware/performanceMonitoring.js';
+
+// Import Email Queue Processor
+import { startQueueProcessor } from './services/emailQueueProcessor.js';
 
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 5000 : 3000);
@@ -246,6 +250,7 @@ app.use('/api/stt', sttRoutes);
 app.use('/api/self-improvement', selfImprovementRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/ai-self-awareness', aiSelfAwarenessRoutes);
+app.use('/api/emails', emailRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -358,6 +363,8 @@ server.listen(PORT, () => {
   console.log(`\n🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing'}`);
   console.log('\n' + '='.repeat(50) + '\n');
+  
+  startQueueProcessor();
 });
 
 export default app;

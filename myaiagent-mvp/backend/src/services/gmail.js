@@ -49,7 +49,8 @@ export async function listEmails(userId, options = {}) {
     const {
       maxResults = 20,
       query = '',
-      labelIds = ['INBOX']
+      labelIds = ['INBOX'],
+      autoAnalyze = true
     } = options;
 
     const response = await retryWithExponentialBackoff(async () => {
@@ -74,7 +75,24 @@ export async function listEmails(userId, options = {}) {
       })
     );
 
-    return emailDetails.filter(email => email !== null);
+    const filteredEmails = emailDetails.filter(email => email !== null);
+
+    if (autoAnalyze && filteredEmails.length > 0) {
+      (async () => {
+        try {
+          const { queueEmailForAnalysis } = await import('./emailCategorization.js');
+          for (const email of filteredEmails) {
+            await queueEmailForAnalysis(userId, email).catch(err => {
+              console.error(`Failed to queue email ${email.id}:`, err.message);
+            });
+          }
+        } catch (error) {
+          console.error('Email auto-analysis queueing error:', error);
+        }
+      })();
+    }
+
+    return filteredEmails;
   } catch (error) {
     console.error('Error listing emails:', error.message);
     handleGoogleApiError(error, 'Gmail');
