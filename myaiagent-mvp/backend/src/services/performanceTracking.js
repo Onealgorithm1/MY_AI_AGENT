@@ -40,7 +40,28 @@ async function getSystemPerformanceMetrics() {
     // Extract key metrics
     const apiLatency = summary.find(m => m.metric_name === 'api_latency');
     const externalApiLatency = summary.find(m => m.metric_name === 'external_api_latency');
-    const geminiLatency = summary.find(m => m.metric_name === 'gemini_latency');
+    
+    // Query Gemini-specific metrics via tag filtering
+    const geminiMetrics = await monitoringService.queryMetrics('external_api_latency', {
+      timeRange: '1 hour',
+      tags: { api_name: 'gemini' },
+      limit: 100
+    });
+    
+    // Calculate Gemini statistics from tag-filtered data
+    let gemini = null;
+    if (geminiMetrics && geminiMetrics.length > 0) {
+      const geminiValues = geminiMetrics.map(m => parseFloat(m.value));
+      const avgLatency = geminiValues.reduce((sum, v) => sum + v, 0) / geminiValues.length;
+      geminiValues.sort((a, b) => a - b);
+      const p95Index = Math.floor(geminiValues.length * 0.95);
+      
+      gemini = {
+        avgLatency: avgLatency.toFixed(0),
+        p95Latency: geminiValues[p95Index].toFixed(0),
+        sampleCount: geminiValues.length
+      };
+    }
     
     return {
       api: apiLatency ? {
@@ -54,11 +75,7 @@ async function getSystemPerformanceMetrics() {
         p95Latency: parseFloat(externalApiLatency.p95_value).toFixed(0),
         sampleCount: parseInt(externalApiLatency.sample_count)
       } : null,
-      gemini: geminiLatency ? {
-        avgLatency: parseFloat(geminiLatency.avg_value).toFixed(0),
-        p95Latency: parseFloat(geminiLatency.p95_value).toFixed(0),
-        sampleCount: parseInt(geminiLatency.sample_count)
-      } : null
+      gemini
     };
   } catch (error) {
     console.error('Error getting system performance metrics:', error);

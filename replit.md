@@ -45,6 +45,15 @@ The application employs a client-server architecture with React and Vite for the
     - **Writes Improvement Requests**: Creates prioritized developer-ready improvement recommendations backed by research and industry standards
     - **Tracks Promises**: Monitors promise fulfillment to ensure accountability
     - **Celebrates Progress**: Sends genuine gratitude messages when features are approved or shipped
+-   **Real-time Performance Monitoring System**: Advanced operational self-awareness enabling AI to diagnose and optimize service delivery:
+    - **Non-blocking Metric Recording**: Asynchronous performance tracking with batched database writes (zero user impact)
+    - **API Route Monitoring**: Automatic latency tracking for all `/api/*` endpoints via Express middleware
+    - **External API Performance**: Monitors Gemini AI, Google Search, Gmail, Calendar, Drive, Docs, and Sheets response times
+    - **Statistical Anomaly Detection**: Z-score analysis, trend detection, variance monitoring, and automatic severity classification
+    - **Performance Baselines**: Automated calculation of statistical baselines (7-day rolling windows with p50/p95/p99 percentiles)
+    - **AI Self-Awareness API**: Four dedicated endpoints for AI to query its own performance metrics, detect anomalies, and diagnose issues
+    - **Infrastructure Integration**: System metrics injected into AI's performance awareness prompt (latency percentiles, sample counts, health assessments)
+    - **Database Schema**: Time-series metrics storage with indexing, baseline tracking, and anomaly logging tables
 
 **UI/UX Decisions**:
 -   "Auto 🤖" mode for intelligent model selection.
