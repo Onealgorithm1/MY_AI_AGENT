@@ -63,6 +63,24 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
         temperature: 0.7,
         maxOutputTokens: 4000,
       },
+      safetySettings: [
+        {
+          category: 'HARM_CATEGORY_HARASSMENT',
+          threshold: 'BLOCK_NONE'
+        },
+        {
+          category: 'HARM_CATEGORY_HATE_SPEECH',
+          threshold: 'BLOCK_NONE'
+        },
+        {
+          category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+          threshold: 'BLOCK_NONE'
+        },
+        {
+          category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+          threshold: 'BLOCK_NONE'
+        }
+      ],
       tools: tools || undefined
     });
     
@@ -137,7 +155,20 @@ function transformGeminiResponse(geminiResult, model) {
   const candidate = response.candidates?.[0];
   
   if (!candidate) {
-    throw new Error('No response from Gemini');
+    console.error('🔴 No candidate in Gemini response:', {
+      promptFeedback: response.promptFeedback,
+      blockReason: response.promptFeedback?.blockReason
+    });
+    throw new Error('No response from Gemini - possibly blocked by safety filters');
+  }
+  
+  // Check if response was blocked
+  if (candidate.finishReason === 'SAFETY') {
+    console.error('🔴 Response blocked by safety filters:', {
+      finishReason: candidate.finishReason,
+      safetyRatings: candidate.safetyRatings
+    });
+    throw new Error('Response blocked by Gemini safety filters');
   }
   
   const part = candidate.content?.parts?.[0];
@@ -154,6 +185,13 @@ function transformGeminiResponse(geminiResult, model) {
     };
   } else if (part?.text) {
     message.content = part.text;
+  } else {
+    console.warn('⚠️ Empty response from Gemini:', {
+      finishReason: candidate.finishReason,
+      hasContent: !!candidate.content,
+      hasParts: !!candidate.content?.parts,
+      partCount: candidate.content?.parts?.length || 0
+    });
   }
   
   // Return OpenAI-compatible format
