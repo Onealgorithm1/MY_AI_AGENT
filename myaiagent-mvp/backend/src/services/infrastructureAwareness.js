@@ -447,6 +447,44 @@ function getFrontendArchitecture() {
 }
 
 /**
+ * Check Required Google Cloud Keys
+ * Bypasses the generic getApiKey() to correctly handle Google Cloud's JSON blob credentials
+ * Queries api_secrets table directly using key_name
+ */
+async function checkRequiredGoogleCloudKeys() {
+  const requiredKeys = [
+    'GOOGLE_APPLICATION_CREDENTIALS_JSON',
+    'VERTEX_AI_PROJECT_ID',
+    'VERTEX_AI_LOCATION'
+  ];
+  
+  const keyStatus = {};
+
+  for (const keyName of requiredKeys) {
+    try {
+      const result = await query(
+        `SELECT key_value FROM api_secrets
+         WHERE key_name = $1 AND is_active = true AND key_value IS NOT NULL AND key_value != ''
+         LIMIT 1`,
+        [keyName]
+      );
+      
+      const found = result.rows.length > 0 && result.rows[0].key_value;
+      keyStatus[keyName] = found;
+      
+      if (!found) {
+        console.warn(`Google Cloud/Vertex AI key '${keyName}' is MISSING in api_secrets table.`);
+      }
+    } catch (error) {
+      console.error(`Error checking key '${keyName}':`, error);
+      keyStatus[keyName] = false;
+    }
+  }
+
+  return keyStatus;
+}
+
+/**
  * Database Status Check
  */
 async function getDatabaseStatus() {
