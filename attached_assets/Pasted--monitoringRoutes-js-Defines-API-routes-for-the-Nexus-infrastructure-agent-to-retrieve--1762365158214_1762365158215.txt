@@ -1,0 +1,58 @@
+/**
+ * monitoringRoutes.js
+ * * Defines API routes for the Nexus infrastructure agent to retrieve
+ * * the complete infrastructure health snapshot.
+ * * This route is intended for internal AI agent consumption only, not for
+ * * user-facing UI features.
+ */
+
+// Assuming you have an Express-like server setup
+// import express from 'express';
+// const router = express.Router();
+
+import { getInfrastructureHealthSnapshot, formatSnapshotForNexus } from './infrastructureTelemetryService';
+
+// --- Simulation of Express Router for Clarity ---
+const router = {
+    // Defines a function that simulates the route handler for the infrastructure snapshot
+    get: (path, handler) => {
+        console.log(`[API ROUTE DEFINED] GET ${path}`);
+        // In a real app, 'handler' would be passed (req, res)
+    }
+};
+// ------------------------------------------------
+
+/**
+ * GET /api/monitoring/infrastructure
+ * * Purpose: Provides Nexus with a complete, human-readable snapshot of
+ * * the infrastructure, network edge, and configuration state.
+ * * This is the final step in the telemetry pipeline.
+ * @param {object} req - Request object
+ * @param {object} res - Response object
+ */
+async function infrastructureSnapshotHandler(req, res) {
+    try {
+        const snapshot = await getInfrastructureHealthSnapshot();
+        const formattedReport = formatSnapshotForNexus(snapshot);
+        
+        // Respond with the raw snapshot and the formatted text for flexibility
+        return res.status(200).json({
+            status: 'ok',
+            snapshot,
+            nexus_prompt_text: formattedReport
+        });
+    } catch (error) {
+        console.error("Failed to generate infrastructure snapshot:", error);
+        return res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to retrieve infrastructure telemetry.' 
+        });
+    }
+}
+
+// Register the Nexus-specific monitoring endpoint
+router.get('/api/monitoring/infrastructure', infrastructureSnapshotHandler);
+
+
+// Export the router (simulation) or the handler for integration
+export { infrastructureSnapshotHandler }; // Assuming this is how your main server file imports handlers
