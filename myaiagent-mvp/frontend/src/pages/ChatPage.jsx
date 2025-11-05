@@ -418,21 +418,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-
-      await feedbackApi.submit({
-        messageId,
-        conversationId: currentConversation?.id,
-        rating,
-      });
-
-      toast.success(rating === 1 ? 'Thanks for the positive feedback!' : 'Thanks for your feedback!');
-    } catch (error) {
-      console.error('Feedback error:', error);
-      toast.error('Failed to submit feedback');
-    }
-  };
-
-  // Rename conversation
+      {/* Sidebar */}
   const handleRename = async (convId, newTitle) => {
     try {
       await conversationsApi.update(convId, { title: newTitle });
