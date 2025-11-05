@@ -3,6 +3,7 @@ import { Copy, ThumbsUp, ThumbsDown, Search, Loader2, Radio } from 'lucide-react
 import MessageSpeakerButton from './MessageSpeakerButton';
 import WordHighlighter from './WordHighlighter';
 import CodeBlock from './CodeBlock';
+import LinkifiedText from './LinkifiedText';
 import useMessageAudio from '../hooks/useMessageAudio';
 
 export default function MessageWithAudio({
@@ -126,7 +127,7 @@ export default function MessageWithAudio({
               wordTimings={wordTimings}
             />
           ) : (
-            message.content
+            <LinkifiedText text={message.content} />
           )}
         </div>
       </div>
