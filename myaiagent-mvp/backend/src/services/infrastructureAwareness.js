@@ -513,48 +513,67 @@ async function getDatabaseStatus() {
  * API Status Check
  */
 async function getAPIStatus(userId) {
+  // Check Google Cloud credentials directly from api_secrets table
+  const googleCloudKeys = await checkRequiredGoogleCloudKeys();
+  
   const apis = [
     { 
       name: 'Google Gemini API', 
       envVar: 'GEMINI_API_KEY',
       description: 'Primary AI model for chat and vision',
-      required: true
+      required: true,
+      useGenericLookup: true
     },
     { 
       name: 'Vertex AI', 
       envVar: 'VERTEX_AI_PROJECT_ID',
       description: 'Advanced AI with Google Search grounding',
-      required: false
+      required: false,
+      useGenericLookup: false,
+      googleCloudKey: 'VERTEX_AI_PROJECT_ID'
     },
     { 
       name: 'Google Cloud TTS', 
       envVar: 'GOOGLE_CLOUD_TTS_KEY',
       description: 'Text-to-Speech (1,886 voices)',
-      required: false
+      required: false,
+      useGenericLookup: false,
+      googleCloudKey: 'GOOGLE_APPLICATION_CREDENTIALS_JSON'
     },
     { 
       name: 'Google Cloud STT', 
       envVar: 'GOOGLE_CLOUD_STT_KEY',
       description: 'Speech-to-Text transcription',
-      required: false
+      required: false,
+      useGenericLookup: false,
+      googleCloudKey: 'GOOGLE_APPLICATION_CREDENTIALS_JSON'
     },
     { 
       name: 'Google Custom Search', 
       envVar: 'GOOGLE_SEARCH_API_KEY',
       description: 'Manual web search capability',
-      required: false
+      required: false,
+      useGenericLookup: true
     },
     { 
       name: 'OpenAI API', 
       envVar: 'OPENAI_API_KEY',
       description: 'Fallback AI model',
-      required: false
+      required: false,
+      useGenericLookup: true
     }
   ];
 
   const statusPromises = apis.map(async (api) => {
     try {
-      const key = process.env[api.envVar] || await getApiKey(api.envVar.toLowerCase().replace('_key', '').replace('_', '-'));
+      let key = null;
+      
+      if (api.useGenericLookup) {
+        key = process.env[api.envVar] || await getApiKey(api.envVar.toLowerCase().replace('_key', '').replace('_', '-'));
+      } else if (api.googleCloudKey) {
+        key = googleCloudKeys[api.googleCloudKey];
+      }
+      
       return {
         ...api,
         status: key ? '✅' : '❌',
