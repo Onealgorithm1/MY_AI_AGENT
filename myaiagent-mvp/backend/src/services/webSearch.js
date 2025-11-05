@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { query } from '../utils/database.js';
 import { decryptSecret } from './secrets.js';
+import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
 
 export async function performWebSearch(searchQuery, numResults = 5) {
   try {
@@ -43,14 +44,16 @@ export async function performWebSearch(searchQuery, numResults = 5) {
       }
     }
 
-    const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-      params: {
-        key: apiKey,
-        cx: searchEngineId,
-        q: searchQuery,
-        num: Math.min(numResults, 10),
-      },
-      timeout: 10000,
+    const response = await monitorExternalApi('google_search', '/customsearch/v1', async () => {
+      return await axios.get('https://www.googleapis.com/customsearch/v1', {
+        params: {
+          key: apiKey,
+          cx: searchEngineId,
+          q: searchQuery,
+          num: Math.min(numResults, 10),
+        },
+        timeout: 10000,
+      });
     });
 
     const results = response.data.items || [];

@@ -1,9 +1,28 @@
+import monitoringService from '../services/monitoringService.js';
+
 export async function retryWithExponentialBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+  const startTime = Date.now();
   let lastError;
+  let attemptCount = 0;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    attemptCount++;
     try {
-      return await fn();
+      const result = await fn();
+      
+      // Record successful Google API call with monitoring
+      const latency = Date.now() - startTime;
+      setImmediate(() => {
+        monitoringService.recordExternalApiCall(
+          'google_apis',
+          'retry_wrapper',
+          true,
+          latency,
+          { attempts: attemptCount, retries: attemptCount - 1 }
+        );
+      });
+      
+      return result;
     } catch (error) {
       lastError = error;
       
@@ -38,6 +57,23 @@ export async function retryWithExponentialBackoff(fn, maxRetries = 3, baseDelay 
       await new Promise(resolve => setTimeout(resolve, totalDelay));
     }
   }
+  
+  // Record failed Google API call with monitoring
+  const latency = Date.now() - startTime;
+  setImmediate(() => {
+    monitoringService.recordExternalApiCall(
+      'google_apis',
+      'retry_wrapper',
+      false,
+      latency,
+      { 
+        attempts: attemptCount, 
+        retries: attemptCount - 1,
+        error: lastError?.message || 'Unknown error',
+        status_code: lastError?.response?.status || lastError?.status
+      }
+    );
+  });
   
   throw lastError;
 }

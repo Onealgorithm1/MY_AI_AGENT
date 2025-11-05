@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
+import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;
@@ -90,14 +91,18 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
     };
     
     if (stream) {
-      // Streaming response
-      const result = await modelInstance.generateContentStream(request);
+      // Streaming response with performance monitoring
+      const result = await monitorExternalApi('gemini', model, async () => {
+        return await modelInstance.generateContentStream(request);
+      });
       
       // Return stream-like object compatible with OpenAI
       return createStreamAdapter(result, model);
     } else {
-      // Non-streaming response
-      const result = await modelInstance.generateContent(request);
+      // Non-streaming response with performance monitoring
+      const result = await monitorExternalApi('gemini', model, async () => {
+        return await modelInstance.generateContent(request);
+      });
       
       // Transform Gemini response to OpenAI format
       return transformGeminiResponse(result, model);
