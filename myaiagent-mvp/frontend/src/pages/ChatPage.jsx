@@ -368,6 +368,64 @@ export default function ChatPage() {
                 }
               }
             } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+          }
+        }
+      }
+
+      // For large conversations (50+ messages), add fallback polling
+      // This ensures responses appear even if streaming fails
+      if (messages.length >= 50) {
+        console.log('⚡ Large conversation detected - starting fallback polling');
+        const startTime = Date.now();
+        const pollInterval = setInterval(async () => {
+          const elapsed = Date.now() - startTime;
+          
+          // Poll for 10 seconds max
+          if (elapsed > 10000) {
+            clearInterval(pollInterval);
+            return;
+          }
+          
+          // Reload to check for new messages
+          await loadConversation(conversationId, false);
+        }, 2000); // Poll every 2 seconds
+        
+        // Clean up polling when streaming completes
+        completion.on('end', () => {
+          clearInterval(pollInterval);
+        });
+      }
+    } catch (error) {
+      console.error('Streaming error:', error);
+      setStreamingMessage('');
+      setIsSending(false);
+      toast.error('Failed to send message');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Original catch block continuation
+  const handleStreamingError = (error) => {
+    if (error.message) {
+      console.error('Stream processing error:', error);
+      
+      // For large conversations, reload to ensure message appears
+      if (messages.length >= 50) {
+        setTimeout(() => {
+          loadConversation(conversationId, false);
+        }, 1000);
+      }
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Rest of component */}
+      const originalCatch = `            } catch (e) {
+            } catch (e) {
               // Skip invalid JSON
             }
           }
