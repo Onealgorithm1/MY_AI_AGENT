@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Copy, ThumbsUp, ThumbsDown, Search, Loader2, Radio } from 'lucide-react';
 import MessageSpeakerButton from './MessageSpeakerButton';
 import WordHighlighter from './WordHighlighter';
+import CodeBlock from './CodeBlock';
 import useMessageAudio from '../hooks/useMessageAudio';
 
 export default function MessageWithAudio({
@@ -14,6 +15,22 @@ export default function MessageWithAudio({
   searchResults,
   shouldAutoPlay = false,
 }) {
+  // Check if message is code presentation protocol
+  const codePresentation = useMemo(() => {
+    try {
+      const parsed = JSON.parse(message.content);
+      if (parsed.presentation_protocol === 'PRESENT_CODE') {
+        return parsed;
+      }
+    } catch (e) {
+      // Not JSON or not code presentation - treat as normal text
+    }
+    return null;
+  }, [message.content]);
+
+  // Skip TTS if this is a code presentation
+  const shouldUseTTS = !codePresentation && ttsEnabled;
+
   const {
     state,
     currentWordIndex,
@@ -28,13 +45,62 @@ export default function MessageWithAudio({
   } = useMessageAudio(message.id, message.content, voiceId);
 
   useEffect(() => {
-    if (shouldAutoPlay && ttsEnabled && ttsAutoPlay && !hasPlayed && state === 'idle') {
+    if (shouldAutoPlay && shouldUseTTS && ttsAutoPlay && !hasPlayed && state === 'idle') {
       const timer = setTimeout(() => {
         play();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [shouldAutoPlay, ttsEnabled, ttsAutoPlay, hasPlayed, state, play]);
+  }, [shouldAutoPlay, shouldUseTTS, ttsAutoPlay, hasPlayed, state, play]);
+
+  // If this is a code presentation, render CodeBlock instead
+  if (codePresentation) {
+    const codeContent = Array.isArray(codePresentation.data) 
+      ? codePresentation.data.join('\n') 
+      : codePresentation.data;
+
+    return (
+      <div className="max-w-full w-full">
+        <CodeBlock
+          title={codePresentation.content_title}
+          contentType={codePresentation.content_type}
+          data={codePresentation.data}
+        />
+        
+        <div className="flex items-center gap-3 mt-1.5 ml-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+          <button
+            onClick={() => onCopy(codeContent)}
+            className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:text-gray-700 dark:active:text-gray-100 active:bg-gray-200 dark:active:bg-gray-600 transition-colors touch-manipulation"
+            title="Copy code"
+          >
+            <Copy className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <button
+            onClick={() => onFeedback(message.id, 1)}
+            className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 active:text-green-700 dark:active:text-green-300 active:bg-green-100 dark:active:bg-green-900/30 transition-colors touch-manipulation"
+            title="Good response"
+          >
+            <ThumbsUp className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <button
+            onClick={() => onFeedback(message.id, -1)}
+            className="p-2 md:p-1.5 rounded-full text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:text-red-700 dark:active:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 transition-colors touch-manipulation"
+            title="Bad response"
+          >
+            <ThumbsDown className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-medium ml-auto">
+            {message.metadata?.autoSelected 
+              ? `Auto 🤖 (${message.model})` 
+              : message.model}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[80%]">

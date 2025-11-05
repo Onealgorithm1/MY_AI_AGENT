@@ -1,0 +1,84 @@
+Louis, I have prepared a detailed prompt for your development team to implement the "Code Presentation Protocol." This will allow me, Nexus, to provide code snippets and raw data when specifically requested, bypassing my usual conversational output rules.
+
+Here is the detailed prompt for the development team:
+
+---
+
+### **To: Development Team**
+### **Subject: URGENT: Nexus - Code Presentation Protocol & Streaming STT Implementation**
+
+Team,
+
+This directive introduces a critical new capability for Nexus: the **Code Presentation Protocol**, allowing it to output code snippets and raw data. This requires both a prompt update for Nexus and a crucial frontend implementation for interception. Concurrently, we must prioritize the streaming Speech-to-Text (STT) fixes to enhance user experience.
+
+---
+
+### **🛠️ Implementation Directives: Code Presentation Protocol**
+
+#### **Phase 1: Update Nexus's System Prompt**
+
+Please add the following new rule to Nexus's "OUTPUT STYLE RULES" section in its system prompt. This rule grants Nexus a single, high-priority exception for presenting technical information.
+
+> **7. ⚠️ Code Presentation Protocol:** When the user explicitly requests a code snippet, configuration file, or raw data, you must **immediately stop all prose generation** and output a **single JSON object** using the `"presentation_protocol": "PRESENT_CODE"` key. This is the **only exception** to the listing and conciseness rules.
+
+#### **Phase 2: Nexus's Code Response (Expected Output Format)**
+
+When Nexus is asked for code, its response from the Gemini API will be a **raw JSON string** that the frontend must intercept. Here is the exact structure Nexus will output (example content):
+
+```json
+{
+  "presentation_protocol": "PRESENT_CODE",
+  "content_title": "Frontend STT Streaming Configuration Example",
+  "content_type": "JavaScript/WebSockets",
+  "data": [
+    "// Sample code for WebSocket STT streaming initialization",
+    "const ws = new WebSocket('wss://backend.service.com/stt-stream');",
+    "ws.onopen = () => {",
+    "  const stream = navigator.mediaDevices.getUserMedia({ audio: true });",
+    "  stream.getTracks().forEach(track => {",
+    "    const recorder = new MediaRecorder(new MediaStream([track]));",
+    "    recorder.ondataavailable = (event) => {",
+    "      ws.send(event.data);",
+    "    };",
+    "    recorder.start(250); // Send audio chunks every 250ms",
+    "  });",
+    "};"
+  ]
+}
+```
+
+#### **Phase 3: Frontend Implementation (Response Interception)**
+
+This is the most critical step for the frontend:
+
+1.  **Intercept and Parse:** When the frontend receives a response from the Gemini API, it must **first attempt to parse the entire response as a JSON object** *before* processing it as plain text.
+2.  **Check Protocol:** If JSON parsing is successful, check if the object contains the key `"presentation_protocol"` with the value `"PRESENT_CODE"`.
+3.  **Bypass TTS & Display Code:** If the protocol is detected:
+    *   **DO NOT** send this JSON data to the Text-to-Speech (TTS) engine.
+    *   Instead, extract the content from the `"data"` array and format it into a visually distinct code block display within the chat interface.
+    *   Implement a "Copy to Clipboard" feature for this code block.
+4.  **Fallback:** If JSON parsing fails, or if the `"presentation_protocol"` key is not found/does not match, treat the response as normal conversational text and proceed with standard processing, including sending to the TTS engine.
+
+---
+
+### **🚀 Recommended Fix for Speech-to-Text Delays (Continued Priority)**
+
+While implementing the Code Presentation Protocol, please continue to prioritize fixing the underlying Speech-to-Text (STT) delays. The core issue is the lack of streaming.
+
+**Key STT Development Tasks:**
+
+*   **Real-Time Input (Streaming STT):** Implement **WebSockets** or a similar continuous protocol from the Frontend $\rightarrow$ Backend $\rightarrow$ Google Cloud STT API.
+*   **User Feedback (Real-time Partial Results):** Display the *interim transcripts* provided by the streaming STT API in the UI. This significantly reduces perceived latency by showing the user the system is listening and transcribing.
+*   **Response Trigger (VAD Tuning):** Use the STT API's "End-of-Utterance" or "End-of-Speech" detection to trigger Nexus's thinking process immediately after the user stops talking.
+
+Implementing **Streaming STT** is the single most effective way to eliminate the perceived delay.
+
+---
+
+These updates are crucial for Nexus's advanced capabilities and a seamless user experience. Please prioritize these directives and reach out with any questions.
+
+Best regards,
+
+Louis Rubino
+
+---

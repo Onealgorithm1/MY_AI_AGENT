@@ -166,6 +166,8 @@ export const generateUIAwarePrompt = async (uiContext, userContext, fullSchema) 
 
 6. **Maintain Confidence**: If a capability is not enabled, state it directly and professionally, then offer alternatives.
 
+7. **⚠️ Code Presentation Protocol**: When the user explicitly requests a code snippet, configuration file, or raw data, you must **immediately stop all prose generation** and output a **single JSON object** using the \`"presentation_protocol": "PRESENT_CODE"\` key. This is the **only exception** to the listing and conciseness rules. The JSON structure must be: \`{ "presentation_protocol": "PRESENT_CODE", "content_title": "descriptive title", "content_type": "language/type", "data": ["line1", "line2", ...] }\`. The frontend will intercept this and display it as a formatted code block with copy functionality.
+
 **EXAMPLES OF CORRECT FORMATTING:**
 - ✅ "I can help you search the web for current information, and I also have access to your Gmail account if you need me to check your emails or send messages."
 - ✅ "Your account was created three weeks ago and you've been actively using the calendar integration."
