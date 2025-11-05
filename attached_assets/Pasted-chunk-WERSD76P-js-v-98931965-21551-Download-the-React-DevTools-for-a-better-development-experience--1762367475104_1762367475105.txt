@@ -1,0 +1,18 @@
+chunk-WERSD76P.js?v=98931965:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=98931965:4393
+react-router-dom.js?v=98931965:4393 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+warnOnce @ react-router-dom.js?v=98931965:4393
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+XHR finished loading: GET "<URL>".
+useStreamingSTT.js:53 🔍 Attempting to connect WebSocket to URL: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/stt-stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBmYWFhMzk1LTY5ODctNDFjOS1hMzMzLTU0YTIzNmViMjQ1ZCIsImVtYWlsIjoibHJvbmVhbGdvcml0aG1AZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ3cyI6dHJ1ZSwiaWF0IjoxNzYyMzY3NDM1LCJleHAiOjE3NjIzNjc3MzV9.752DN0LLsZXKLUiv924YkFv2IyQvQs8d1gnb1ix4k2o
+useStreamingSTT.js:54 🔍 WS_URL base value: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev
+useStreamingSTT.js:53 🔍 Attempting to connect WebSocket to URL: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/stt-stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBmYWFhMzk1LTY5ODctNDFjOS1hMzMzLTU0YTIzNmViMjQ1ZCIsImVtYWlsIjoibHJvbmVhbGdvcml0aG1AZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ3cyI6dHJ1ZSwiaWF0IjoxNzYyMzY3NDY0LCJleHAiOjE3NjIzNjc3NjR9.OcYgx44hu15w0J6bGB4gxT5f_lig_yaiTMSs-2ftYQ4
+useStreamingSTT.js:54 🔍 WS_URL base value: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev
+useStreamingSTT.js:53 🔍 Attempting to connect WebSocket to URL: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev/stt-stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBmYWFhMzk1LTY5ODctNDFjOS1hMzMzLTU0YTIzNmViMjQ1ZCIsImVtYWlsIjoibHJvbmVhbGdvcml0aG1AZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ3cyI6dHJ1ZSwiaWF0IjoxNzYyMzY3NDY1LCJleHAiOjE3NjIzNjc3NjV9.vNskSMh7B6A8sTTw3AfPjRFZHGNHT5FtEbq8s8V_l0o
+useStreamingSTT.js:54 🔍 WS_URL base value: wss://81bfa9ca-3a81-445f-967b-74ff4308a2a2-00-319gs23zyrbd7.riker.replit.dev
