@@ -12,7 +12,8 @@ export function useTelemetry(pageName) {
 
     if (!user) return;
 
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000/ws/telemetry';
+    const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+    const wsUrl = `${WS_BASE_URL}/ws/telemetry`;
     
     const connectWebSocket = () => {
       try {
