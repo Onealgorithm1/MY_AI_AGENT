@@ -340,6 +340,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       let functionCall = null;
       let functionName = '';
       let functionArgs = '';
+      let chunkCount = 0;
+
+      console.log('📡 Starting streaming response to client...');
 
       // Use Vertex AI with grounding if needed, otherwise use standard Gemini
       const completion = useVertexAI
@@ -347,6 +350,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         : await createChatCompletion(messages, selectedModel, true, functionsToPass);
 
       completion.on('data', (chunk) => {
+        chunkCount++;
+        console.log(`📦 Chunk #${chunkCount} received from Gemini`);
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
         
         for (const line of lines) {
@@ -370,7 +375,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             // Regular text content
             if (delta?.content) {
               fullResponse += delta.content;
-              res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+              const dataToWrite = `data: ${JSON.stringify({ content: delta.content })}\n\n`;
+              res.write(dataToWrite);
+              console.log(`✍️ Wrote chunk to client: ${delta.content.substring(0, 50)}...`);
             }
           } catch (e) {
             // Skip invalid JSON
@@ -379,6 +386,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       });
 
       completion.on('end', async () => {
+        console.log(`✅ Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
         tokensUsed = estimateTokens(fullResponse || functionArgs);
 
         // Handle function call execution
