@@ -1,4 +1,3 @@
-const TELEMETRY_ENABLED = true;
 const SAMPLE_RATE = 0.1;
 const MAX_EVENTS_PER_MINUTE = 100;
 
@@ -8,10 +7,16 @@ class TelemetryService {
     this.eventCount = 0;
     this.lastResetTime = Date.now();
     this.apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.telemetryEnabled = true;
+  }
+
+  setTelemetryEnabled(enabled) {
+    this.telemetryEnabled = enabled;
   }
 
   shouldSendEvent(eventType, priority = 'normal') {
-    if (!TELEMETRY_ENABLED) return false;
+    if (!this.telemetryEnabled) return false;
 
     const now = Date.now();
     if (now - this.lastResetTime > 60000) {
@@ -83,6 +88,7 @@ class TelemetryService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Session-ID': this.sessionId,
         },
         credentials: 'include',
         body: JSON.stringify(telemetryPayload),
