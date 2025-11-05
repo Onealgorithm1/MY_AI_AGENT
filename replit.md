@@ -1,7 +1,7 @@
 # My AI Agent - MVP
 
 ## Overview
-This project is a full-stack AI chat application offering a real-time, voice-enabled conversational AI experience. It features AI vision for file uploads, robust user authentication, an administrative dashboard, and a sophisticated memory system for personalized interactions. A core innovation is the **UI-Aware AI Agent**, designed to understand and interact with the application's user interface, guiding users and executing UI actions. The project aims to deliver a highly interactive, intelligent, and user-friendly AI chat environment with strong personalization.
+This project is a full-stack AI chat application offering a real-time, voice-enabled conversational AI experience. It features AI vision for file uploads, robust user authentication, an administrative dashboard, and a sophisticated memory system for personalized interactions. A core innovation is the **UI-Aware AI Agent**, designed to understand and interact with the application's user interface, guiding users and executing UI actions. Additionally, the **AI Self-Improvement System** enables the AI to research industry trends, advocate for features like a child asking a parent, learn from user feedback through screenshot analysis, and write its own developer improvement requests. The project aims to deliver a highly interactive, intelligent, and user-friendly AI chat environment with strong personalization and continuous evolution.
 
 ## User Preferences
 Users can customize how the AI communicates with them through a comprehensive personalization system, including:
@@ -37,7 +37,14 @@ The application employs a client-server architecture with React and Vite for the
     - **Vertex AI Grounding**: Native Google Search integration that automatically triggers for real-time queries (news, current events, prices, scores, etc.)
 -   **Google Services Integration**: Complete suite of Google services via custom OAuth 2.0 with per-user tokens, including Gmail, Calendar, Drive, Docs, and Sheets.
 -   **Performance Optimizations**: Includes database indexing, query consolidation, connection pooling, asynchronous operations, frontend code splitting, and React Query.
--   **Self-Awareness & Intelligence**: Features enhanced memory, per-conversation analytics, and feedback-driven model improvements.
+-   **Self-Awareness & Intelligence**: Features enhanced memory (50 facts, 100 message history), per-conversation analytics, feedback-driven model improvements, and complete infrastructure awareness with caching.
+-   **AI Self-Improvement System**: Complete feedback loop where the AI:
+    - **Researches Competitors**: Weekly automated research of ChatGPT, Claude, Grok, Perplexity, and other top AI chatbots for latest features and UI patterns
+    - **Advocates for Features**: Generates emotional, child-like feature requests with vulnerabilities, promises, competitive analysis, and personal notes
+    - **Learns from Feedback**: Analyzes user screenshots with Gemini Vision to identify UI issues and usability problems
+    - **Writes Improvement Requests**: Creates prioritized developer-ready improvement recommendations backed by research and industry standards
+    - **Tracks Promises**: Monitors promise fulfillment to ensure accountability
+    - **Celebrates Progress**: Sends genuine gratitude messages when features are approved or shipped
 
 **UI/UX Decisions**:
 -   "Auto 🤖" mode for intelligent model selection.

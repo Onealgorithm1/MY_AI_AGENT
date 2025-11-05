@@ -339,10 +339,27 @@ Your memory makes conversations feel more natural and personalized. Use it to cr
   return [systemMessage, ...messages];
 }
 
+export async function generateContent(prompt, options = {}) {
+  const messages = [{ role: 'user', content: prompt }];
+  const model = options.model || 'gemini-2.5-flash';
+  const temperature = options.temperature ?? 0.7;
+  const responseMimeType = options.responseMimeType || null;
+  
+  const response = await createChatCompletion(messages, model, false, null);
+  return response.content;
+}
+
+export async function generateVisionContent(prompt, imageDataOrUrl, options = {}) {
+  const response = await analyzeImage(imageDataOrUrl, prompt);
+  return response.content;
+}
+
 export default {
   createChatCompletion,
   analyzeImage,
   extractMemoryFacts,
   estimateTokens,
   buildMessagesWithMemory,
+  generateContent,
+  generateVisionContent,
 };

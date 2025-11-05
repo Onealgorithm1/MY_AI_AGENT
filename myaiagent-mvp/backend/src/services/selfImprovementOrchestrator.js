@@ -1,4 +1,4 @@
-import { query } from '../config/database.js';
+import { query } from '../utils/database.js';
 import { conductWeeklyResearch, getLatestResearchFindings } from './competitiveResearch.js';
 import { generateFeatureRequest, generateFollowUp, getPendingRequests } from './featureAdvocacy.js';
 

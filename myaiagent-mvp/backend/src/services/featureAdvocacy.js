@@ -1,4 +1,4 @@
-import { query } from '../config/database.js';
+import { query } from '../utils/database.js';
 import { generateContent } from './gemini.js';
 import { analyzeFeatureGap } from './competitiveResearch.js';
 import { getInfrastructureAwareness } from './infrastructureAwareness.js';

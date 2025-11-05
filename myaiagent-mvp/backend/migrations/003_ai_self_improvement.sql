@@ -72,7 +72,7 @@ CREATE INDEX idx_feature_requests_created ON feature_requests(created_at DESC);
 CREATE TABLE IF NOT EXISTS feature_feedback (
   id SERIAL PRIMARY KEY,
   feature_request_id INTEGER REFERENCES feature_requests(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   
   -- User's feedback
   feedback_text TEXT,

@@ -1,4 +1,4 @@
-import { query } from '../config/database.js';
+import { query } from '../utils/database.js';
 import { generateContent } from './gemini.js';
 import { researchBestPractices } from './feedbackAnalyzer.js';
 

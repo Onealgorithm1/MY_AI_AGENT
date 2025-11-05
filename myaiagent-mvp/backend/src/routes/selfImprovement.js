@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken, isAdmin } from '../middleware/auth.js';
+import { authenticate as authenticateToken, requireAdmin as isAdmin } from '../middleware/auth.js';
 import { 
   runWeeklyImprovementCycle, 
   checkForShippedFeatures,

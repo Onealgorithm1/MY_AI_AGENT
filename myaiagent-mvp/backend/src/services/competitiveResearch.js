@@ -1,5 +1,5 @@
-import { query } from '../config/database.js';
-import { searchWeb } from './webSearch.js';
+import { query } from '../utils/database.js';
+import { performWebSearch as searchWeb } from './webSearch.js';
 import { generateContent } from './gemini.js';
 
 const COMPETITOR_SOURCES = [

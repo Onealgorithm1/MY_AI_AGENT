@@ -1,6 +1,6 @@
-import { query } from '../config/database.js';
+import { query } from '../utils/database.js';
 import { generateContent, generateVisionContent } from './gemini.js';
-import { searchWeb } from './webSearch.js';
+import { performWebSearch as searchWeb } from './webSearch.js';
 
 export async function analyzeFeatureFeedback(featureRequestId, userId, feedbackData) {
   const { feedbackText, satisfactionRating, screenshot } = feedbackData;

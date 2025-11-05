@@ -19,8 +19,10 @@ import {
   Save,
   Edit,
   Edit2,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SelfImprovementDashboard from '../components/SelfImprovementDashboard';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -347,6 +349,17 @@ export default function AdminPage() {
               }`}
             >
               API Keys
+            </button>
+            <button
+              onClick={() => setActiveTab('self-improvement')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'self-improvement'
+                  ? 'border-gray-900 dark:border-gray-100 text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Self-Improvement
             </button>
           </div>
         </div>
@@ -1167,6 +1180,10 @@ export default function AdminPage() {
               })()}
             </div>
           </div>
+        )}
+
+        {activeTab === 'self-improvement' && (
+          <SelfImprovementDashboard />
         )}
       </div>
     </div>
