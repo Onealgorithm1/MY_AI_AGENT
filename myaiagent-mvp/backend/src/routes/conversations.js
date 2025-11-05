@@ -10,10 +10,14 @@ router.get('/', authenticate, async (req, res) => {
     const { limit = 20, offset = 0, archived = false } = req.query;
 
     const result = await query(
-      `SELECT c.*, 
-              (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
+      `SELECT c.id, c.user_id, c.title, c.model, c.pinned, c.archived, 
+              c.created_at, c.updated_at,
+              COUNT(m.id) as message_count
        FROM conversations c
+       LEFT JOIN messages m ON m.conversation_id = c.id
        WHERE c.user_id = $1 AND c.archived = $2
+       GROUP BY c.id, c.user_id, c.title, c.model, c.pinned, c.archived, 
+                c.created_at, c.updated_at
        ORDER BY c.pinned DESC, c.updated_at DESC
        LIMIT $3 OFFSET $4`,
       [req.user.id, archived === 'true', parseInt(limit), parseInt(offset)]
@@ -153,23 +157,27 @@ router.get('/:id/messages', authenticate, async (req, res) => {
     const { id } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
-    // Verify ownership
-    const check = await query(
-      'SELECT id FROM conversations WHERE id = $1 AND user_id = $2',
-      [id, req.user.id]
-    );
-
-    if (check.rows.length === 0) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
+    // Get messages and verify ownership in one query
     const result = await query(
-      `SELECT * FROM messages 
-       WHERE conversation_id = $1 
-       ORDER BY created_at ASC
-       LIMIT $2 OFFSET $3`,
-      [id, parseInt(limit), parseInt(offset)]
+      `SELECT m.* 
+       FROM messages m
+       INNER JOIN conversations c ON c.id = m.conversation_id
+       WHERE m.conversation_id = $1 AND c.user_id = $2
+       ORDER BY m.created_at ASC
+       LIMIT $3 OFFSET $4`,
+      [id, req.user.id, parseInt(limit), parseInt(offset)]
     );
+
+    if (result.rows.length === 0) {
+      // Check if conversation exists to distinguish between "not found" and "no messages"
+      const check = await query(
+        'SELECT id FROM conversations WHERE id = $1 AND user_id = $2',
+        [id, req.user.id]
+      );
+      if (check.rows.length === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+    }
 
     res.json({
       messages: result.rows,

@@ -2,13 +2,23 @@ import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { extractMemoryFacts } from '../services/openai.js';
+import cache from '../services/cacheService.js';
 
 const router = express.Router();
 
-// Get all memory facts for user
+// Get all memory facts for user (with caching)
 router.get('/', authenticate, async (req, res) => {
   try {
     const { category, approved } = req.query;
+
+    // Create cache key based on query parameters
+    const cacheKey = `${req.user.id}:${category || 'all'}:${approved || 'all'}`;
+    
+    // Check cache first
+    const cached = cache.get('memory_facts', cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     let sql = 'SELECT * FROM memory_facts WHERE user_id = $1';
     const params = [req.user.id];
@@ -28,10 +38,15 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(sql, params);
 
-    res.json({
+    const response = {
       memoryFacts: result.rows,
       total: result.rows.length,
-    });
+    };
+
+    // Cache for 3 minutes (memory facts change less frequently)
+    cache.set('memory_facts', cacheKey, response, 3 * 60 * 1000);
+
+    res.json(response);
   } catch (error) {
     console.error('Get memory facts error:', error);
     res.status(500).json({ error: 'Failed to get memory facts' });
@@ -53,6 +68,9 @@ router.post('/', authenticate, async (req, res) => {
        RETURNING *`,
       [req.user.id, fact, category, true, true]
     );
+
+    // Invalidate memory facts cache for this user
+    cache.invalidateNamespace('memory_facts');
 
     res.status(201).json({ memoryFact: result.rows[0] });
   } catch (error) {
@@ -91,29 +109,39 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
     // Extract facts using AI
     const extractedFacts = await extractMemoryFacts(messages.rows);
 
-    // Save facts (unapproved until user confirms)
-    const savedFacts = [];
-    for (const factData of extractedFacts) {
+    // Save facts using bulk insert for better performance
+    let savedFacts = [];
+    
+    if (extractedFacts.length > 0) {
+      // Build bulk insert query
+      const values = extractedFacts.map((factData, index) => {
+        const baseParam = index * 7;
+        return `($${baseParam + 1}, $${baseParam + 2}, $${baseParam + 3}, $${baseParam + 4}, $${baseParam + 5}, $${baseParam + 6}, $${baseParam + 7})`;
+      }).join(', ');
+
+      const params = extractedFacts.flatMap(factData => [
+        req.user.id,
+        factData.fact,
+        factData.category || 'general',
+        conversationId,
+        false,
+        false, // Requires user approval
+        factData.confidence || 0.8,
+      ]);
+
       const result = await query(
         `INSERT INTO memory_facts 
          (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         VALUES ${values}
          ON CONFLICT DO NOTHING
          RETURNING *`,
-        [
-          req.user.id,
-          factData.fact,
-          factData.category || 'general',
-          conversationId,
-          false,
-          false, // Requires user approval
-          factData.confidence || 0.8,
-        ]
+        params
       );
 
-      if (result.rows.length > 0) {
-        savedFacts.push(result.rows[0]);
-      }
+      savedFacts = result.rows;
+      
+      // Invalidate memory facts cache for this user
+      cache.invalidateNamespace('memory_facts');
     }
 
     res.json({
@@ -171,6 +199,9 @@ router.put('/:id', authenticate, async (req, res) => {
       values
     );
 
+    // Invalidate memory facts cache
+    cache.invalidateNamespace('memory_facts');
+
     res.json({ memoryFact: result.rows[0] });
   } catch (error) {
     console.error('Update memory fact error:', error);
@@ -192,6 +223,9 @@ router.delete('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Memory fact not found' });
     }
 
+    // Invalidate memory facts cache
+    cache.invalidateNamespace('memory_facts');
+
     res.json({ message: 'Memory fact deleted successfully' });
   } catch (error) {
     console.error('Delete memory fact error:', error);
@@ -203,6 +237,9 @@ router.delete('/:id', authenticate, async (req, res) => {
 router.delete('/', authenticate, async (req, res) => {
   try {
     await query('DELETE FROM memory_facts WHERE user_id = $1', [req.user.id]);
+
+    // Invalidate memory facts cache
+    cache.invalidateNamespace('memory_facts');
 
     res.json({ message: 'All memory facts cleared' });
   } catch (error) {

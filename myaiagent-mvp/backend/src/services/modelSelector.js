@@ -83,15 +83,18 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
     return 'gemini-2.5-flash';
   }
   
-  // 3. Check for simple queries (use fastest)
+  // 3. Check for simple queries (use most cost-effective model)
   const isSimpleQuery = SIMPLE_KEYWORDS.some(keyword => lowerContent.includes(keyword));
-  const isShortQuery = wordCount < 10;
+  const isShortQuery = wordCount < 15;
+  const isMediumQuery = wordCount < 40;
   
+  // Use cheapest model for simple short queries
   if (isSimpleQuery && isShortQuery) {
     return 'gemini-2.0-flash';
   }
   
-  if (isShortQuery || wordCount < 20) {
+  // Use cheapest model for any short query without complexity indicators
+  if (isShortQuery || (isMediumQuery && !hasReasoningKeywords && !hasCodeBlock && !hasMath)) {
     return 'gemini-2.0-flash';
   }
   
@@ -104,7 +107,12 @@ export function selectBestModel(content, hasAttachments = false, conversationHis
     return 'gemini-2.5-pro';
   }
   
-  // 5. Default: Balance cost and quality with Gemini 2.5 Flash
+  // 5. Default: Optimize for cost-effectiveness
+  // Use cheaper 2.0 Flash for general queries, 2.5 Flash only when needed
+  if (wordCount < 60 && conversationLength < 20) {
+    return 'gemini-2.0-flash';
+  }
+  
   return 'gemini-2.5-flash';
 }
 

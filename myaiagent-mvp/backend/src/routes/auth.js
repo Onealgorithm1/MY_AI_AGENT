@@ -5,6 +5,7 @@ import fs from 'fs';
 import { hashPassword, verifyPassword, generateToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
+import cache from '../services/cacheService.js';
 
 const router = express.Router();
 
@@ -535,9 +536,15 @@ router.post('/profile/upload-picture', authenticate, upload.single('profilePictu
 // User Preferences Management
 // ============================================
 
-// Get user preferences
+// Get user preferences (with caching)
 router.get('/preferences', authenticate, async (req, res) => {
   try {
+    // Check cache first
+    const cached = cache.get('user_preferences', req.user.id);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const result = await query(
       'SELECT preferences FROM users WHERE id = $1',
       [req.user.id]
@@ -545,13 +552,18 @@ router.get('/preferences', authenticate, async (req, res) => {
 
     const preferences = result.rows[0]?.preferences || {};
 
-    res.json({ 
+    const response = { 
       preferences,
       tts_enabled: preferences.tts_enabled || false,
       tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
       tts_auto_play: preferences.tts_auto_play || false,
       typing_speed: preferences.typing_speed || 'snappy'
-    });
+    };
+
+    // Cache for 5 minutes
+    cache.set('user_preferences', req.user.id, response, 5 * 60 * 1000);
+
+    res.json(response);
   } catch (error) {
     console.error('Get preferences error:', error);
     res.status(500).json({ error: 'Failed to fetch preferences' });
@@ -605,6 +617,9 @@ router.put('/preferences', authenticate, async (req, res) => {
     );
 
     const user = result.rows[0];
+
+    // Invalidate cache after update
+    cache.invalidate('user_preferences', req.user.id);
 
     res.json({
       message: 'Preferences updated successfully',
