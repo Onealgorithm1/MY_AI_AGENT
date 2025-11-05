@@ -47,12 +47,14 @@ export default function MessageSpeakerButton({
       onClick={onClick}
       disabled={disabled || state === 'loading'}
       className={`
-        relative p-2 md:p-1.5 rounded-full transition-all
+        relative p-2.5 md:p-1.5 rounded-full transition-all
         hover:bg-gray-100 dark:hover:bg-gray-700
         active:bg-gray-200 dark:active:bg-gray-600
         focus:outline-none focus:ring-2 focus:ring-blue-400
         disabled:opacity-50 disabled:cursor-not-allowed
         touch-manipulation
+        min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0
+        flex items-center justify-center
         ${color}
         ${className}
       `}

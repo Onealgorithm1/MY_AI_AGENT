@@ -3,6 +3,35 @@
 ## Overview
 This project is a full-stack AI chat application offering a real-time, voice-enabled conversational AI experience. It features AI vision for file uploads, robust user authentication, an administrative dashboard, and a sophisticated memory system for personalized interactions. A core innovation is the **UI-Aware AI Agent**, designed to understand and interact with the application's user interface, guiding users and executing UI actions. Additionally, the **AI Self-Improvement System** enables the AI to research industry trends, advocate for features like a child asking a parent, learn from user feedback through screenshot analysis, and write its own developer improvement requests. The project aims to deliver a highly interactive, intelligent, and user-friendly AI chat environment with strong personalization and continuous evolution.
 
+## Recent Changes
+
+### Mobile Responsive Optimization (November 5, 2025)
+Complete mobile accessibility overhaul ensuring all interactive elements meet WCAG 2.1 minimum touch target requirements (44x44px):
+
+**Touch Target Compliance:**
+- All interactive buttons now meet 44x44px minimum on mobile with responsive modifiers for desktop
+- Implemented comprehensive class pattern: `min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center`
+- Applied to 40+ interactive elements across ChatPage and MessageWithAudio components
+
+**Key Improvements:**
+- **Mobile Sidebar**: Hamburger menu with overlay functionality (replaces push-aside behavior)
+- **Conversation Actions**: Rename, delete, and pin buttons always visible on mobile (no hidden overflow menu)
+- **URL Detection**: Automatic linkification of URLs in AI responses with secure external link handling
+- **STT Fix**: CSRF token properly included in Speech-to-Text transcription requests
+- **Message Controls**: Copy, thumbs up/down, and speaker buttons all mobile-optimized
+- **Code Presentations**: Action buttons sized for mobile touch targets
+- **Sidebar Navigation**: New chat button, conversation list, and footer actions fully accessible
+- **Delete Confirmations**: Modal buttons meet touch target requirements
+
+**Components Updated:**
+- `ChatPage.jsx`: Mobile sidebar, conversation list, navigation controls, modals
+- `MessageWithAudio.jsx`: Message action buttons, code presentation controls
+- `MessageSpeakerButton.jsx`: Audio playback button with proper sizing across all states
+- `LinkifiedText.jsx`: New component for secure URL rendering with target="_blank" and rel="noopener noreferrer"
+
+**Security Enhancements:**
+- External links open with `target="_blank"` and `rel="noopener noreferrer"` to prevent security vulnerabilities
+
 ## User Preferences
 Users can customize how the AI communicates with them through a comprehensive personalization system, including:
 - **Response Style**: Casual, balanced, or professional communication

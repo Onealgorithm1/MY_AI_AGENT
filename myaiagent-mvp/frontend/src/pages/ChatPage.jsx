@@ -34,6 +34,7 @@ import {
   Play,
   Search,
   Globe,
+  Menu,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
@@ -75,6 +76,7 @@ export default function ChatPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -154,6 +156,9 @@ export default function ChatPage() {
   // Load messages for conversation
   const loadConversation = async (conversationId, clearFirst = true) => {
     try {
+      // Close mobile sidebar when selecting conversation
+      setIsSidebarOpen(false);
+      
       // Only clear messages when switching conversations, not when refreshing
       if (clearFirst) {
         setMessages([]);
@@ -620,16 +625,29 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 relative">
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className={`
+        w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
+        fixed md:static inset-y-0 left-0 z-50
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <button
             onClick={() => createConversation.mutate()}
-            className="w-full flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors touch-manipulation min-h-[44px] min-w-[44px]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5 md:w-4 md:h-4" />
             <span className="text-sm font-medium">New chat</span>
           </button>
         </div>
@@ -656,22 +674,22 @@ export default function ChatPage() {
                   />
                   <button
                     onClick={() => handleRename(conv.id, editingTitle)}
-                    className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                    className="p-2 md:p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                   >
-                    <Check className="w-4 h-4" />
+                    <Check className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
                   <button
                     onClick={cancelEditing}
-                    className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    className="p-2 md:p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => loadConversation(conv.id)}
-                    className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                    className="flex-1 flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left touch-manipulation min-h-[44px] min-w-[44px]"
                   >
                     {conv.pinned && <Pin className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
                     <MessageCircle className="w-4 h-4 text-gray-500" />
@@ -685,16 +703,16 @@ export default function ChatPage() {
                   >
                     <button
                       onClick={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
-                      className="p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-gray-100"
+                      className="p-2.5 md:p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-gray-100 touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                       aria-label="Conversation actions"
                     >
-                      <MoreVertical className="w-4 h-4" />
+                      <MoreVertical className="w-5 h-5 md:w-4 md:h-4" />
                     </button>
                     {menuOpenId === conv.id && (
-                      <div className="absolute right-0 top-6 z-10 w-48 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1">
+                      <div className="absolute right-0 top-8 md:top-6 z-10 w-48 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1">
                         <button
                           onClick={() => startEditing(conv.id, conv.title)}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          className="w-full flex items-center gap-2 px-4 py-3 md:py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 touch-manipulation"
                         >
                           <Edit2 className="w-4 h-4" />
                           Rename
@@ -704,7 +722,7 @@ export default function ChatPage() {
                             handleTogglePin(conv.id, conv.pinned);
                             setMenuOpenId(null);
                           }}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          className="w-full flex items-center gap-2 px-4 py-3 md:py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 touch-manipulation"
                         >
                           <Pin className="w-4 h-4" />
                           {conv.pinned ? 'Unpin' : 'Pin'}
@@ -714,7 +732,7 @@ export default function ChatPage() {
                             setDeleteConfirmId(conv.id);
                             setMenuOpenId(null);
                           }}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="w-full flex items-center gap-2 px-4 py-3 md:py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 touch-manipulation"
                         >
                           <Trash2 className="w-4 h-4" />
                           Delete
@@ -769,40 +787,48 @@ export default function ChatPage() {
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="p-2 md:p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
               title="Profile Settings"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-5 h-5 md:w-4 md:h-4" />
             </button>
             {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button
                 onClick={() => navigate('/admin')}
-                className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className="p-2 md:p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                 title="Admin Panel"
               >
-                <Shield className="w-4 h-4" />
+                <Shield className="w-5 h-5 md:w-4 md:h-4" />
               </button>
             )}
             <button
               onClick={logout}
-              className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="p-2 md:p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
               title="Logout"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-5 h-5 md:w-4 md:h-4" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col w-full md:w-auto">
         {/* Header */}
-        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-3">
+        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2.5 md:hidden text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+              className="px-2 md:px-3 py-2 md:py-1.5 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 touch-manipulation"
             >
               <option value="auto">🤖 Auto (AI picks best model)</option>
               <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash • Latest & Fast</option>
@@ -811,11 +837,11 @@ export default function ChatPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             {currentConversation && (
               <button
                 onClick={() => setShowInsights(!showInsights)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
                   showInsights
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -829,7 +855,7 @@ export default function ChatPage() {
             {/* TTS Toggle Button */}
             <button
               onClick={() => handleTtsToggle(!ttsEnabled)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all ${
+              className={`flex items-center gap-1 md:gap-2 px-3 md:px-3 py-2.5 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${
                 ttsEnabled 
                   ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
@@ -839,25 +865,25 @@ export default function ChatPage() {
               {ttsEnabled ? (
                 <>
                   <Volume2 className="w-4 h-4" />
-                  <span className="text-sm">Voice On</span>
+                  <span className="text-xs md:text-sm hidden sm:inline">Voice On</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="w-4 h-4" />
-                  <span className="text-sm">Voice Off</span>
+                  <span className="text-xs md:text-sm hidden sm:inline">Voice Off</span>
                 </>
               )}
             </button>
             
-            {/* Voice Selector and Auto-play */}
+            {/* Voice Selector and Auto-play - Hidden on small mobile */}
             {ttsEnabled && (
               <>
                 <VoiceSelector 
                   selectedVoice={selectedVoice}
                   onVoiceChange={handleVoiceChange}
-                  className="w-48"
+                  className="w-32 md:w-48 hidden sm:block"
                 />
-                <label className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <label className="items-center gap-2 px-2 py-1 text-xs md:text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation hidden lg:flex">
                   <input
                     type="checkbox"
                     checked={ttsAutoPlay}
@@ -869,18 +895,6 @@ export default function ChatPage() {
                 </label>
               </>
             )}
-            
-            <button
-              onClick={() => setIsVoiceActive(!isVoiceActive)}
-              className={`p-2 rounded-lg transition-colors ${
-                isVoiceActive
-                  ? 'bg-red-500 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-              title="Voice Mode"
-            >
-              {isVoiceActive ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
           </div>
         </div>
 
@@ -1015,17 +1029,17 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4">
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-end gap-2">
-              <button className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <div className="flex items-end gap-1 md:gap-2">
+              <button className="p-2.5 md:p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center">
                 <Paperclip className="w-5 h-5" />
               </button>
 
               <button
                 onClick={handleMicClick}
                 disabled={isTranscribing}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${
                   isListening
                     ? 'bg-red-500 text-white animate-pulse'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -1044,7 +1058,7 @@ export default function ChatPage() {
               <button
                 onClick={handleManualSearch}
                 disabled={isManualSearching}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${
                   isManualSearching
                     ? 'text-blue-400 animate-pulse cursor-wait'
                     : 'text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
@@ -1086,10 +1100,10 @@ export default function ChatPage() {
               <button
                 onClick={sendMessage}
                 disabled={!inputMessage.trim() || isSending}
-                className="p-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-2xl hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-3 md:p-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-2xl hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 {isSending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-5 h-5" />
                 ) : (
                   <Send className="w-5 h-5" />
                 )}
@@ -1116,13 +1130,13 @@ export default function ChatPage() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation min-h-[44px] flex items-center justify-center"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors touch-manipulation min-h-[44px] flex items-center justify-center"
               >
                 Delete
               </button>
