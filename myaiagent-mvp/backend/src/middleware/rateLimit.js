@@ -1,7 +1,7 @@
 import { query } from '../utils/database.js';
 
-const MESSAGES_LIMIT = parseInt(process.env.RATE_LIMIT_MESSAGES) || 1000;
-const VOICE_MINUTES_LIMIT = parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 30;
+const MESSAGES_LIMIT = parseInt(process.env.RATE_LIMIT_MESSAGES) || 999999;
+const VOICE_MINUTES_LIMIT = parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 999;
 
 // Check if user has exceeded daily message limit
 export async function checkRateLimit(req, res, next) {

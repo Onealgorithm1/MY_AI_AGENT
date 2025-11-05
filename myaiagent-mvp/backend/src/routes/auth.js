@@ -228,8 +228,8 @@ router.get('/me', authenticate, async (req, res) => {
       },
       usage: todayUsage,
       limits: {
-        messagesPerDay: parseInt(process.env.RATE_LIMIT_MESSAGES) || 100,
-        voiceMinutesPerDay: parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 30,
+        messagesPerDay: parseInt(process.env.RATE_LIMIT_MESSAGES) || 999999,
+        voiceMinutesPerDay: parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 999,
       },
     });
   } catch (error) {
