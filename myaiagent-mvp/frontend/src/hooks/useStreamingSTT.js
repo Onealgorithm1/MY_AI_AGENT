@@ -95,6 +95,20 @@ export default function useStreamingSTT() {
           } else if (data.type === 'error') {
             console.error('STT error:', data.message);
             setError(data.message);
+            
+            // Cleanup everything on error
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+              mediaRecorderRef.current.stop();
+            }
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+              streamRef.current = null;
+            }
+            if (wsRef.current) {
+              wsRef.current.close();
+              wsRef.current = null;
+            }
+            
             setIsListening(false);
             setIsTranscribing(false);
             
@@ -114,7 +128,18 @@ export default function useStreamingSTT() {
       ws.onerror = (err) => {
         console.error('WebSocket error:', err);
         setError('Connection error');
+        
+        // Cleanup on WebSocket error
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        
         setIsListening(false);
+        setIsTranscribing(false);
       };
 
       ws.onclose = () => {

@@ -82,7 +82,18 @@ class STTStreamingService {
         if (message.type === 'start') {
           // Initialize streaming recognition
           console.log('🔄 Starting STT stream');
-          recognizeStream = this.client.streamingRecognize(request);
+          
+          try {
+            recognizeStream = this.client.streamingRecognize(request);
+          } catch (error) {
+            console.error('Failed to start STT stream:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Google Cloud STT credentials not configured. Please add GOOGLE_APPLICATION_CREDENTIALS secret.',
+              error: error.message,
+            }));
+            return;
+          }
 
           // Handle streaming data from Google STT
           recognizeStream.on('data', async (sttData) => {

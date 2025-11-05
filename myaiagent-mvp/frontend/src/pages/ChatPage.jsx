@@ -564,7 +564,7 @@ export default function ChatPage() {
   
   // Handle microphone button click for streaming STT
   const handleMicClick = async () => {
-    if (isListening) {
+    if (isListening || isTranscribing) {
       // Stop listening and wait for final transcript
       try {
         const transcript = await stopListening();
@@ -573,10 +573,16 @@ export default function ChatPage() {
         }
       } catch (error) {
         toast.error(sttError || 'Failed to transcribe audio');
+        // Force cleanup if stop fails
+        cancelListening();
       }
     } else {
       // Start listening
-      await startListening();
+      try {
+        await startListening();
+      } catch (error) {
+        toast.error('Failed to start voice input. Please check your microphone permissions.');
+      }
     }
   };
 
