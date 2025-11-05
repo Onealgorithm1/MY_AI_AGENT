@@ -22,6 +22,7 @@ The application employs a client-server architecture with React and Vite for the
 
 **Core Architectural Decisions & Features:**
 -   **UI-Aware AI Agent**: Understands and interacts with the application's UI via a UI Schema Layer, Context Engine, LLM Orchestrator, and Action Execution Layer. It supports bidirectional event tracking and has code and user awareness for personalized guidance and actions.
+-   **Code Presentation Protocol**: When users explicitly request code snippets or raw data, Nexus outputs a JSON response with `presentation_protocol: "PRESENT_CODE"` that the frontend intercepts and renders as a syntax-highlighted code block with copy functionality, bypassing normal TTS processing.
 -   **Authentication**: JWT-based with bcrypt hashing, HTTP-only cookies, and CSRF protection.
 -   **User Profile Management**: Includes editing, picture uploads, phone validation, and enhanced password management.
 -   **Chat Interface**: Supports streaming responses, multiple conversations, dynamic model selection, and intelligent automatic chat naming.

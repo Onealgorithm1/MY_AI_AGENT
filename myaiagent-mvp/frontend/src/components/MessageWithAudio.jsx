@@ -28,21 +28,29 @@ export default function MessageWithAudio({
     return null;
   }, [message.content]);
 
-  // Skip TTS if this is a code presentation
+  // Only use TTS for non-code presentations
   const shouldUseTTS = !codePresentation && ttsEnabled;
 
+  // Conditionally call useMessageAudio hook - only for non-code presentations
+  const audioHook = useMessageAudio(
+    message.id, 
+    codePresentation ? '' : message.content, // Pass empty string for code to prevent loading
+    voiceId
+  );
+
+  // Destructure hook results (will have default idle state for code presentations)
   const {
-    state,
-    currentWordIndex,
-    wordTimings,
-    error,
-    latencyMs,
-    toggle,
-    play,
-    retry,
-    isError,
-    hasPlayed,
-  } = useMessageAudio(message.id, message.content, voiceId);
+    state = 'idle',
+    currentWordIndex = -1,
+    wordTimings = null,
+    error = null,
+    latencyMs = null,
+    toggle = () => {},
+    play = () => {},
+    retry = () => {},
+    isError = false,
+    hasPlayed = false,
+  } = codePresentation ? {} : audioHook;
 
   useEffect(() => {
     if (shouldAutoPlay && shouldUseTTS && ttsAutoPlay && !hasPlayed && state === 'idle') {

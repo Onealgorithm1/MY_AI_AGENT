@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function CodeBlock({ title, contentType, data }) {
   const [copied, setCopied] = useState(false);
@@ -15,7 +17,24 @@ export default function CodeBlock({ title, contentType, data }) {
     }
   };
 
-  const codeLines = Array.isArray(data) ? data : [data];
+  const codeText = Array.isArray(data) ? data.join('\n') : data;
+  
+  // Map content type to language for syntax highlighting
+  const getLanguage = (type) => {
+    if (!type) return 'text';
+    const lower = type.toLowerCase();
+    if (lower.includes('javascript') || lower.includes('js')) return 'javascript';
+    if (lower.includes('typescript') || lower.includes('ts')) return 'typescript';
+    if (lower.includes('python') || lower.includes('py')) return 'python';
+    if (lower.includes('html')) return 'markup';
+    if (lower.includes('css')) return 'css';
+    if (lower.includes('json')) return 'json';
+    if (lower.includes('sql')) return 'sql';
+    if (lower.includes('bash') || lower.includes('shell')) return 'bash';
+    if (lower.includes('yaml')) return 'yaml';
+    if (lower.includes('markdown')) return 'markdown';
+    return 'text';
+  };
 
   return (
     <div className="w-full my-4">
@@ -54,15 +73,23 @@ export default function CodeBlock({ title, contentType, data }) {
         </div>
 
         <div className="overflow-x-auto">
-          <pre className="p-4 text-sm">
-            <code className="font-mono text-gray-100 dark:text-gray-200">
-              {codeLines.map((line, index) => (
-                <div key={index} className="min-h-[1.5rem]">
-                  {line}
-                </div>
-              ))}
-            </code>
-          </pre>
+          <SyntaxHighlighter
+            language={getLanguage(contentType)}
+            style={oneDark}
+            customStyle={{
+              margin: 0,
+              padding: '1rem',
+              background: 'transparent',
+              fontSize: '0.875rem',
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              }
+            }}
+          >
+            {codeText}
+          </SyntaxHighlighter>
         </div>
       </div>
     </div>
