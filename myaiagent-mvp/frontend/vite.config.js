@@ -18,6 +18,21 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/stt-stream': {
+        target: 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true,
+      },
+      '/voice': {
+        target: 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
   build: {
