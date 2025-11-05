@@ -162,7 +162,7 @@ export default function useStreamingSTT() {
       console.error('Error starting voice input:', err);
       setError('Microphone access denied');
     }
-  }, [token]);
+  }, []);
 
   /**
    * Stop listening - closes stream and waits for final transcript
