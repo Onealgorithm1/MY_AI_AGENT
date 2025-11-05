@@ -160,12 +160,26 @@ export async function monitorExternalApi(apiName, endpoint, apiFunction) {
     
     // Record successful API call
     setImmediate(() => {
+      // Safely calculate response size, handling circular references
+      let responseSize = 0;
+      try {
+        responseSize = JSON.stringify(result).length;
+      } catch (jsonError) {
+        // If result has circular references or other issues, estimate size differently
+        if (typeof result === 'string') {
+          responseSize = result.length;
+        } else if (result && typeof result === 'object') {
+          // Rough estimate based on object keys
+          responseSize = Object.keys(result).length * 100;
+        }
+      }
+      
       monitoringService.recordExternalApiCall(
         apiName,
         endpoint,
         true,
         latency,
-        { response_size: JSON.stringify(result).length }
+        { response_size: responseSize }
       );
     });
     
