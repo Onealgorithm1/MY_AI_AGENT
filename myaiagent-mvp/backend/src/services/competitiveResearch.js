@@ -41,8 +41,25 @@ export async function conductWeeklyResearch() {
       
       console.log(`🔍 Researching: ${category}`);
       
-      const searchResults = await searchWeb(searchQuery);
-      sourcesConsulted.push(searchQuery);
+      let searchResults;
+      try {
+        searchResults = await searchWeb(searchQuery);
+        
+        if (!searchResults || !searchResults.results || !Array.isArray(searchResults.results)) {
+          console.warn(`⚠️ Invalid search results for ${category}, skipping...`);
+          continue;
+        }
+        
+        if (searchResults.results.length === 0) {
+          console.warn(`⚠️ No search results found for ${category}, skipping...`);
+          continue;
+        }
+        
+        sourcesConsulted.push(searchQuery);
+      } catch (searchError) {
+        console.error(`❌ Search failed for ${category}:`, searchError.message);
+        continue;
+      }
       
       const analysisPrompt = `You are researching competitive features for an AI chatbot called "My AI Agent".
 
@@ -53,10 +70,10 @@ Analyze these search results about ${category} and extract:
 4. Implementation approaches if mentioned
 
 Search results:
-${searchResults.results?.slice(0, 5).map(r => `
-Source: ${r.title}
-URL: ${r.link}
-Content: ${r.snippet}
+${searchResults.results.slice(0, 5).map(r => `
+Source: ${r.title || 'Unknown'}
+URL: ${r.link || 'N/A'}
+Content: ${r.snippet || r.description || 'No description'}
 `).join('\n\n')}
 
 Return a JSON array of findings in this format:

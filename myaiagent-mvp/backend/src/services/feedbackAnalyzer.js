@@ -147,19 +147,32 @@ export async function researchBestPractices(featureName, uiIssues) {
   
   console.log(`🔍 Researching best practices for: ${featureName}`);
   
-  const searchResults = await searchWeb(searchQuery);
+  let searchResults;
+  try {
+    searchResults = await searchWeb(searchQuery);
+    
+    if (!searchResults || !searchResults.results || !Array.isArray(searchResults.results)) {
+      console.warn(`⚠️ Invalid search results for best practices research, using fallback data`);
+      searchResults = { results: [] };
+    }
+  } catch (searchError) {
+    console.error(`❌ Search failed for best practices:`, searchError.message);
+    searchResults = { results: [] };
+  }
+  
+  const hasResults = searchResults.results.length > 0;
   
   const researchPrompt = `You are researching UI/UX best practices to improve a feature.
 
 FEATURE: ${featureName}
 CURRENT ISSUES: ${uiIssues.join(', ')}
 
-SEARCH RESULTS:
-${searchResults.results?.slice(0, 5).map(r => `
-Title: ${r.title}
-Source: ${r.link}
-Content: ${r.snippet}
-`).join('\n\n')}
+${hasResults ? `SEARCH RESULTS:
+${searchResults.results.slice(0, 5).map(r => `
+Title: ${r.title || 'Unknown'}
+Source: ${r.link || 'N/A'}
+Content: ${r.snippet || r.description || 'No description'}
+`).join('\n\n')}` : `NO SEARCH RESULTS AVAILABLE - Provide general UI/UX best practices based on your knowledge.`}
 
 Extract actionable best practices and industry standards. Return JSON:
 {
