@@ -116,3 +116,10 @@ Comprehensive documentation for AI self-awareness and developer reference:
   - Backend API integration points
   - UI-Aware function calling system
   - Advanced features (word-by-word audio, typewriter effects, conversation insights)
+  - **Frontend Telemetry & AI Self-Awareness System** (complete real-time visibility):
+    - ErrorBoundary component for automatic error reporting
+    - Telemetry service with PII redaction and intelligent sampling
+    - WebSocket real-time channel for live UI state updates
+    - AI self-awareness endpoints for querying frontend health
+    - Privacy-first design with user opt-out controls
+    - 7-day data retention with automatic cleanup

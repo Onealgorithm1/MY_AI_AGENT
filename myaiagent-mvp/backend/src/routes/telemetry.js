@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import { query } from '../utils/database.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ const telemetryRateLimiter = rateLimit({
 
 router.post(
   '/error',
+  authenticate,
   telemetryRateLimiter,
   [
     body('type').isString().trim().notEmpty(),
@@ -66,6 +68,7 @@ router.post(
 
 router.post(
   '/event',
+  authenticate,
   telemetryRateLimiter,
   [
     body('type').isString().trim().notEmpty(),
@@ -107,11 +110,8 @@ router.post(
   }
 );
 
-router.get('/errors', async (req, res) => {
+router.get('/errors', authenticate, requireAdmin, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
 
     const limit = parseInt(req.query.limit) || 50;
     
@@ -132,11 +132,8 @@ router.get('/errors', async (req, res) => {
   }
 });
 
-router.get('/events', async (req, res) => {
+router.get('/events', authenticate, requireAdmin, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
 
     const limit = parseInt(req.query.limit) || 50;
     const type = req.query.type;
@@ -164,11 +161,8 @@ router.get('/events', async (req, res) => {
   }
 });
 
-router.get('/diagnostics', async (req, res) => {
+router.get('/diagnostics', authenticate, requireAdmin, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
 
     const [errorsResult, eventsResult, errorsByTypeResult, eventsByTypeResult] = await Promise.all([
       query(`SELECT COUNT(*) FROM telemetry_errors WHERE created_at > NOW() - INTERVAL '24 hours'`),
