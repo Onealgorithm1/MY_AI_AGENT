@@ -1,9 +1,9 @@
 import express from 'express';
-import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/frontend-diagnostics', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/frontend-diagnostics', authenticate, requireAdmin, async (req, res) => {
   try {
     const { query } = await import('../utils/database.js');
 
@@ -61,7 +61,7 @@ router.get('/frontend-diagnostics', authenticateToken, requireAdmin, async (req,
   }
 });
 
-router.get('/user-experience/:userId', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/user-experience/:userId', authenticate, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
     const { query } = await import('../utils/database.js');
@@ -107,7 +107,7 @@ router.get('/user-experience/:userId', authenticateToken, requireAdmin, async (r
   }
 });
 
-router.get('/feature-health', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/feature-health', authenticate, requireAdmin, async (req, res) => {
   try {
     const { query } = await import('../utils/database.js');
 

@@ -821,4 +821,322 @@ For debugging frontend issues, check:
 
 ---
 
+## 📊 Frontend Telemetry & AI Self-Awareness System
+
+**Purpose**: Give the AI real-time visibility into frontend errors, user experience, and UI state for enhanced diagnostics and support.
+
+### System Overview
+
+The telemetry system enables the AI to see what's **actually happening** on users' screens, not just what should theoretically happen. This powers intelligent error diagnosis, proactive support, and continuous self-improvement.
+
+### Components
+
+#### 1. ErrorBoundary (`components/ErrorBoundary.jsx`)
+
+**Purpose**: Catches and reports React errors automatically
+
+**Features**:
+- Catches JavaScript errors anywhere in the React component tree
+- Automatically reports errors to backend `/api/telemetry/error`
+- Shows user-friendly error UI with recovery options
+- Includes error message, stack trace, and component stack
+
+**Usage**:
+```jsx
+// Wraps entire app in App.jsx
+<ErrorBoundary>
+  <YourApp />
+</ErrorBoundary>
+```
+
+**Error Payload**:
+```javascript
+{
+  type: 'react_error',
+  timestamp: '2025-11-05T08:22:57Z',
+  error: {
+    message: 'Cannot read property of undefined',
+    stack: '...',
+    componentStack: '...'
+  },
+  context: {
+    url: '/chat',
+    userAgent: 'Mozilla/5.0...'
+  }
+}
+```
+
+#### 2. Telemetry Service (`services/telemetry.js`)
+
+**Purpose**: Client-side telemetry collection with privacy-first design
+
+**Key Features**:
+- **PII Redaction**: Automatically removes email, password, phone, name, address fields
+- **Rate Limiting**: Max 100 events/minute per user
+- **Intelligent Sampling**: 10% sampling for low-priority events
+- **Priority Levels**: high (100%), normal (100%), low (10%)
+
+**Event Types**:
+
+```javascript
+// Page navigation
+telemetryService.trackPageView('ChatPage');
+
+// UI interactions
+telemetryService.trackUIAction('send_message', { model: 'gemini-2.5-flash' });
+
+// Feature usage
+telemetryService.trackFeatureUsage('voice_recording', { duration: 30 });
+
+// Performance metrics
+telemetryService.trackPerformance('message_render_time', 245);
+
+// Client errors
+telemetryService.trackError(error, { context: 'message_submission' });
+```
+
+**Automatic Error Tracking**:
+- Global `window.error` listener captures uncaught errors
+- `unhandledrejection` listener catches promise rejections
+- All errors automatically sent to backend
+
+**Privacy Controls**:
+```javascript
+// User can opt-out via preferences
+telemetryService.setTelemetryEnabled(false);
+```
+
+#### 3. WebSocket Telemetry Channel (`/ws/telemetry`)
+
+**Purpose**: Real-time UI state updates for live diagnostics
+
+**Connection Flow**:
+```
+Frontend → WebSocket → Backend
+1. Client connects to ws://localhost:3000/ws/telemetry
+2. JWT authentication from cookies
+3. Bidirectional communication established
+```
+
+**Message Types**:
+
+```javascript
+// Page change notification
+{
+  type: 'page_change',
+  page: '/chat',
+  timestamp: '2025-11-05T08:22:57Z'
+}
+
+// UI state update
+{
+  type: 'ui_state_update',
+  state: {
+    currentConversation: 'conv_123',
+    streamingActive: true,
+    model: 'gemini-2.5-pro'
+  }
+}
+
+// Feature interaction
+{
+  type: 'feature_interaction',
+  feature: 'web_search',
+  action: 'clicked'
+}
+```
+
+**Hook Usage**:
+```javascript
+import { useTelemetry } from '../hooks/useTelemetry';
+
+function ChatPage() {
+  const { sendUIStateUpdate } = useTelemetry('ChatPage');
+  
+  // Send state updates
+  useEffect(() => {
+    sendUIStateUpdate({
+      conversationId: currentConversation?.id,
+      messageCount: messages.length
+    });
+  }, [currentConversation, messages]);
+}
+```
+
+### Backend Telemetry Infrastructure
+
+#### Database Schema
+
+**telemetry_errors** table:
+```sql
+id              SERIAL PRIMARY KEY
+user_id         UUID REFERENCES users(id)
+session_id      VARCHAR(255)
+error_type      VARCHAR(255)
+error_message   TEXT
+error_stack     TEXT
+component_stack TEXT
+context         JSONB
+created_at      TIMESTAMP
+```
+
+**telemetry_events** table:
+```sql
+id          SERIAL PRIMARY KEY
+user_id     UUID REFERENCES users(id)
+session_id  VARCHAR(255)
+type        VARCHAR(255)
+data        JSONB
+context     JSONB
+timestamp   TIMESTAMP
+```
+
+**Indexes**: Optimized for query performance on `user_id`, `timestamp`, `type`, `session_id`
+
+**Data Retention**: 7 days (automatic cleanup)
+
+#### API Endpoints
+
+**POST /api/telemetry/error** (Public)
+- Rate limit: 100/minute
+- Records frontend errors
+- Validates payload structure
+- Returns `{ success: true }`
+
+**POST /api/telemetry/event** (Public)
+- Rate limit: 100/minute
+- Records UI events
+- Session tracking via `X-Session-ID` header
+- Returns `{ success: true }`
+
+**GET /api/telemetry/errors** (Admin only)
+- Query recent errors
+- Params: `limit` (default: 50)
+- Returns paginated error list
+
+**GET /api/telemetry/events** (Admin only)
+- Query events by type
+- Params: `type`, `limit`
+- Returns filtered events
+
+**GET /api/telemetry/diagnostics** (Admin only)
+- Summary dashboard data
+- Error/event counts (24h)
+- Grouped by type
+- Recent errors list
+
+### AI Self-Awareness Endpoints
+
+**Purpose**: Allow AI to query frontend health and diagnose issues
+
+**GET /api/ai-self-awareness/frontend-diagnostics** (Admin only)
+
+Returns comprehensive frontend health report:
+```javascript
+{
+  summary: {
+    totalErrors24h: 5,
+    activeUsersLastHour: 12,
+    mostCommonError: 'react_error'
+  },
+  recentErrors: [...],
+  errorSummary: [...],
+  activeUsers: [...],
+  pageViewStats: [...]
+}
+```
+
+**GET /api/ai-self-awareness/user-experience/:userId** (Admin only)
+
+Returns specific user's experience:
+```javascript
+{
+  userId: 'user_123',
+  recentErrors: [...],      // Last 10 errors
+  recentEvents: [...],       // Last 20 events
+  sessionStats: [...]        // Session duration, event counts
+}
+```
+
+**GET /api/ai-self-awareness/feature-health** (Admin only)
+
+Returns feature usage and error rates:
+```javascript
+{
+  featureUsage: [
+    { feature: 'web_search', usage_count: 245, unique_users: 45 }
+  ],
+  featureErrors: [
+    { page: '/chat', error_count: 3, last_error: '...' }
+  ],
+  healthScore: 95  // 0-100 score based on error rate
+}
+```
+
+### Security & Privacy
+
+#### Security Measures
+
+1. **Rate Limiting**: 100 events/minute per IP
+2. **Input Validation**: express-validator for all payloads
+3. **Admin-Only Queries**: Only admins can query telemetry
+4. **Session Tracking**: Unique session IDs prevent cross-contamination
+5. **SQL Injection Protection**: Parameterized queries
+
+#### Privacy Features
+
+1. **Client-Side PII Redaction**: 
+   - Strips email, password, phone, name fields before sending
+   - Whitelist approach for allowed data
+
+2. **User Opt-Out**:
+   ```javascript
+   // Stored in user preferences JSONB
+   preferences: {
+     telemetry_enabled: false  // Disables all telemetry
+   }
+   ```
+
+3. **Data Minimization**:
+   - Only essential context sent
+   - Stack traces truncated to 1000 chars
+   - User agents truncated to 200 chars
+
+4. **Automatic Cleanup**: 7-day retention, automatic deletion
+
+### AI Diagnostic Capabilities
+
+With this system, the AI can:
+
+1. **Detect Errors**:
+   ```
+   User: "The app crashed when I clicked send"
+   AI: [Queries /api/ai-self-awareness/user-experience/:userId]
+   AI: "I see a TypeError on line 234 in ChatPage.jsx. This occurs when 
+        the conversation ID is null. Let me help you..."
+   ```
+
+2. **Monitor Feature Health**:
+   ```
+   AI: [Queries /api/ai-self-awareness/feature-health]
+   AI: "Web search has 95% success rate, voice recording has 3 errors 
+        in the last hour affecting 2 users"
+   ```
+
+3. **Proactive Support**:
+   ```
+   AI: [Detects error spike in diagnostics]
+   AI: "I notice several users are experiencing errors on the profile 
+        page. The team has been notified."
+   ```
+
+### Performance Impact
+
+- **Frontend**: < 1ms per event (async, non-blocking)
+- **Network**: ~500 bytes per event (compressed)
+- **Backend**: Batched DB writes, minimal latency
+- **Database**: Indexed queries, 7-day retention keeps size small
+
+---
+
 **End of UI Architecture Documentation**
