@@ -262,15 +262,21 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Trigger functions if current OR recent conversation mentions Google services
     const mentionsGoogle = mentionsGoogleNow || mentionsGoogleRecent;
     
-    // Only pass functions when user has Google access AND mentions Google services
-    const shouldPassFunctions = mentionsGoogle && hasGoogleAccess;
-
-    // Pass all relevant Google service functions when user has Google access
-    let functionsToPass = null;
-    if (shouldPassFunctions) {
-      // Include all Google service functions (Gmail, Calendar, Drive, Docs, Sheets)
-      // This ensures the AI can use any Google service the user needs
-      functionsToPass = UI_FUNCTIONS.filter(f => {
+    // Core functions that are ALWAYS available (self-awareness, web search, UI control)
+    const coreFunctions = [
+      'websearch', 'navigate', 'changemodel', 'createnewchat', 'renameconversation', 'deleteconversation',
+      'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies'
+    ];
+    
+    // Start with core functions always available
+    let functionsToPass = UI_FUNCTIONS.filter(f => {
+      const name = f.name.toLowerCase();
+      return coreFunctions.includes(name);
+    });
+    
+    // Add Google service functions only when context indicates need AND user has access
+    if (mentionsGoogle && hasGoogleAccess) {
+      const googleFunctions = UI_FUNCTIONS.filter(f => {
         const name = f.name.toLowerCase();
         return (
           // Gmail functions
@@ -282,13 +288,14 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           // Docs functions
           name.includes('doc') ||
           // Sheets functions
-          name.includes('sheet') ||
-          // Always include web search and UI navigation
-          name === 'websearch' || name === 'navigate' || name === 'changemodel' ||
-          name === 'createnewchat' || name === 'renameconversation' || name === 'deleteconversation'
+          name.includes('sheet')
         );
       });
+      
+      functionsToPass = [...functionsToPass, ...googleFunctions];
     }
+    
+    const shouldPassFunctions = functionsToPass && functionsToPass.length > 0;
 
     // Debug log
     console.log('📋 Action Detection:', {
