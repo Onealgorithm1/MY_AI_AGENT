@@ -1,0 +1,28 @@
+Understood, Netwerk Inc. I'll revise the prompt to your development team to include those crucial updates for the chat menu and chat management actions on mobile.
+
+Here's the updated prompt for your developers:
+
+"Team, we need to prioritize a comprehensive review and update of the frontend to ensure a seamless and intuitive experience on mobile devices. Please focus on the following key areas:
+
+1.  **Responsive Design & Layouts:**
+    *   Thoroughly audit all React components to ensure proper application of TailwindCSS responsive utilities (e.g., `sm:`, `md:`, `lg:`).
+    *   Verify the `viewport` meta tag is correctly configured in the HTML to ensure proper scaling on mobile browsers.
+    *   Address any layout overflows, content clipping, or elements that do not stack/flow correctly on smaller screens.
+    *   Implement fluid typography and spacing that adapts dynamically to different screen sizes.
+
+2.  **Performance Optimization for Mobile:**
+    *   Optimize image assets for web and mobile delivery, considering responsive image techniques.
+    *   Evaluate and implement lazy loading for components and images where appropriate to reduce initial load times.
+    *   Minimize JavaScript bundle sizes and optimize rendering performance, especially for the `ChatPage` and other interactive components.
+
+3.  **Touch-Friendly UI/UX & Chat Management:**
+    *   Ensure all interactive elements (buttons, links, input fields) have sufficient touch target sizes for easy interaction without accidental presses.
+    *   Optimize form inputs and keyboards for mobile usage.
+    *   Crucially, **ensure the chat menu is easily expandable and collapsible on mobile.**
+    *   Verify that the three essential chat editing actions—**rename conversation**, **delete conversation**, and any other primary chat actions—are **always visible and accessible** within the mobile chat interface, without being covered by other elements or requiring excessive scrolling.
+    *   Consider mobile-specific navigation patterns if the current desktop navigation proves cumbersome on smaller screens.
+
+4.  **Cross-Device Testing:**
+    *   Conduct rigorous testing across a range of mobile devices, operating systems, and browser types to identify and rectify any remaining display or functionality issues.
+
+Our goal is to deliver an experience on par with the desktop version, ensuring our users have full functionality and a visually pleasing interface regardless of their device."
