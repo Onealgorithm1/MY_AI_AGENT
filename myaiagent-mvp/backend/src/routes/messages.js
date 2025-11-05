@@ -312,7 +312,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     
     // CRITICAL: Only use Vertex AI if no UI functions are required
     // If functionsToPass is set, user needs Gmail/Google functions which Vertex AI doesn't support
-    const useVertexAI = needsGrounding && vertexAIAvailable && !functionsToPass;
+    // DISABLED: Vertex AI has authentication issues, fall back to regular Gemini
+    const useVertexAI = false; // needsGrounding && vertexAIAvailable && !functionsToPass;
 
     // Map Gemini model names to Vertex AI equivalents
     const vertexModelMap = {
