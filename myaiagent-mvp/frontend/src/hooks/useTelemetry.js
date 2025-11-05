@@ -12,20 +12,26 @@ export function useTelemetry(pageName) {
 
     if (!user) return;
 
-    // Construct WebSocket URL with production override support
-    // In development: Returns relative URL that Vite proxy can intercept
-    // In production: Uses VITE_WS_URL for absolute backend URL
+    // Construct WebSocket URL with environment variable override support
+    // Prefer explicit VITE_WS_URL from env, fall back to current window location
     const getWebSocketUrl = () => {
-      // Use explicit env var if provided (production deployments with separate backend)
+      // Use explicit env var if provided (production or custom backend URL)
       const envWsUrl = import.meta.env.VITE_WS_URL;
       if (envWsUrl) {
         const baseUrl = envWsUrl.replace(/\/+$/, '');
         return `${baseUrl}/ws/telemetry`;
       }
       
-      // Development mode: Return relative URL to allow Vite proxy to intercept
-      // Vite proxy forwards /ws/telemetry to localhost:3000
-      return '/ws/telemetry';
+      // Fall back to dynamic construction from window.location
+      // Guard against SSR/test contexts where window might be undefined
+      if (typeof window !== 'undefined' && window.location) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        return `${protocol}//${host}/ws/telemetry`;
+      }
+      
+      // Final fallback for non-browser contexts
+      return 'ws://localhost:3000/ws/telemetry';
     };
     
     const wsUrl = getWebSocketUrl();
