@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { generateSpeechGoogle, getVoices } from '../services/googleTTS.js';
+import monitoringService from '../services/monitoringService.js';
 
 const router = express.Router();
 
@@ -29,6 +30,8 @@ router.get('/voices', async (req, res) => {
 });
 
 router.post('/synthesize', async (req, res) => {
+  const backendStartTime = Date.now();
+  
   try {
     let { text, voiceId = 'en-US-Neural2-F' } = req.body;
 
@@ -65,17 +68,40 @@ router.post('/synthesize', async (req, res) => {
     
     const audioBuffer = await generateSpeechGoogle(text, voiceId, languageCode);
     
+    const backendResponseTime = Date.now() - backendStartTime;
+    
+    // Record backend response time metric
+    await monitoringService.recordMetric(
+      'tts_backend_response_time',
+      backendResponseTime,
+      'ms',
+      { voiceId },
+      { textLength: text.length, audioSize: audioBuffer.length, success: true }
+    );
+    
     res.set({
       'Content-Type': 'audio/mpeg',
       'Content-Length': audioBuffer.length,
       'Cache-Control': 'public, max-age=86400',
       'X-Audio-Duration': Math.ceil(text.length / 15),
+      'X-Backend-Response-Time': backendResponseTime,
     });
     
     res.send(audioBuffer);
-    console.log(`✅ Synthesized ${audioBuffer.length} bytes of audio`);
+    console.log(`✅ Synthesized ${audioBuffer.length} bytes of audio in ${backendResponseTime}ms`);
     
   } catch (error) {
+    const backendResponseTime = Date.now() - backendStartTime;
+    
+    // Record failed backend response
+    await monitoringService.recordMetric(
+      'tts_backend_response_time',
+      backendResponseTime,
+      'ms',
+      { voiceId: req.body.voiceId || 'unknown' },
+      { textLength: req.body.text?.length || 0, success: false, error: error.message }
+    );
+    
     console.error('Error synthesizing speech:', error.message);
     
     res.status(500).json({ 

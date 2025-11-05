@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import { query } from '../utils/database.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import monitoringService from '../services/monitoringService.js';
 
 const router = express.Router();
 
@@ -101,6 +102,17 @@ router.post(
           timestamp,
         ]
       );
+
+      // If this is a performance metric, also record it in the monitoring service
+      if (type === 'performance' && data.metric && typeof data.value === 'number') {
+        await monitoringService.recordMetric(
+          data.metric,
+          data.value,
+          data.unit || 'ms',
+          data.tags || {},
+          { source: 'frontend', userId, sessionId, ...data.metadata }
+        );
+      }
 
       res.status(200).json({ success: true });
     } catch (error) {

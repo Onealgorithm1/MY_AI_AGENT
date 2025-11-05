@@ -1,4 +1,5 @@
 import axios from 'axios';
+import monitoringService from './monitoringService.js';
 
 const GOOGLE_TTS_API_BASE = 'https://texttospeech.googleapis.com/v1';
 
@@ -72,6 +73,9 @@ export async function generateSpeechGoogle(
       }
     };
 
+    // Track TTS synthesis latency
+    const synthesisStartTime = Date.now();
+    
     const response = await axios.post(
       `${GOOGLE_TTS_API_BASE}/text:synthesize`,
       requestBody,
@@ -81,12 +85,34 @@ export async function generateSpeechGoogle(
       }
     );
     
+    const synthesisLatency = Date.now() - synthesisStartTime;
+    
+    // Record TTS synthesis latency metric
+    await monitoringService.recordMetric(
+      'tts_synthesis_latency',
+      synthesisLatency,
+      'ms',
+      { voiceId, languageCode },
+      { textLength: text.length, success: true }
+    );
+    
+    console.log(`⏱️  TTS Synthesis took ${synthesisLatency}ms`);
+    
     // The response contains base64-encoded audio in audioContent field
     const audioBase64 = response.data.audioContent;
     
     // Convert base64 to buffer
     return Buffer.from(audioBase64, 'base64');
   } catch (error) {
+    // Record failed TTS synthesis attempt
+    await monitoringService.recordMetric(
+      'tts_synthesis_latency',
+      0,
+      'ms',
+      { voiceId, languageCode },
+      { textLength: text.length, success: false, error: error.message }
+    );
+    
     console.error('Google TTS error:', error.response?.data || error.message);
     throw new Error('Failed to generate speech: ' + (error.response?.data?.error?.message || error.message));
   }

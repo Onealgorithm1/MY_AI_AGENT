@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { getCachedAudio, cacheAudio } from '../utils/audioCache';
 import { calculateWordTimings, getCurrentWordIndex } from '../utils/wordTiming';
 import { tts } from '../services/api';
+import telemetryService from '../services/telemetry';
 
 const AUDIO_STATES = {
   IDLE: 'idle',
@@ -57,23 +58,52 @@ export default function useMessageAudio(messageId, text, voiceId) {
     setState(AUDIO_STATES.LOADING);
     setError(null);
 
+    const loadStartTime = performance.now();
+    let wasFromCache = false;
+
     try {
       let audioBlob = await getCachedAudio(messageId, voiceId);
       
       if (!audioBlob) {
+        const apiStartTime = performance.now();
         audioBlob = await tts.synthesize(text, voiceId);
+        const apiDuration = performance.now() - apiStartTime;
+        
+        // Track API call time (includes network + backend processing)
+        telemetryService.trackPerformance('tts_api_call_time', apiDuration);
+        
         await cacheAudio(messageId, voiceId, audioBlob);
+        wasFromCache = false;
+      } else {
+        wasFromCache = true;
       }
 
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
 
+      const decodeStartTime = performance.now();
       const arrayBuffer = await audioBlob.arrayBuffer();
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      const decodeDuration = performance.now() - decodeStartTime;
+      
+      // Track audio decoding time
+      telemetryService.trackPerformance('tts_audio_decode_time', decodeDuration);
+      
       audioBufferRef.current = audioBuffer;
 
       wordTimingsRef.current = calculateWordTimings(text, audioBuffer.duration);
+
+      const totalLoadTime = performance.now() - loadStartTime;
+      
+      // Track total load time
+      telemetryService.sendEvent('performance', {
+        metric: 'tts_audio_load_time',
+        value: totalLoadTime,
+        unit: 'ms',
+        tags: { fromCache: wasFromCache },
+        metadata: { textLength: text.length, voiceId }
+      });
 
       return audioBuffer;
     } catch (err) {
@@ -116,6 +146,9 @@ export default function useMessageAudio(messageId, text, voiceId) {
     }
 
     try {
+      // Start timing after audio is loaded and ready
+      const audioReadyTime = audioContextRef.current.currentTime;
+      
       if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
       }
@@ -146,8 +179,21 @@ export default function useMessageAudio(messageId, text, voiceId) {
       // Always start from beginning
       source.start(0, 0);
       
+      // Measure playback delay using audio context time
+      const playbackStartTime = audioContextRef.current.currentTime;
+      const playbackDelayMs = (playbackStartTime - audioReadyTime) * 1000;
+      
+      // Track frontend playback delay (from audio buffer ready to actual playback start)
+      telemetryService.sendEvent('performance', {
+        metric: 'tts_frontend_playback_delay',
+        value: playbackDelayMs,
+        unit: 'ms',
+        tags: {},
+        metadata: { messageId, voiceId: voiceId || 'unknown' }
+      });
+      
       sourceNodeRef.current = source;
-      startTimeRef.current = audioContextRef.current.currentTime;
+      startTimeRef.current = playbackStartTime;
       pausedAtRef.current = 0;
       
       setState(AUDIO_STATES.PLAYING);
@@ -163,7 +209,7 @@ export default function useMessageAudio(messageId, text, voiceId) {
       setError(err.message || 'Failed to play audio');
       setState(AUDIO_STATES.ERROR);
     }
-  }, [state, loadAudio, updateCurrentWord, messageId, stop]);
+  }, [state, loadAudio, updateCurrentWord, messageId, voiceId, stop]);
 
   const toggle = useCallback(() => {
     if (state === AUDIO_STATES.IDLE || state === AUDIO_STATES.ERROR) {
