@@ -87,6 +87,17 @@ class STTStreamingService {
             recognizeStream = this.client.streamingRecognize(request);
           } catch (error) {
             console.error('Failed to start STT stream:', error);
+            
+            // Track initialization error
+            monitoringService.recordWebSocketError(
+              '/stt-stream',
+              'initialization_error',
+              error.message,
+              { userId: user.id, errorCode: error.code, credentialsMissing: true }
+            ).catch(err => {
+              console.error('Monitoring error (non-critical):', err.message);
+            });
+            
             ws.send(JSON.stringify({
               type: 'error',
               message: 'Google Cloud STT credentials not configured. Please add GOOGLE_APPLICATION_CREDENTIALS secret.',
@@ -179,6 +190,17 @@ class STTStreamingService {
           // Handle STT stream errors
           recognizeStream.on('error', (error) => {
             console.error('STT stream error:', error);
+            
+            // Track stream error in monitoring system
+            monitoringService.recordWebSocketError(
+              '/stt-stream',
+              'stream_error',
+              error.message,
+              { userId: user.id, errorCode: error.code }
+            ).catch(err => {
+              console.error('Monitoring error (non-critical):', err.message);
+            });
+            
             ws.send(JSON.stringify({
               type: 'error',
               message: 'Speech recognition error',

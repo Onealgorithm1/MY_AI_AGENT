@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import url from 'url';
+import monitoringService from '../services/monitoringService.js';
 
 const telemetryClients = new Map();
 
@@ -45,6 +46,17 @@ export function createTelemetryWebSocketServer(server) {
     }
 
     telemetryClients.set(userId, ws);
+    
+    // Track successful connection (including anonymous)
+    const isAuthenticated = !userId.startsWith('anonymous_');
+    monitoringService.recordWebSocketConnection(
+      '/ws/telemetry', 
+      true, 
+      null, 
+      { userId, authenticated: isAuthenticated }
+    ).catch(err => {
+      console.error('Monitoring error (non-critical):', err.message);
+    });
 
     ws.on('message', (data) => {
       try {
@@ -62,6 +74,16 @@ export function createTelemetryWebSocketServer(server) {
 
     ws.on('error', (error) => {
       console.error('[TELEMETRY WS] WebSocket error:', error);
+      
+      // Track WebSocket error
+      monitoringService.recordWebSocketError(
+        '/ws/telemetry',
+        'connection_error',
+        error.message,
+        { userId }
+      ).catch(err => {
+        console.error('Monitoring error (non-critical):', err.message);
+      });
     });
 
     ws.send(JSON.stringify({

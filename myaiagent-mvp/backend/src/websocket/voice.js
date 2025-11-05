@@ -3,6 +3,7 @@ import { verifyToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { decryptSecret } from '../services/secrets.js';
 import { incrementVoiceMinutes } from '../middleware/rateLimit.js';
+import monitoringService from '../services/monitoringService.js';
 
 const VOICE_SESSION_MAX_MINUTES = parseInt(process.env.VOICE_SESSION_MAX_MINUTES) || 10;
 const VOICE_SESSION_WARNING_MINUTES = parseInt(process.env.VOICE_SESSION_WARNING_MINUTES) || 1;
@@ -44,6 +45,10 @@ export function createVoiceWebSocketServer(server) {
     const token = url.searchParams.get('token');
 
     if (!token) {
+      // Track connection failure - no token
+      monitoringService.recordWebSocketConnection('/voice', false, 'no_token').catch(err => {
+        console.error('Monitoring error (non-critical):', err.message);
+      });
       ws.close(4001, 'No token provided');
       return;
     }
@@ -57,6 +62,10 @@ export function createVoiceWebSocketServer(server) {
       );
 
       if (userResult.rows.length === 0) {
+        // Track connection failure - invalid user
+        monitoringService.recordWebSocketConnection('/voice', false, 'invalid_user').catch(err => {
+          console.error('Monitoring error (non-critical):', err.message);
+        });
         ws.close(4002, 'Invalid user');
         return;
       }
@@ -74,6 +83,14 @@ export function createVoiceWebSocketServer(server) {
       const limit = parseInt(process.env.RATE_LIMIT_VOICE_MINUTES) || 30;
 
       if (voiceMinutesUsed >= limit) {
+        // Track connection failure - voice limit reached
+        monitoringService.recordWebSocketConnection('/voice', false, 'voice_limit_reached', {
+          userId: user.id,
+          minutesUsed: voiceMinutesUsed,
+          limit
+        }).catch(err => {
+          console.error('Monitoring error (non-critical):', err.message);
+        });
         ws.close(4003, 'Voice limit reached');
         return;
       }
@@ -111,6 +128,12 @@ export function createVoiceWebSocketServer(server) {
       const openaiKey = await getOpenAIKey();
       
       if (!openaiKey) {
+        // Track connection failure - missing API key
+        monitoringService.recordWebSocketConnection('/voice', false, 'openai_key_missing', {
+          userId: user.id
+        }).catch(err => {
+          console.error('Monitoring error (non-critical):', err.message);
+        });
         ws.send(JSON.stringify({
           type: 'error',
           error: 'OpenAI API key not configured',
@@ -134,6 +157,14 @@ export function createVoiceWebSocketServer(server) {
       // OpenAI connection opened
       openaiWs.on('open', () => {
         console.log('🔗 Connected to OpenAI Realtime API');
+        
+        // Track successful connection
+        monitoringService.recordWebSocketConnection('/voice', true, null, {
+          userId: user.id,
+          conversationId
+        }).catch(err => {
+          console.error('Monitoring error (non-critical):', err.message);
+        });
         
         // Send session configuration
         openaiWs.send(JSON.stringify({
@@ -211,6 +242,17 @@ export function createVoiceWebSocketServer(server) {
 
       openaiWs.on('error', (error) => {
         console.error('OpenAI WebSocket error:', error);
+        
+        // Track OpenAI connection error
+        monitoringService.recordWebSocketError(
+          '/voice',
+          'openai_connection_error',
+          error.message,
+          { userId: user.id, sessionId: voiceSessionId }
+        ).catch(err => {
+          console.error('Monitoring error (non-critical):', err.message);
+        });
+        
         ws.send(JSON.stringify({
           type: 'error',
           error: 'OpenAI connection error',
@@ -321,6 +363,14 @@ export function createVoiceWebSocketServer(server) {
 
     } catch (error) {
       console.error('Voice WebSocket error:', error);
+      
+      // Track connection failure - authentication error
+      monitoringService.recordWebSocketConnection('/voice', false, 'auth_failed', {
+        error: error.message
+      }).catch(err => {
+        console.error('Monitoring error (non-critical):', err.message);
+      });
+      
       ws.close(4000, 'Authentication failed');
     }
   });

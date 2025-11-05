@@ -57,6 +57,11 @@ async function generateGranularStatusFacts(userId = null) {
     const apiLatency = performanceSummary.find(m => m.metric_name === 'api_latency');
     const externalApiLatency = performanceSummary.find(m => m.metric_name === 'external_api_latency');
     
+    // Get WebSocket health metrics
+    const wsAnomalies = await monitoringService.detectWebSocketAnomalies(null, '15 minutes');
+    const wsConnectionMetrics = performanceSummary.filter(m => m.metric_name === 'websocket_connection');
+    const wsErrorMetrics = performanceSummary.filter(m => m.metric_name === 'websocket_error');
+    
     // Get user-specific analytics if userId provided
     let userStats = null;
     if (userId) {
@@ -114,6 +119,20 @@ async function generateGranularStatusFacts(userId = null) {
         `Rate limiting active: 100 requests/15min per user`,
         `Non-blocking async operations for zero performance impact`
       ],
+      websockets: [
+        wsAnomalies.hasAnomaly 
+          ? `⚠️ WebSocket health issues detected: ${wsAnomalies.anomalies.length} active anomalies` 
+          : 'WebSocket endpoints healthy - all connections operating normally',
+        wsAnomalies.anomalies.length > 0 
+          ? wsAnomalies.anomalies.map(a => `  - ${a.description}`).join('; ')
+          : 'Real-time endpoints: /stt-stream (Speech-to-Text), /voice (Voice Chat), /ws/telemetry (Frontend Telemetry)',
+        wsConnectionMetrics.length > 0 
+          ? `WebSocket connections in last hour: ${wsConnectionMetrics.reduce((sum, m) => sum + parseInt(m.sample_count), 0)} total attempts`
+          : 'WebSocket monitoring active and tracking connection health',
+        wsErrorMetrics.length > 0 && wsErrorMetrics.reduce((sum, m) => sum + parseInt(m.sample_count), 0) > 0
+          ? `WebSocket errors detected: ${wsErrorMetrics.reduce((sum, m) => sum + parseInt(m.sample_count), 0)} errors in last hour`
+          : 'Zero WebSocket errors detected - all real-time features functioning properly'
+      ],
       analytics: userStats ? [
         `User has ${userStats.conversations} conversation${userStats.conversations !== 1 ? 's' : ''} with ${userStats.messages} total messages`,
         `Memory system contains ${userStats.memoryFacts} approved facts about this user`,
@@ -148,6 +167,9 @@ async function generateGranularStatusFacts(userId = null) {
     
     // Operations Status
     statusPrompt += `**Operations**: ${statusFacts.ops[0]}, ${statusFacts.ops[1].toLowerCase()}, ${statusFacts.ops[2].toLowerCase()}, with ${statusFacts.ops[3].toLowerCase()}. `;
+    
+    // WebSocket Health Status
+    statusPrompt += `**WebSockets**: ${statusFacts.websockets[0]}. ${statusFacts.websockets[1]}. ${statusFacts.websockets[2]}, and ${statusFacts.websockets[3].toLowerCase()}. `;
     
     // Analytics Status
     statusPrompt += `**Analytics**: ${statusFacts.analytics[0]}, ${statusFacts.analytics[1].toLowerCase()}, ${statusFacts.analytics[2].toLowerCase()}, and ${statusFacts.analytics[3].toLowerCase()}. `;

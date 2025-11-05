@@ -132,6 +132,82 @@ class MonitoringService {
   }
 
   /**
+   * Record WebSocket connection attempt
+   * Tracks both successful and failed connection attempts
+   * 
+   * @param {string} endpoint - WebSocket endpoint (e.g., '/stt-stream', '/voice', '/ws/telemetry')
+   * @param {boolean} success - Whether connection succeeded
+   * @param {string} errorReason - Error reason if connection failed
+   * @param {object} metadata - Optional additional context (e.g., userId, clientInfo)
+   */
+  async recordWebSocketConnection(endpoint, success, errorReason = null, metadata = {}) {
+    await this.recordMetric(
+      'websocket_connection',
+      1,
+      'count',
+      { 
+        endpoint, 
+        success: success.toString(),
+        error_reason: errorReason || 'none'
+      },
+      metadata
+    );
+
+    // Track connection failures separately for anomaly detection
+    if (!success) {
+      await this.recordMetric(
+        'websocket_connection_error',
+        1,
+        'count',
+        { endpoint, error_reason: errorReason || 'unknown' },
+        metadata
+      );
+    }
+  }
+
+  /**
+   * Record WebSocket stream/session error
+   * Tracks errors during active WebSocket sessions
+   * 
+   * @param {string} endpoint - WebSocket endpoint
+   * @param {string} errorType - Type of error (e.g., 'stream_error', 'api_error', 'timeout')
+   * @param {string} errorMessage - Error message
+   * @param {object} metadata - Optional additional context
+   */
+  async recordWebSocketError(endpoint, errorType, errorMessage, metadata = {}) {
+    await this.recordMetric(
+      'websocket_error',
+      1,
+      'count',
+      { 
+        endpoint, 
+        error_type: errorType,
+        error_message: errorMessage.substring(0, 100) // Truncate long messages
+      },
+      metadata
+    );
+  }
+
+  /**
+   * Record WebSocket session metrics
+   * Track session duration and data transfer
+   * 
+   * @param {string} endpoint - WebSocket endpoint
+   * @param {number} durationMs - Session duration in milliseconds
+   * @param {number} messagesExchanged - Number of messages exchanged
+   * @param {object} metadata - Optional additional context
+   */
+  async recordWebSocketSession(endpoint, durationMs, messagesExchanged, metadata = {}) {
+    await this.recordMetric(
+      'websocket_session_duration',
+      durationMs,
+      'ms',
+      { endpoint },
+      { ...metadata, messages: messagesExchanged }
+    );
+  }
+
+  /**
    * Flush metrics buffer to database
    * Non-blocking - runs asynchronously
    */
@@ -400,6 +476,140 @@ class MonitoringService {
       };
     } catch (error) {
       console.error('Anomaly detection error:', error);
+      return { hasAnomaly: false, error: error.message };
+    }
+  }
+
+  /**
+   * Detect WebSocket connection failures and error rates
+   * WebSocket-specific anomaly detection with custom thresholds
+   * 
+   * @param {string} endpoint - WebSocket endpoint (e.g., '/stt-stream', '/voice', '/ws/telemetry')
+   * @param {string} timeRange - Time range to analyze (default: '15 minutes')
+   * @returns {object} Anomaly detection results with error rates
+   */
+  async detectWebSocketAnomalies(endpoint = null, timeRange = '15 minutes') {
+    try {
+      const anomalies = [];
+      
+      // Query WebSocket connection metrics
+      const endpoints = endpoint ? [endpoint] : ['/stt-stream', '/voice', '/ws/telemetry'];
+      
+      for (const wsEndpoint of endpoints) {
+        // Get connection attempts (both success and failure)
+        const connectionsQuery = await pool.query(
+          `SELECT 
+            COUNT(*) as total_attempts,
+            SUM(CASE WHEN tags->>'success' = 'true' THEN 1 ELSE 0 END) as successful,
+            SUM(CASE WHEN tags->>'success' = 'false' THEN 1 ELSE 0 END) as failed
+           FROM system_performance_metrics
+           WHERE metric_name = 'websocket_connection'
+             AND tags->>'endpoint' = $1
+             AND timestamp >= NOW() - INTERVAL '${timeRange}'`,
+          [wsEndpoint]
+        );
+        
+        const connectionStats = connectionsQuery.rows[0];
+        const totalAttempts = parseInt(connectionStats.total_attempts) || 0;
+        const successful = parseInt(connectionStats.successful) || 0;
+        const failed = parseInt(connectionStats.failed) || 0;
+        
+        if (totalAttempts === 0) continue; // Skip if no data
+        
+        const errorRate = (failed / totalAttempts) * 100;
+        
+        // Critical: >20% connection failure rate
+        if (errorRate > 20) {
+          anomalies.push({
+            metricName: `websocket_connection_${wsEndpoint}`,
+            type: 'high_error_rate',
+            severity: 'critical',
+            description: `${wsEndpoint} has ${errorRate.toFixed(1)}% connection failure rate (${failed}/${totalAttempts} failed)`,
+            baseline_value: 5, // Expected error rate
+            anomaly_value: errorRate,
+            deviation_percentage: ((errorRate - 5) / 5 * 100).toFixed(2),
+            tags: { endpoint: wsEndpoint, failed, successful, totalAttempts }
+          });
+        }
+        // High: >10% connection failure rate
+        else if (errorRate > 10) {
+          anomalies.push({
+            metricName: `websocket_connection_${wsEndpoint}`,
+            type: 'elevated_error_rate',
+            severity: 'high',
+            description: `${wsEndpoint} has ${errorRate.toFixed(1)}% connection failure rate (${failed}/${totalAttempts} failed)`,
+            baseline_value: 5,
+            anomaly_value: errorRate,
+            deviation_percentage: ((errorRate - 5) / 5 * 100).toFixed(2),
+            tags: { endpoint: wsEndpoint, failed, successful, totalAttempts }
+          });
+        }
+        // Medium: >5% connection failure rate
+        else if (errorRate > 5) {
+          anomalies.push({
+            metricName: `websocket_connection_${wsEndpoint}`,
+            type: 'moderate_error_rate',
+            severity: 'medium',
+            description: `${wsEndpoint} has ${errorRate.toFixed(1)}% connection failure rate (${failed}/${totalAttempts} failed)`,
+            baseline_value: 5,
+            anomaly_value: errorRate,
+            deviation_percentage: ((errorRate - 5) / 5 * 100).toFixed(2),
+            tags: { endpoint: wsEndpoint, failed, successful, totalAttempts }
+          });
+        }
+        
+        // Get stream/session errors
+        const errorsQuery = await pool.query(
+          `SELECT 
+            COUNT(*) as error_count,
+            tags->>'error_type' as error_type,
+            tags->>'error_message' as sample_message
+           FROM system_performance_metrics
+           WHERE metric_name = 'websocket_error'
+             AND tags->>'endpoint' = $1
+             AND timestamp >= NOW() - INTERVAL '${timeRange}'
+           GROUP BY tags->>'error_type', tags->>'error_message'
+           ORDER BY error_count DESC
+           LIMIT 5`,
+          [wsEndpoint]
+        );
+        
+        // Track stream errors separately
+        const streamErrors = errorsQuery.rows;
+        if (streamErrors.length > 0) {
+          const totalErrors = streamErrors.reduce((sum, row) => sum + parseInt(row.error_count), 0);
+          
+          if (totalErrors > 10) {
+            anomalies.push({
+              metricName: `websocket_stream_${wsEndpoint}`,
+              type: 'high_stream_errors',
+              severity: totalErrors > 50 ? 'critical' : 'high',
+              description: `${wsEndpoint} has ${totalErrors} stream/session errors in last ${timeRange}`,
+              baseline_value: 10,
+              anomaly_value: totalErrors,
+              deviation_percentage: ((totalErrors - 10) / 10 * 100).toFixed(2),
+              tags: { 
+                endpoint: wsEndpoint, 
+                topError: streamErrors[0].error_type,
+                sampleMessage: streamErrors[0].sample_message?.substring(0, 100)
+              }
+            });
+          }
+        }
+      }
+      
+      // Record anomalies in database
+      for (const anomaly of anomalies) {
+        await this.recordAnomaly(anomaly);
+      }
+      
+      return {
+        hasAnomaly: anomalies.length > 0,
+        anomalies,
+        endpointsAnalyzed: endpoints.length
+      };
+    } catch (error) {
+      console.error('WebSocket anomaly detection error:', error);
       return { hasAnomaly: false, error: error.message };
     }
   }
