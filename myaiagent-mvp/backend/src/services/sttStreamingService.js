@@ -11,10 +11,13 @@ class STTStreamingService {
 
   async initializeClient() {
     try {
-      // Try to get credentials from database first
+      // Try to get credentials from database first (check both possible key names)
       const result = await query(
         `SELECT key_value FROM api_secrets 
-         WHERE key_name = 'GOOGLE_APPLICATION_CREDENTIALS' AND is_active = true`
+         WHERE key_name IN ('GOOGLE_APPLICATION_CREDENTIALS', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') 
+         AND is_active = true
+         ORDER BY created_at DESC
+         LIMIT 1`
       );
 
       let credentials;
