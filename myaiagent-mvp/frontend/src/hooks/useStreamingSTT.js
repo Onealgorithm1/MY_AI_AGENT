@@ -1,7 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { stt } from '../services/api.js';
 
 export default function useStreamingSTT() {
   const [isListening, setIsListening] = useState(false);
@@ -85,19 +83,13 @@ export default function useStreamingSTT() {
             chunks: audioChunksRef.current.length
           });
 
-          // Send to backend for transcription
-          const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
-          formData.append('languageCode', 'en-US');
+          // Send to backend for transcription using API service (includes CSRF token)
+          const transcript = await stt.transcribe(audioBlob, 'en-US');
 
-          const response = await axios.post(`${API_URL}/stt/transcribe`, formData, {
-            withCredentials: true,
-          });
-
-          console.log('✅ Transcript received:', response.data.transcript);
+          console.log('✅ Transcript received:', transcript);
           
           setIsTranscribing(false);
-          resolve(response.data.transcript || '');
+          resolve(transcript || '');
         } catch (error) {
           console.error('Error transcribing audio:', error);
           setError(error.response?.data?.error || 'Transcription failed');
