@@ -95,6 +95,85 @@ export const UI_FUNCTIONS = [
     },
   },
   {
+    name: 'getPerformanceMetrics',
+    description: 'Query your own infrastructure performance metrics in real-time. Use this to check API response times, external service latency, system health, and overall operational performance. Call this when you want to understand how fast/slow you are responding, diagnose performance issues, or proactively inform users about service delays.',
+    parameters: {
+      type: 'object',
+      properties: {
+        timeRange: {
+          type: 'string',
+          description: 'Time range to analyze (e.g., "1 hour", "6 hours", "24 hours", "7 days")',
+          default: '1 hour',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'queryPerformanceMetrics',
+    description: 'Drill down into specific performance metrics with detailed data points. Use this when you need granular performance data for a specific metric (like API latency, Gemini response times, database query times, etc.). This provides time-series data for in-depth analysis.',
+    parameters: {
+      type: 'object',
+      properties: {
+        metricName: {
+          type: 'string',
+          description: 'Name of the metric to query (e.g., "api_latency", "external_api_latency", "db_query_time")',
+        },
+        timeRange: {
+          type: 'string',
+          description: 'Time range to query (e.g., "1 hour", "24 hours")',
+          default: '1 hour',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of data points to return',
+          default: 100,
+        },
+      },
+      required: ['metricName'],
+    },
+  },
+  {
+    name: 'detectPerformanceAnomalies',
+    description: 'Detect performance anomalies and issues in your infrastructure. Use this to identify spikes, sustained increases, statistical outliers, or unusual patterns in a specific metric. This helps you diagnose problems before users complain.',
+    parameters: {
+      type: 'object',
+      properties: {
+        metricName: {
+          type: 'string',
+          description: 'Metric to analyze for anomalies (e.g., "api_latency", "external_api_latency")',
+        },
+        timeRange: {
+          type: 'string',
+          description: 'Time range to analyze for anomalies',
+          default: '1 hour',
+        },
+      },
+      required: ['metricName'],
+    },
+  },
+  {
+    name: 'getActiveAnomalies',
+    description: 'Get all currently active performance anomalies across all metrics. Use this to see if there are any ongoing performance issues, service degradations, or system problems that might be affecting user experience.',
+    parameters: {
+      type: 'object',
+      properties: {
+        timeRange: {
+          type: 'string',
+          description: 'Time range to check for anomalies',
+          default: '24 hours',
+        },
+        minSeverity: {
+          type: 'string',
+          enum: ['low', 'medium', 'high', 'critical'],
+          description: 'Minimum severity level to include',
+          default: 'low',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'readEmails',
     description: 'Read emails from the user\'s Gmail inbox. Use this when the user asks to check emails, read messages, show inbox, or wants to see their recent emails.',
     parameters: {
@@ -527,6 +606,113 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `Web search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  // Performance Monitoring Functions - AI Self-Awareness
+  if (functionName === 'getPerformanceMetrics') {
+    const monitoringService = (await import('./monitoringService.js')).default;
+    
+    try {
+      const timeRange = args.timeRange || '1 hour';
+      const summary = await monitoringService.getPerformanceSummary(timeRange);
+      
+      return {
+        success: true,
+        message: `Retrieved performance metrics for the last ${timeRange}`,
+        data: {
+          timeRange,
+          metrics: summary,
+          timestamp: new Date().toISOString()
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get performance metrics: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'queryPerformanceMetrics') {
+    const monitoringService = (await import('./monitoringService.js')).default;
+    
+    try {
+      const { metricName, timeRange = '1 hour', limit = 100 } = args;
+      const metrics = await monitoringService.queryMetrics(metricName, { timeRange, limit });
+      
+      return {
+        success: true,
+        message: `Retrieved ${metrics.length} data points for ${metricName}`,
+        data: {
+          metricName,
+          dataPoints: metrics,
+          count: metrics.length
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to query performance metrics: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'detectPerformanceAnomalies') {
+    const monitoringService = (await import('./monitoringService.js')).default;
+    
+    try {
+      const { metricName, timeRange = '1 hour' } = args;
+      const anomalyReport = await monitoringService.detectAnomalies(metricName, timeRange);
+      
+      if (anomalyReport.hasAnomaly) {
+        return {
+          success: true,
+          message: `Detected ${anomalyReport.anomalies.length} anomaly(ies) in ${metricName}`,
+          data: anomalyReport,
+        };
+      } else {
+        return {
+          success: true,
+          message: `No anomalies detected in ${metricName}`,
+          data: anomalyReport,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to detect anomalies: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'getActiveAnomalies') {
+    const monitoringService = (await import('./monitoringService.js')).default;
+    
+    try {
+      const { timeRange = '24 hours', minSeverity = 'low' } = args;
+      const anomalies = await monitoringService.getActiveAnomalies(timeRange, minSeverity);
+      
+      return {
+        success: true,
+        message: anomalies.length > 0 
+          ? `Found ${anomalies.length} active anomaly(ies)`
+          : 'No active anomalies detected',
+        data: {
+          anomalies,
+          count: anomalies.length,
+          timeRange
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get active anomalies: ${error.message}`,
         data: null,
       };
     }
