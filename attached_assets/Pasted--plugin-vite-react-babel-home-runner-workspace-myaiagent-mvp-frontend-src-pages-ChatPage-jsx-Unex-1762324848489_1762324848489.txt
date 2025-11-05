@@ -1,0 +1,61 @@
+[plugin:vite:react-babel] /home/runner/workspace/myaiagent-mvp/frontend/src/pages/ChatPage.jsx: Unexpected token, expected "}" (424:22)
+  427 |
+/home/runner/workspace/myaiagent-mvp/frontend/src/pages/ChatPage.jsx:424:22
+422|        await feedbackApi.submit({
+423|          messageId,
+424|          conversationId: currentConversation?.id,
+   |                        ^
+425|          rating,
+426|        });
+    at constructor (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+    at JSXParserMixin.raise (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+    at JSXParserMixin.unexpected (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:6644:16)
+    at JSXParserMixin.expect (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:6924:12)
+    at JSXParserMixin.jsxParseExpressionContainer (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:4666:10)
+    at JSXParserMixin.jsxParseElementAt (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:4740:36)
+    at JSXParserMixin.jsxParseElement (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+    at JSXParserMixin.parseExprAtom (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+    at JSXParserMixin.parseExprSubscripts (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at JSXParserMixin.parseUpdate (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at JSXParserMixin.parseMaybeUnary (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at JSXParserMixin.parseExprOps (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at JSXParserMixin.parseMaybeConditional (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at JSXParserMixin.parseMaybeAssign (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at /home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+    at JSXParserMixin.allowInAnd (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+    at JSXParserMixin.parseMaybeAssignAllowIn (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+    at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+    at JSXParserMixin.parseParenAndDistinguishExpression (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+    at JSXParserMixin.parseExprAtom (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+    at JSXParserMixin.parseExprAtom (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+    at JSXParserMixin.parseExprSubscripts (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+    at JSXParserMixin.parseUpdate (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+    at JSXParserMixin.parseMaybeUnary (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+    at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+    at JSXParserMixin.parseExprOps (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+    at JSXParserMixin.parseMaybeConditional (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+    at JSXParserMixin.parseMaybeAssign (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+    at JSXParserMixin.parseExpressionBase (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+    at /home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+    at JSXParserMixin.allowInAnd (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12495:16)
+    at JSXParserMixin.parseExpression (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+    at JSXParserMixin.parseReturnStatement (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13218:28)
+    at JSXParserMixin.parseStatementContent (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12874:21)
+    at JSXParserMixin.parseStatementLike (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+    at JSXParserMixin.parseStatementListItem (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12823:17)
+    at JSXParserMixin.parseBlockOrModuleBlockBody (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13392:61)
+    at JSXParserMixin.parseBlockBody (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+    at JSXParserMixin.parseBlock (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13373:10)
+    at JSXParserMixin.parseFunctionBody (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12174:24)
+    at JSXParserMixin.parseFunctionBodyAndFinish (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12160:10)
+    at /home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13521:12
+    at JSXParserMixin.withSmartMixTopicForbiddingContext (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12477:14)
+    at JSXParserMixin.parseFunction (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13520:10)
+    at JSXParserMixin.parseExportDefaultExpression (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13983:19)
+    at JSXParserMixin.parseExport (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:13904:25)
+    at JSXParserMixin.parseStatementContent (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12954:27)
+    at JSXParserMixin.parseStatementLike (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+    at JSXParserMixin.parseModuleItem (/home/runner/workspace/myaiagent-mvp/frontend/node_modules/@babel/parser/lib/index.js:12820:17
+Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.js.
