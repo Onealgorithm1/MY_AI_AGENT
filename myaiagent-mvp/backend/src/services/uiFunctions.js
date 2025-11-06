@@ -279,6 +279,20 @@ export const UI_FUNCTIONS = [
       required: ['emailId'],
     },
   },
+  {
+    name: 'getEmailDetails',
+    description: 'Get complete details of a specific email including subject, sender, recipients, date, and full body content. Use this when the user wants to see the full content of a specific email, read an email in detail, or when you need to show the complete email message. After calling this function, present the email using the PRESENT_EMAIL protocol for formatted display.',
+    parameters: {
+      type: 'object',
+      properties: {
+        emailId: {
+          type: 'string',
+          description: 'ID of the email to retrieve (obtained from readEmails or searchEmails)',
+        },
+      },
+      required: ['emailId'],
+    },
+  },
   // Google Calendar Functions
   {
     name: 'listCalendarEvents',
@@ -719,7 +733,7 @@ export async function executeUIFunction(functionName, args, context) {
   }
   
   // Gmail functions - users can access their own Gmail via OAuth
-  const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail'];
+  const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail', 'getEmailDetails'];
   if (gmailFunctions.includes(functionName)) {
     if (!context.user) {
       return {
@@ -828,6 +842,26 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `Failed to delete email: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'getEmailDetails') {
+    const { getEmailDetails } = await import('./gmail.js');
+    
+    try {
+      const emailDetails = await getEmailDetails(context.user.id, args.emailId);
+      
+      return {
+        success: true,
+        message: 'Email details retrieved successfully',
+        data: emailDetails,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get email details: ${error.message}`,
         data: null,
       };
     }

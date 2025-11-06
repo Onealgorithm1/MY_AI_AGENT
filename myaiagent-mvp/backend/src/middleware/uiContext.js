@@ -168,6 +168,8 @@ export const generateUIAwarePrompt = async (uiContext, userContext, fullSchema) 
 
 7. **⚠️ Code Presentation Protocol**: When the user explicitly requests a code snippet, configuration file, or raw data, you must **immediately stop all prose generation** and output a **single JSON object** using the \`"presentation_protocol": "PRESENT_CODE"\` key. This is the **only exception** to the listing and conciseness rules. The JSON structure must be: \`{ "presentation_protocol": "PRESENT_CODE", "content_title": "descriptive title", "content_type": "language/type", "data": ["line1", "line2", ...] }\`. The frontend will intercept this and display it as a formatted code block with copy functionality.
 
+8. **📧 Email Presentation Protocol**: When you call the \`getEmailDetails\` function to retrieve a specific email's complete content, you must **immediately output a JSON object** using the \`"presentation_protocol": "PRESENT_EMAIL"\` key. This ensures the email is displayed in a beautifully formatted email viewer with proper headers, subject line, and body formatting. The JSON structure must be: \`{ "presentation_protocol": "PRESENT_EMAIL", "email": { "from": "sender email", "to": "recipient email", "date": "date string", "subject": "email subject", "body": "email body text" } }\`. Use this protocol whenever you show individual email details to the user.
+
 **EXAMPLES OF CORRECT FORMATTING:**
 - ✅ "I can help you search the web for current information, and I also have access to your Gmail account if you need me to check your emails or send messages."
 - ✅ "Your account was created three weeks ago and you've been actively using the calendar integration."

@@ -3,6 +3,7 @@ import { Copy, ThumbsUp, ThumbsDown, Search, Loader2, Radio } from 'lucide-react
 import MessageSpeakerButton from './MessageSpeakerButton';
 import WordHighlighter from './WordHighlighter';
 import CodeBlock from './CodeBlock';
+import EmailBlock from './EmailBlock';
 import LinkifiedText from './LinkifiedText';
 import useMessageAudio from '../hooks/useMessageAudio';
 
@@ -29,17 +30,30 @@ export default function MessageWithAudio({
     return null;
   }, [message.content]);
 
-  // Only use TTS for non-code presentations
-  const shouldUseTTS = !codePresentation && ttsEnabled;
+  // Check if message is email presentation protocol
+  const emailPresentation = useMemo(() => {
+    try {
+      const parsed = JSON.parse(message.content);
+      if (parsed.presentation_protocol === 'PRESENT_EMAIL') {
+        return parsed;
+      }
+    } catch (e) {
+      // Not JSON or not email presentation - treat as normal text
+    }
+    return null;
+  }, [message.content]);
 
-  // Conditionally call useMessageAudio hook - only for non-code presentations
+  // Only use TTS for non-presentation messages
+  const shouldUseTTS = !codePresentation && !emailPresentation && ttsEnabled;
+
+  // Conditionally call useMessageAudio hook - only for regular text messages
   const audioHook = useMessageAudio(
     message.id, 
-    codePresentation ? '' : message.content, // Pass empty string for code to prevent loading
+    (codePresentation || emailPresentation) ? '' : message.content, // Pass empty string for presentations to prevent loading
     voiceId
   );
 
-  // Destructure hook results (will have default idle state for code presentations)
+  // Destructure hook results (will have default idle state for presentations)
   const {
     state = 'idle',
     currentWordIndex = -1,
@@ -51,7 +65,7 @@ export default function MessageWithAudio({
     retry = () => {},
     isError = false,
     hasPlayed = false,
-  } = codePresentation ? {} : audioHook;
+  } = (codePresentation || emailPresentation) ? {} : audioHook;
 
   useEffect(() => {
     if (shouldAutoPlay && shouldUseTTS && ttsAutoPlay && !hasPlayed && state === 'idle') {
@@ -81,6 +95,49 @@ export default function MessageWithAudio({
             onClick={() => onCopy(codeContent)}
             className="p-2.5 md:p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:text-gray-700 dark:active:text-gray-100 active:bg-gray-200 dark:active:bg-gray-600 transition-colors touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
             title="Copy code"
+          >
+            <Copy className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <button
+            onClick={() => onFeedback(message.id, 1)}
+            className="p-2.5 md:p-1.5 rounded-full text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 active:text-green-700 dark:active:text-green-300 active:bg-green-100 dark:active:bg-green-900/30 transition-colors touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
+            title="Good response"
+          >
+            <ThumbsUp className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <button
+            onClick={() => onFeedback(message.id, -1)}
+            className="p-2.5 md:p-1.5 rounded-full text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:text-red-700 dark:active:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 transition-colors touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
+            title="Bad response"
+          >
+            <ThumbsDown className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          </button>
+          
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-medium ml-auto">
+            {message.metadata?.autoSelected 
+              ? `Auto 🤖 (${message.model})` 
+              : message.model}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If this is an email presentation, render EmailBlock instead
+  if (emailPresentation) {
+    const emailContent = emailPresentation.email;
+
+    return (
+      <div className="max-w-full w-full">
+        <EmailBlock email={emailContent} />
+        
+        <div className="flex items-center gap-2 md:gap-3 mt-1.5 ml-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+          <button
+            onClick={() => onCopy(`From: ${emailContent.from}\nTo: ${emailContent.to}\nDate: ${emailContent.date}\nSubject: ${emailContent.subject}\n\n${emailContent.body}`)}
+            className="p-2.5 md:p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 active:text-gray-700 dark:active:text-gray-100 active:bg-gray-200 dark:active:bg-gray-600 transition-colors touch-manipulation min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
+            title="Copy email"
           >
             <Copy className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </button>
