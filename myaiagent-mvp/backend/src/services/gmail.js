@@ -22,31 +22,6 @@ export async function getGmailClient(userId) {
   return google.gmail({ version: 'v1', auth: oauth2Client });
 }
 
-function cleanUrl(url) {
-  try {
-    const urlObj = new URL(url);
-    const tracking = ['utm_', 'track', 'ref', 'fbclid', 'gclid', 'mc_', 'lipi', 'mid', 'trk', 'eid', 'otpToken'];
-    
-    tracking.forEach(param => {
-      const keysToDelete = [];
-      for (const [key] of urlObj.searchParams) {
-        if (key.toLowerCase().includes(param.toLowerCase())) {
-          keysToDelete.push(key);
-        }
-      }
-      keysToDelete.forEach(key => urlObj.searchParams.delete(key));
-    });
-    
-    const cleanedUrl = urlObj.toString();
-    if (cleanedUrl.length > 80) {
-      return urlObj.hostname + urlObj.pathname.substring(0, 30) + '...';
-    }
-    return cleanedUrl;
-  } catch (e) {
-    return url.length > 80 ? url.substring(0, 80) + '...' : url;
-  }
-}
-
 function parseEmailBody(payload) {
   let plainText = '';
   let htmlText = '';
