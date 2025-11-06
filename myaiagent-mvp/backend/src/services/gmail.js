@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import tokenManager from './tokenManager.js';
 import { retryWithExponentialBackoff, handleGoogleApiError } from '../utils/googleApiHelper.js';
+import { convert } from 'html-to-text';
 
 export async function getGmailClient(userId) {
   if (!userId) {
@@ -21,26 +22,80 @@ export async function getGmailClient(userId) {
   return google.gmail({ version: 'v1', auth: oauth2Client });
 }
 
+function cleanUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    const tracking = ['utm_', 'track', 'ref', 'fbclid', 'gclid', 'mc_', 'lipi', 'mid', 'trk', 'eid', 'otpToken'];
+    
+    tracking.forEach(param => {
+      const keysToDelete = [];
+      for (const [key] of urlObj.searchParams) {
+        if (key.toLowerCase().includes(param.toLowerCase())) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => urlObj.searchParams.delete(key));
+    });
+    
+    const cleanedUrl = urlObj.toString();
+    if (cleanedUrl.length > 80) {
+      return urlObj.hostname + urlObj.pathname.substring(0, 30) + '...';
+    }
+    return cleanedUrl;
+  } catch (e) {
+    return url.length > 80 ? url.substring(0, 80) + '...' : url;
+  }
+}
+
 function parseEmailBody(payload) {
-  let body = '';
+  let plainText = '';
+  let htmlText = '';
   
-  if (payload.body?.data) {
-    body = Buffer.from(payload.body.data, 'base64').toString('utf-8');
-  } else if (payload.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === 'text/plain' && part.body?.data) {
-        body += Buffer.from(part.body.data, 'base64').toString('utf-8');
-      } else if (part.mimeType === 'text/html' && part.body?.data && !body) {
-        body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+  function extractContent(part) {
+    if (part.body?.data) {
+      const content = Buffer.from(part.body.data, 'base64').toString('utf-8');
+      
+      if (part.mimeType === 'text/plain') {
+        plainText += content;
+      } else if (part.mimeType === 'text/html') {
+        htmlText += content;
       }
-      if (part.parts) {
-        const nestedBody = parseEmailBody(part);
-        if (nestedBody) body += nestedBody;
-      }
+    }
+    
+    if (part.parts) {
+      part.parts.forEach(extractContent);
     }
   }
   
-  return body;
+  extractContent(payload);
+  
+  if (htmlText) {
+    const cleanText = convert(htmlText, {
+      wordwrap: false,
+      preserveNewlines: true,
+      selectors: [
+        { selector: 'a', format: 'anchor', options: { ignoreHref: false, noAnchorUrl: false, hideLinkHrefIfSameAsText: true } },
+        { selector: 'img', format: 'skip' },
+        { selector: 'table', options: { uppercaseHeaderCells: false } }
+      ],
+      longWordSplit: {
+        wrapCharacters: [],
+        forceWrapOnLimit: false
+      }
+    });
+    
+    return {
+      text: cleanText,
+      html: htmlText,
+      isHtml: true
+    };
+  }
+  
+  return {
+    text: plainText,
+    html: null,
+    isHtml: false
+  };
 }
 
 export async function listEmails(userId, options = {}) {
@@ -118,7 +173,7 @@ export async function getEmailDetails(userId, messageId) {
     const from = headers.find(h => h.name === 'From')?.value || '';
     const to = headers.find(h => h.name === 'To')?.value || '';
     const date = headers.find(h => h.name === 'Date')?.value || '';
-    const body = parseEmailBody(message.payload);
+    const parsedBody = parseEmailBody(message.payload);
 
     return {
       id: message.id,
@@ -128,7 +183,9 @@ export async function getEmailDetails(userId, messageId) {
       to,
       date,
       snippet: message.snippet,
-      body: body.substring(0, 5000),
+      body: parsedBody.text || '(No content)',
+      bodyHtml: parsedBody.html,
+      isHtml: parsedBody.isHtml,
       labelIds: message.labelIds,
       isUnread: message.labelIds?.includes('UNREAD') || false
     };
