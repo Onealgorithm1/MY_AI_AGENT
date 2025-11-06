@@ -257,8 +257,15 @@ if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, '../../frontend/dist');
   app.use(express.static(frontendPath));
   
+  // Fallback to index.html for React Router (catch-all)
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/voice')) {
+    // Skip API routes, WebSocket endpoints, and static resources
+    if (req.path.startsWith('/api') || 
+        req.path.startsWith('/health') || 
+        req.path.startsWith('/voice') || 
+        req.path.startsWith('/ws') ||
+        req.path.startsWith('/uploads') ||
+        req.path.startsWith('/stt-stream')) {
       return next();
     }
     res.sendFile(path.join(frontendPath, 'index.html'));

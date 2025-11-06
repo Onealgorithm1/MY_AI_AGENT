@@ -3,13 +3,18 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
 
-# Environment
+# Environment variables (SECURITY: Never commit!)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+
+# Google Cloud credentials (SECURITY: Never commit!)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
 
 # Build outputs
 dist/
@@ -27,10 +32,27 @@ Thumbs.db
 *.swo
 *~
 
-# Uploads
+# Uploads & temp files
 uploads/
 temp/
+attached_assets/
 
 # Testing
 coverage/
 .nyc_output/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# AWS & deployment
+*.pem
+*.key
+.aws/
+
+# Replit specific
+.replit
+.upm/
+.cache/
+replit.nix

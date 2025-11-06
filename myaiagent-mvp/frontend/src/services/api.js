@@ -301,4 +301,6 @@ export const webSearch = {
   },
 };
 
+// Export both default and named export for flexibility
+export { api };
 export default api;
