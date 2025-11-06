@@ -409,7 +409,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
               conversationId,
             });
             
-            const responseMessage = `✅ ${functionResult.message}`;
+            // Handle PRESENT_EMAIL protocol - directly output the formatted JSON
+            let responseMessage;
+            if (functionResult.message === 'PRESENT_EMAIL_PROTOCOL' && functionResult.data) {
+              responseMessage = JSON.stringify(functionResult.data);
+            } else {
+              responseMessage = `✅ ${functionResult.message}`;
+            }
             
             // Save assistant message with search results in metadata if webSearch
             const metadataObj = wasAutoSelected ? { autoSelected: true } : {};
@@ -522,8 +528,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             conversationId,
           });
           
-          // Send the result back to the frontend
-          const aiResponse = `✅ ${functionResult.message}`;
+          // Handle PRESENT_EMAIL protocol - directly output the formatted JSON
+          let aiResponse;
+          if (functionResult.message === 'PRESENT_EMAIL_PROTOCOL' && functionResult.data) {
+            aiResponse = JSON.stringify(functionResult.data);
+          } else {
+            aiResponse = `✅ ${functionResult.message}`;
+          }
           
           // Save assistant message
           const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';

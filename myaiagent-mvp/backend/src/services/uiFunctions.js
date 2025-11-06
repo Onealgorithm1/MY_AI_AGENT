@@ -175,7 +175,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'readEmails',
-    description: 'Read emails from the user\'s Gmail inbox. Use this when the user asks to check emails, read messages, show inbox, or wants to see their recent emails.',
+    description: 'Read emails from the user\'s Gmail inbox and list them as summaries. Use this when the user wants to see a LIST of emails (subjects, senders). For showing the FULL CONTENT of a specific email, use getEmailDetails instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -189,6 +189,15 @@ export const UI_FUNCTIONS = [
           description: 'Optional search query (e.g., "from:example@gmail.com", "is:unread", "subject:important")',
         },
       },
+      required: [],
+    },
+  },
+  {
+    name: 'presentLatestEmail',
+    description: 'Retrieve and present the user\'s most recent email in a beautifully formatted email viewer. Use this when the user asks to "show me my latest email", "present my last email", "display my most recent email", or "read my newest email". This function retrieves the email and automatically outputs it using the PRESENT_EMAIL protocol for formatted display. DO NOT call readEmails first - this function does everything in one step.',
+    parameters: {
+      type: 'object',
+      properties: {},
       required: [],
     },
   },
@@ -733,7 +742,7 @@ export async function executeUIFunction(functionName, args, context) {
   }
   
   // Gmail functions - users can access their own Gmail via OAuth
-  const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail', 'getEmailDetails'];
+  const gmailFunctions = ['readEmails', 'searchEmails', 'sendEmail', 'markEmailAsRead', 'archiveEmail', 'deleteEmail', 'getEmailDetails', 'presentLatestEmail'];
   if (gmailFunctions.includes(functionName)) {
     if (!context.user) {
       return {
@@ -862,6 +871,39 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `Failed to get email details: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+  
+  if (functionName === 'presentLatestEmail') {
+    const { listEmails } = await import('./gmail.js');
+    
+    try {
+      const emails = await listEmails(context.user.id, { maxResults: 1 });
+      
+      if (!emails || emails.length === 0) {
+        return {
+          success: false,
+          message: 'No emails found in your inbox',
+          data: null,
+        };
+      }
+      
+      const latestEmail = emails[0];
+      
+      return {
+        success: true,
+        message: 'PRESENT_EMAIL_PROTOCOL',
+        data: {
+          presentation_protocol: 'PRESENT_EMAIL',
+          email: latestEmail
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to retrieve latest email: ${error.message}`,
         data: null,
       };
     }
