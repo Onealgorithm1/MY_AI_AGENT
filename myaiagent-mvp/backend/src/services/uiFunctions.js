@@ -281,7 +281,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'getEmailDetails',
-    description: 'Get complete details of a specific email including subject, sender, recipients, date, and full body content. Use this when the user wants to see the full content of a specific email, read an email in detail, or when you need to show the complete email message. After calling this function, present the email using the PRESENT_EMAIL protocol for formatted display.',
+    description: 'Get complete details of a specific email including subject, sender, recipients, date, and full body content. Use this when the user wants to "show", "present", "display", or "read" a specific email in full detail. WORKFLOW: (1) Call readEmails/searchEmails to get email IDs, (2) Call this function with an emailId from step 1, (3) Immediately output PRESENT_EMAIL protocol JSON with the returned data. Example: User says "show me my latest email" → readEmails → getEmailDetails(emailId) → output: {"presentation_protocol":"PRESENT_EMAIL","email":{data from this function}}. CRITICAL: After calling this function, you MUST use the PRESENT_EMAIL protocol to display the email beautifully formatted.',
     parameters: {
       type: 'object',
       properties: {
