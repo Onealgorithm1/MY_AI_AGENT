@@ -1,7 +1,7 @@
 import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
-import { extractMemoryFacts } from '../services/openai.js';
+import { extractMemoryFacts } from '../services/gemini.js';
 import cache from '../services/cacheService.js';
 
 const router = express.Router();

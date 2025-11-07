@@ -1,0 +1,108 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual deployment
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AWS_EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+          EC2_USER: ${{ secrets.AWS_EC2_USER }}
+        run: |
+          ssh ${EC2_USER}@${EC2_HOST} << 'EOF'
+            set -e
+
+            echo "🚀 Starting deployment..."
+
+            # Navigate to project directory
+            cd /home/ubuntu/MY_AI_AGENT
+
+            # Pull latest code
+            echo "📥 Pulling latest code..."
+            git fetch origin
+            git pull origin main
+
+            # Install backend dependencies
+            echo "📦 Installing backend dependencies..."
+            cd myaiagent-mvp/backend
+            npm install --production
+
+            # Install frontend dependencies
+            echo "📦 Installing frontend dependencies..."
+            cd ../frontend
+            npm install
+
+            # Build frontend
+            echo "🔨 Building frontend..."
+            npm run build
+
+            # Restart application
+            echo "🔄 Restarting application..."
+            cd ../..
+
+            # Check if PM2 is available
+            if command -v pm2 &> /dev/null; then
+                pm2 restart all || pm2 start myaiagent-mvp/backend/src/server.js --name werkules
+                pm2 save
+            else
+                # Restart using systemd or node
+                if systemctl is-active --quiet werkules; then
+                    sudo systemctl restart werkules
+                else
+                    pkill -f "node.*server.js" || true
+                    cd myaiagent-mvp/backend
+                    nohup node src/server.js > /tmp/werkules.log 2>&1 &
+                fi
+            fi
+
+            echo "✅ Deployment complete!"
+          EOF
+
+      - name: 🏥 Health Check
+        env:
+          EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+          EC2_USER: ${{ secrets.AWS_EC2_USER }}
+        run: |
+          echo "Waiting 10 seconds for app to start..."
+          sleep 10
+
+          ssh ${EC2_USER}@${EC2_HOST} << 'EOF'
+            if curl -f -s http://localhost:3000/health > /dev/null 2>&1; then
+              echo "✅ Health check passed! App is running."
+              exit 0
+            else
+              echo "❌ Health check failed! App may not be running correctly."
+              exit 1
+            fi
+          EOF
+
+      - name: 📢 Notify on Success
+        if: success()
+        run: |
+          echo "🎉 Deployment to werkules.com successful!"
+          echo "🌐 Site: https://werkules.com"
+          echo "🕐 Time: $(date)"
+
+      - name: 📢 Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs above for details."

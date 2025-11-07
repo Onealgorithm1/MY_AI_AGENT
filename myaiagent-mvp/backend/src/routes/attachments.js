@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
-import { analyzeImage } from '../services/openai.js';
+import { analyzeImage } from '../services/gemini.js';
 import { incrementFileCount } from '../middleware/rateLimit.js';
 
 const router = express.Router();
