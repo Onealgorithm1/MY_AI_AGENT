@@ -73,6 +73,70 @@ function parseEmailBody(payload) {
   };
 }
 
+// Batch fetch email details to avoid N+1 query problem
+async function getEmailDetailsBatch(userId, messageIds) {
+  if (messageIds.length === 0) return [];
+
+  try {
+    const gmail = await getGmailClient(userId);
+    const BATCH_SIZE = 50; // Gmail API supports up to 100 requests per batch
+    const results = [];
+
+    // Process in batches
+    for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+      const batch = messageIds.slice(i, i + BATCH_SIZE);
+
+      const batchResults = await Promise.all(
+        batch.map(async (messageId) => {
+          try {
+            const response = await retryWithExponentialBackoff(async () => {
+              return await gmail.users.messages.get({
+                userId: 'me',
+                id: messageId,
+                format: 'full'
+              });
+            });
+
+            const message = response.data;
+            const headers = message.payload.headers;
+
+            const subject = headers.find(h => h.name === 'Subject')?.value || '(No Subject)';
+            const from = headers.find(h => h.name === 'From')?.value || '';
+            const to = headers.find(h => h.name === 'To')?.value || '';
+            const date = headers.find(h => h.name === 'Date')?.value || '';
+            const parsedBody = parseEmailBody(message.payload);
+
+            return {
+              id: message.id,
+              threadId: message.threadId,
+              subject,
+              from,
+              to,
+              date,
+              snippet: message.snippet,
+              body: parsedBody.text || '(No content)',
+              bodyHtml: parsedBody.html,
+              isHtml: parsedBody.isHtml,
+              labelIds: message.labelIds,
+              isUnread: message.labelIds?.includes('UNREAD') || false
+            };
+          } catch (error) {
+            console.error(`Error fetching email ${messageId}:`, error.message);
+            return null;
+          }
+        })
+      );
+
+      results.push(...batchResults);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error in batch email fetch:', error.message);
+    return [];
+  }
+}
+
 export async function listEmails(userId, options = {}) {
   try {
     const gmail = await getGmailClient(userId);
@@ -93,18 +157,9 @@ export async function listEmails(userId, options = {}) {
     });
 
     const messages = response.data.messages || [];
-    
-    const emailDetails = await Promise.all(
-      messages.map(async (msg) => {
-        try {
-          return await getEmailDetails(userId, msg.id);
-        } catch (error) {
-          console.error(`Error fetching email ${msg.id}:`, error.message);
-          return null;
-        }
-      })
-    );
 
+    // Fetch email details in batches to avoid N+1 query problem
+    const emailDetails = await getEmailDetailsBatch(userId, messages.map(m => m.id));
     const filteredEmails = emailDetails.filter(email => email !== null);
 
     if (autoAnalyze && filteredEmails.length > 0) {

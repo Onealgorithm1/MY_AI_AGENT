@@ -1,7 +1,15 @@
 import crypto from 'crypto';
 
 // Encryption key from environment (should be 32 bytes)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// CRITICAL: Must be set in environment or all encrypted data will be unrecoverable
+if (!process.env.ENCRYPTION_KEY) {
+  throw new Error(
+    'ENCRYPTION_KEY environment variable is required. ' +
+    'Generate one with: node -e "console.log(crypto.randomBytes(32).toString(\'hex\'))"'
+  );
+}
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const ALGORITHM = 'aes-256-gcm';
 
 // Encrypt a secret value

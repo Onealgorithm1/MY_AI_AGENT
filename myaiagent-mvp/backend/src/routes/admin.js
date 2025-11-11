@@ -278,19 +278,20 @@ router.put('/errors/:id/resolve', async (req, res) => {
 router.get('/performance', async (req, res) => {
   try {
     const { hours = 24 } = req.query;
+    const hoursInt = Math.max(1, Math.min(168, parseInt(hours) || 24)); // Validate: 1-168 hours (1 week max)
 
     const result = await query(
-      `SELECT 
+      `SELECT
          metric_type,
          AVG(value) as avg_value,
          MAX(value) as max_value,
          MIN(value) as min_value,
          COUNT(*) as count
-       FROM performance_metrics 
-       WHERE created_at > NOW() - INTERVAL '${parseInt(hours)} hours'
+       FROM performance_metrics
+       WHERE created_at > NOW() - (INTERVAL '1 hour' * $1)
        GROUP BY metric_type
        ORDER BY metric_type`,
-      []
+      [hoursInt]
     );
 
     res.json({
