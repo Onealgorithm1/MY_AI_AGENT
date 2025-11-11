@@ -2,6 +2,34 @@
 
 A full-stack AI chat application with **real-time voice** capabilities, built with React and Node.js.
 
+## 📚 Documentation
+
+### Getting Started
+- 🚀 **[Quick Start Guide](docs/setup/QUICK_START.md)** - Begin here for setup
+- 🔧 **[Deployment Guide](docs/setup/DEPLOYMENT.md)** - Production deployment
+- 🔑 **[API Key Setup](docs/setup/API_KEY_SETUP.md)** - Configure API keys
+- 🐙 **[GitHub Guide](docs/setup/GITHUB_GUIDE.md)** - Git workflow
+
+### Features & Specifications
+- 🎤 **[STT Performance](docs/features/STT_PERFORMANCE.md)** - Real-time speech recognition (10x faster!)
+- 🤖 **[Auto Mode](docs/features/AUTO_MODE.md)** - Autonomous agent capabilities
+- 📧 **[Gmail Integration](docs/features/GMAIL_INTEGRATION.md)** - Complete email integration
+
+### Security & Architecture
+- 🔒 **[Security Guide](docs/security/SECURITY_GUIDE.md)** - Security best practices
+- 🔄 **[Secret Rotation](docs/security/SECRET_ROTATION.md)** - Production secret management
+- 🏗️ **[Architecture](docs/architecture/ARCHITECTURE.md)** - System architecture
+- 📊 **[System Audit](docs/architecture/SYSTEM_AUDIT.md)** - Comprehensive system analysis
+
+### Testing
+- ✅ **[Quick Test Guide](tests/QUICK_TEST_GUIDE.md)** - Test your setup
+- 📝 **[Test Scripts](tests/test-scripts/)** - Automated test scenarios
+
+### Historical References
+- 📦 **[Archive](archive/old-reports/)** - Old reports and migration docs
+
+---
+
 ## ✨ Features
 
 - 💬 **ChatGPT-like Interface** - Clean, modern UI

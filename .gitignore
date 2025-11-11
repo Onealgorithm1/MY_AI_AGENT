@@ -37,6 +37,12 @@ uploads/
 temp/
 attached_assets/
 
+# Debug/paste artifacts (prevent accidental commits)
+Pasted-*.txt
+*-debug*.txt
+*-error*.log
+*.dump
+
 # Testing
 coverage/
 .nyc_output/
