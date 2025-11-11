@@ -65,14 +65,21 @@ class STTStreamingService {
     const request = {
       config: {
         encoding: 'WEBM_OPUS',
-        sampleRateHertz: 48000,
+        sampleRateHertz: 16000,  // Optimized for speech (was 48000)
         languageCode: 'en-US',
         enableAutomaticPunctuation: true,
-        model: 'latest_long',
+        model: 'latest_short',  // Better for shorter utterances
         useEnhanced: true,
         // Enable voice activity detection
         enableWordTimeOffsets: false,
         maxAlternatives: 1,
+        // Enable automatic end-of-speech detection
+        enableSpeakerDiarization: false,
+        // Metadata for better performance
+        metadata: {
+          interactionType: 'VOICE_COMMAND',
+          microphoneDistance: 'NEARFIELD',
+        },
       },
       interimResults: true, // Critical: Get partial results
     };

@@ -42,8 +42,10 @@ import SearchResults from '../components/SearchResults';
 import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
+import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
+import useEnhancedSTT from '../hooks/useEnhancedSTT';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
@@ -98,16 +100,29 @@ export default function ChatPage() {
     }
   );
   
-  // Streaming Speech-to-text hook
-  const { 
-    isListening, 
-    isTranscribing, 
+  // Speech-to-text hook with enhanced features
+  // Use enhanced STT (WebSocket + VAD) if enabled, otherwise use standard REST
+  const useEnhancedMode = import.meta.env.VITE_ENABLE_ENHANCED_STT !== 'false'; // Default: true
+
+  const standardSTT = useStreamingSTT();
+  const enhancedSTT = useEnhancedSTT({
+    enableWebSocket: useEnhancedMode,
+    enableVAD: useEnhancedMode,
+    autoStopOnSilence: useEnhancedMode,
+    vadSilenceThreshold: 1500,  // 1.5 seconds of silence
+  });
+
+  // Use enhanced if available, fallback to standard
+  const {
+    isListening,
+    isTranscribing,
     partialTranscript,
-    error: sttError, 
-    startListening, 
-    stopListening, 
-    cancelListening 
-  } = useStreamingSTT();
+    error: sttError,
+    startListening,
+    stopListening,
+    cancelListening,
+    isUsingWebSocket = false,
+  } = useEnhancedMode ? enhancedSTT : standardSTT;
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
@@ -1073,17 +1088,14 @@ export default function ChatPage() {
               </button>
 
               <div className="flex-1 relative">
-                {/* Partial transcript display - shows real-time speech recognition */}
-                {isListening && (
-                  <div className="absolute -top-12 left-0 right-0 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm z-10">
-                    <div className="flex items-center gap-2">
-                      <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
-                      <span className="text-sm text-blue-700 dark:text-blue-300 italic">
-                        {partialTranscript || 'Listening... (Google Cloud STT credentials required)'}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                {/* Enhanced voice input indicator with real-time feedback */}
+                <VoiceInputIndicator
+                  isListening={isListening}
+                  isTranscribing={isTranscribing}
+                  partialTranscript={partialTranscript}
+                  isUsingWebSocket={isUsingWebSocket}
+                  error={sttError}
+                />
                 
                 <textarea
                   value={inputMessage}
