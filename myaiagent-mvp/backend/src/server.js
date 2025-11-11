@@ -50,6 +50,7 @@ import telemetryRoutes from './routes/telemetry.js';
 import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
 import selfTestRoutes from './routes/selfTest.js';
 import emailRoutes from './routes/emails.js';
+import samGovRoutes from './routes/samGov.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -195,19 +196,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting for API endpoints
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Limit each IP to 500 requests per 15 min (~33 per minute)
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Skip rate limiting in development for now
-  skip: (req) => process.env.NODE_ENV !== 'production',
-});
-app.use('/api/', limiter);
-
-// Health check
+// Health check (no rate limiting)
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -221,11 +210,45 @@ app.get('/health', (req, res) => {
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// CSRF Token endpoint (public, no authentication required)
-app.get('/api/csrf-token', (req, res) => {
+// CSRF Token endpoint (lenient rate limiting)
+const csrfLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Very high limit for CSRF tokens
+  message: 'Too many CSRF token requests.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV !== 'production',
+});
+
+app.get('/api/csrf-token', csrfLimiter, (req, res) => {
   const token = generateCsrfToken(req, res);
   res.json({ csrfToken: token });
 });
+
+// Strict rate limiting for authentication endpoints only
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Limit login attempts to 50 per 15 min
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV !== 'production',
+});
+
+// Apply stricter rate limiting to auth endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
+
+// General API rate limiting (more lenient)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 2000, // 2000 requests per 15 min (~133 per minute)
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV !== 'production',
+});
+app.use('/api/', apiLimiter);
 
 // Apply CSRF protection to all state-changing API requests
 // NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
@@ -253,6 +276,7 @@ app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/ai-self-awareness', aiSelfAwarenessRoutes);
 app.use('/api/self-test', selfTestRoutes);
 app.use('/api/emails', emailRoutes);
+app.use('/api/sam-gov', samGovRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

@@ -14,6 +14,7 @@ A full-stack AI chat application with **real-time voice** capabilities, built wi
 - 🎤 **[STT Performance](docs/features/STT_PERFORMANCE.md)** - Real-time speech recognition (10x faster!)
 - 🤖 **[Auto Mode](docs/features/AUTO_MODE.md)** - Autonomous agent capabilities
 - 📧 **[Gmail Integration](docs/features/GMAIL_INTEGRATION.md)** - Complete email integration
+- 🏛️ **[SAM.gov Integration](docs/features/SAM_GOV_INTEGRATION.md)** - Federal procurement data and entity information
 
 ### Security & Architecture
 - 🔒 **[Security Guide](docs/security/SECURITY_GUIDE.md)** - Security best practices
