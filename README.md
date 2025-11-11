@@ -20,6 +20,7 @@ A full-stack AI chat application with **real-time voice** capabilities, built wi
 - 🔄 **[Secret Rotation](docs/security/SECRET_ROTATION.md)** - Production secret management
 - 🏗️ **[Architecture](docs/architecture/ARCHITECTURE.md)** - System architecture
 - 📊 **[System Audit](docs/architecture/SYSTEM_AUDIT.md)** - Comprehensive system analysis
+- 🧪 **[Self-Testing System](docs/architecture/SELF_TESTING_SYSTEM.md)** - Automated health checks and AI-powered diagnostics
 
 ### Testing
 - ✅ **[Quick Test Guide](tests/QUICK_TEST_GUIDE.md)** - Test your setup

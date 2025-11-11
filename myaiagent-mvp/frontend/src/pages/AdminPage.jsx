@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SelfImprovementDashboard from '../components/SelfImprovementDashboard';
+import SelfTestingDashboard from '../components/SelfTestingDashboard';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -360,6 +361,17 @@ export default function AdminPage() {
             >
               <Sparkles className="w-4 h-4" />
               AI Self-Improvement
+            </button>
+            <button
+              onClick={() => setActiveTab('self-testing')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'self-testing'
+                  ? 'border-gray-900 dark:border-gray-100 text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <TestTube className="w-4 h-4" />
+              System Tests
             </button>
           </div>
         </div>
@@ -1184,6 +1196,10 @@ export default function AdminPage() {
 
         {activeTab === 'self-improvement' && (
           <SelfImprovementDashboard />
+        )}
+
+        {activeTab === 'self-testing' && (
+          <SelfTestingDashboard />
         )}
       </div>
     </div>

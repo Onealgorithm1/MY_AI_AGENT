@@ -48,6 +48,7 @@ import sttRoutes from './routes/stt.js';
 import selfImprovementRoutes from './routes/selfImprovement.js';
 import telemetryRoutes from './routes/telemetry.js';
 import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
+import selfTestRoutes from './routes/selfTest.js';
 import emailRoutes from './routes/emails.js';
 
 // Import WebSocket
@@ -250,6 +251,7 @@ app.use('/api/stt', sttRoutes);
 app.use('/api/self-improvement', selfImprovementRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/ai-self-awareness', aiSelfAwarenessRoutes);
+app.use('/api/self-test', selfTestRoutes);
 app.use('/api/emails', emailRoutes);
 
 // Serve static files in production
