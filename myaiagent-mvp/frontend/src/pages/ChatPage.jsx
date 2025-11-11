@@ -147,7 +147,8 @@ export default function ChatPage() {
       const response = await conversationsApi.list(20);
       return response.data.conversations;
     },
-    refetchInterval: 5000, // Refetch every 5 seconds to catch auto-generated titles
+    refetchInterval: 30000, // Refetch every 30 seconds (reduced from 5s to prevent rate limiting)
+    staleTime: 10000, // Consider data fresh for 10 seconds
   });
 
   const conversations = conversationsData || [];
