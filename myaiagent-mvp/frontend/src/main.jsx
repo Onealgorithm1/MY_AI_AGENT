@@ -12,13 +12,30 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
       refetchOnMount: true,
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Don't retry on 429 (rate limit) - wait for next scheduled refetch
+        if (error?.response?.status === 429) {
+          return false;
+        }
+        // Don't retry on 4xx errors (client errors)
+        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+          return false;
+        }
+        // Retry once on network errors or 5xx errors
+        return failureCount < 1;
+      },
       staleTime: 2 * 60 * 1000,
       cacheTime: 10 * 60 * 1000,
       networkMode: 'online',
     },
     mutations: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Don't retry on 429 or client errors
+        if (error?.response?.status === 429 || (error?.response?.status >= 400 && error?.response?.status < 500)) {
+          return false;
+        }
+        return failureCount < 1;
+      },
       networkMode: 'online',
     },
   },
