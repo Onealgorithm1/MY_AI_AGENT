@@ -20,10 +20,11 @@ export async function transcribeAudioGoogle(audioBuffer, languageCode = 'en-US')
     const requestBody = {
       config: {
         encoding: 'WEBM_OPUS',
-        sampleRateHertz: 48000,
+        sampleRateHertz: 16000,  // Optimized for speech (was 48000)
         languageCode: languageCode,
         enableAutomaticPunctuation: true,
-        model: 'default',
+        model: 'latest_short',  // Better model for short speech
+        useEnhanced: true,       // Enhanced model for better accuracy
       },
       audio: {
         content: audioBase64

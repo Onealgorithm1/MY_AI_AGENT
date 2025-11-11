@@ -18,21 +18,23 @@ export default function useStreamingSTT() {
       setError(null);
       audioChunksRef.current = [];
       
-      // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      // Get microphone access (optimized settings for speech)
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          sampleRateHertz: 48000,
+          sampleRate: 16000,  // Optimized for speech (was 48000)
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,  // Better volume normalization
         }
       });
       
       streamRef.current = stream;
 
-      // Create media recorder
+      // Create media recorder (optimized bitrate for speech)
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 16000,  // Lower bitrate for speech
       });
       
       mediaRecorderRef.current = mediaRecorder;
