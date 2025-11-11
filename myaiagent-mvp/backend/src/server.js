@@ -50,6 +50,7 @@ import telemetryRoutes from './routes/telemetry.js';
 import aiSelfAwarenessRoutes from './routes/aiSelfAwareness.js';
 import selfTestRoutes from './routes/selfTest.js';
 import emailRoutes from './routes/emails.js';
+import samGovRoutes from './routes/samGov.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -275,6 +276,7 @@ app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/ai-self-awareness', aiSelfAwarenessRoutes);
 app.use('/api/self-test', selfTestRoutes);
 app.use('/api/emails', emailRoutes);
+app.use('/api/sam-gov', samGovRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

@@ -47,6 +47,12 @@ const SECRET_DEFINITIONS = {
     placeholder: 'sk_live_... or sk_test_...',
     docs_url: 'https://dashboard.stripe.com/apikeys',
   },
+  SAM_GOV_API_KEY: {
+    service_name: 'SAM.gov',
+    description: 'SAM.gov API key for federal procurement data and entity information',
+    placeholder: 'SAM-...',
+    docs_url: 'https://open.gsa.gov/api/sam-entity-api/',
+  },
 };
 
 // Get all available secret definitions
@@ -640,6 +646,29 @@ router.post('/:id/test', async (req, res) => {
         testResult = { success: true, message: 'ElevenLabs API key is valid', user: response.data };
       } catch (error) {
         testResult = { success: false, message: 'Invalid API key' };
+      }
+    } else if (secret.service_name === 'SAM.gov') {
+      // Test SAM.gov API key
+      const axios = (await import('axios')).default;
+      try {
+        // Test with a simple entity lookup to verify the key works
+        const response = await axios.get('https://api.sam.gov/entity-information/v3/entities', {
+          params: {
+            api_key: decryptedValue,
+            limit: 1,
+          },
+        });
+        testResult = {
+          success: true,
+          message: 'SAM.gov API key is valid',
+          hint: 'API key can access federal procurement data'
+        };
+      } catch (error) {
+        testResult = {
+          success: false,
+          message: error.response?.data?.message || 'Invalid API key',
+          hint: 'Verify your API key at open.gsa.gov'
+        };
       }
     }
 

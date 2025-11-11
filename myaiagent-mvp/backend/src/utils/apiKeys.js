@@ -62,7 +62,8 @@ export async function getApiKey(provider, keyType = 'project') {
       'elevenlabs': 'ElevenLabs',
       'anthropic': 'Anthropic',
       'google': 'Google',
-      'stripe': 'Stripe'
+      'stripe': 'Stripe',
+      'samgov': 'SAM.gov'
     };
     
     const serviceName = serviceNameMap[provider.toLowerCase()];

@@ -60,6 +60,7 @@ export function validateApiKey(keyName, keyValue) {
     'OPENAI_API_KEY': /^sk-[a-zA-Z0-9-_]{20,}$/,
     'ELEVENLABS_API_KEY': /^[a-f0-9]{32}$/,
     'ANTHROPIC_API_KEY': /^sk-ant-[a-zA-Z0-9-_]{20,}$/,
+    'SAM_GOV_API_KEY': /^SAM-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
   };
 
   if (patterns[keyName]) {
