@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
 import { hashPassword, verifyPassword, generateToken, generateWebSocketToken } from '../utils/auth.js';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
@@ -13,10 +13,10 @@ const router = express.Router();
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
 const profilePicsDir = path.join(uploadDir, 'profile-pictures');
 
-// Ensure directories exist
-if (!fs.existsSync(profilePicsDir)) {
-  fs.mkdirSync(profilePicsDir, { recursive: true });
-}
+// Ensure directories exist (async initialization)
+await fs.mkdir(profilePicsDir, { recursive: true }).catch(() => {
+  // Directory might already exist, ignore error
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -497,8 +497,11 @@ router.post('/profile/upload-picture', authenticate, upload.single('profilePictu
       // Only delete if it's a local file (starts with /uploads/)
       if (oldImagePath.startsWith('/uploads/')) {
         const fullPath = path.join(__dirname, '../../', oldImagePath);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
+        try {
+          await fs.access(fullPath); // Check if file exists
+          await fs.unlink(fullPath); // Delete file
+        } catch (error) {
+          // File doesn't exist or couldn't be deleted, ignore
         }
       }
     }

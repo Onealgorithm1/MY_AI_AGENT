@@ -16,8 +16,23 @@ import { extractMemoryFacts } from '../services/gemini.js';
 
 const router = express.Router();
 
-// In-memory tracker to prevent concurrent memory extraction
-const memoryExtractionInProgress = new Set();
+// In-memory tracker to prevent concurrent memory extraction with timestamps
+const memoryExtractionInProgress = new Map(); // conversationId -> timestamp
+const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+
+// Cleanup stale entries (older than timeout)
+function cleanupStaleExtractions() {
+  const now = Date.now();
+  for (const [conversationId, timestamp] of memoryExtractionInProgress.entries()) {
+    if (now - timestamp > EXTRACTION_TIMEOUT_MS) {
+      console.warn(`⚠️  Cleaning up stale memory extraction for conversation ${conversationId}`);
+      memoryExtractionInProgress.delete(conversationId);
+    }
+  }
+}
+
+// Run cleanup every minute
+setInterval(cleanupStaleExtractions, 60 * 1000);
 
 // Helper function to trigger automatic memory extraction with debouncing
 async function triggerAutoMemoryExtraction(conversationId, userId) {
@@ -27,71 +42,83 @@ async function triggerAutoMemoryExtraction(conversationId, userId) {
       console.log(`⏳ Memory extraction already in progress for conversation ${conversationId}, skipping`);
       return;
     }
-    
+
     // Count total messages in conversation
     const countResult = await query(
       'SELECT COUNT(*) as count FROM messages WHERE conversation_id = $1',
       [conversationId]
     );
-    
+
     const totalMessages = parseInt(countResult.rows[0].count);
-    
+
     // Extract memory every 10 messages (at 10, 20, 30, etc.)
     if (totalMessages % 10 === 0) {
-      // Mark as in progress
-      memoryExtractionInProgress.add(conversationId);
-      
+      // Mark as in progress with timestamp
+      memoryExtractionInProgress.set(conversationId, Date.now());
+
       setImmediate(async () => {
         try {
           console.log(`🧠 Auto-extracting memory from conversation ${conversationId} (${totalMessages} messages)...`);
-          
+
           // Get recent conversation messages for extraction
           const messages = await query(
-            `SELECT role, content FROM messages 
-             WHERE conversation_id = $1 
+            `SELECT role, content FROM messages
+             WHERE conversation_id = $1
              ORDER BY created_at DESC
              LIMIT 20`,
             [conversationId]
           );
 
-          if (messages.rows.length === 0) return;
+          if (messages.rows.length === 0) {
+            return;
+          }
 
           // Extract facts using AI
           const extractedFacts = await extractMemoryFacts(messages.rows.reverse());
 
-          // Save facts (auto-approved since this is automatic extraction)
-          let savedCount = 0;
-          for (const factData of extractedFacts) {
-            const result = await query(
-              `INSERT INTO memory_facts 
-               (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               ON CONFLICT DO NOTHING
-               RETURNING *`,
-              [
+          // Save facts in batch (auto-approved since this is automatic extraction)
+          if (extractedFacts.length > 0) {
+            // Build values array for batch insert
+            const values = [];
+            const placeholders = [];
+            let paramIndex = 1;
+
+            for (let i = 0; i < extractedFacts.length; i++) {
+              const factData = extractedFacts[i];
+              placeholders.push(
+                `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6})`
+              );
+              values.push(
                 userId,
                 factData.fact,
                 factData.category || 'general',
                 conversationId,
                 false,
                 true, // Auto-approve automatic extractions
-                factData.confidence || 0.7,
-              ]
+                factData.confidence || 0.7
+              );
+              paramIndex += 7;
+            }
+
+            const result = await query(
+              `INSERT INTO memory_facts
+               (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
+               VALUES ${placeholders.join(', ')}
+               ON CONFLICT DO NOTHING
+               RETURNING *`,
+              values
             );
 
-            if (result.rows.length > 0) {
-              savedCount++;
+            const savedCount = result.rows.length;
+            if (savedCount > 0) {
+              console.log(`✅ Auto-extracted ${savedCount} new memory facts at message ${totalMessages}`);
             }
-          }
-
-          if (savedCount > 0) {
-            console.log(`✅ Auto-extracted ${savedCount} new memory facts at message ${totalMessages}`);
           }
         } catch (error) {
           // Silently fail - memory extraction is not critical
           console.error('Auto memory extraction failed (non-critical):', error.message);
         } finally {
-          // Always remove from in-progress set
+          // Always remove from in-progress map
           memoryExtractionInProgress.delete(conversationId);
         }
       });
@@ -99,6 +126,8 @@ async function triggerAutoMemoryExtraction(conversationId, userId) {
   } catch (error) {
     // Silently fail - don't disrupt message flow
     console.error('Auto memory extraction trigger error:', error);
+    // Ensure cleanup on error in outer try block
+    memoryExtractionInProgress.delete(conversationId);
   }
 }
 

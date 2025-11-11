@@ -79,7 +79,7 @@ router.get('/google/callback', async (req, res) => {
             `INSERT INTO users (email, password_hash, full_name, google_id, profile_picture, email_verified)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [userInfo.email, '', userInfo.name, userInfo.googleId, userInfo.picture, userInfo.emailVerified]
+            [userInfo.email, null, userInfo.name, userInfo.googleId, userInfo.picture, userInfo.emailVerified]
           );
           user = newUser;
           
