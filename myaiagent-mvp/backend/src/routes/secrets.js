@@ -186,9 +186,12 @@ router.post('/', async (req, res) => {
 
     // Validate key format
     if (keyName && !validateApiKey(keyName, keyValue)) {
-      return res.status(400).json({ 
+      console.log(`❌ Validation failed for keyName: ${keyName}, keyValue: ${keyValue.substring(0, 10)}...`);
+      return res.status(400).json({
         error: 'Invalid API key format',
-        hint: SECRET_DEFINITIONS[keyName]?.placeholder,
+        hint: SECRET_DEFINITIONS[keyName]?.placeholder || 'Check key format',
+        keyNameReceived: keyName,
+        expectedFormat: SECRET_DEFINITIONS[keyName]?.placeholder,
       });
     }
 
