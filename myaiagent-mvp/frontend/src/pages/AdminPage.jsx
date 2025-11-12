@@ -443,6 +443,91 @@ export default function AdminPage() {
 
             {/* Services with Keys */}
             <div className="grid gap-4">
+              {/* Quick Add - Dropdown selector at top */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6 border-2 border-blue-200 dark:border-blue-800">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  ⚡ Quick Add API Key
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Select Service
+                    </label>
+                    <select
+                      value={selectedService || ''}
+                      onChange={(e) => {
+                        setSelectedService(e.target.value);
+                        setIsAddingNew(true);
+                        setSecretValue('');
+                        setNewKeyLabel('');
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    >
+                      <option value="">-- Choose a service --</option>
+                      {definitions.map((def) => (
+                        <option key={def.service_name} value={def.service_name}>
+                          {def.service_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedService && isAddingNew && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Key Label (e.g., Production, Development)
+                        </label>
+                        <input
+                          type="text"
+                          value={newKeyLabel}
+                          onChange={(e) => setNewKeyLabel(e.target.value)}
+                          placeholder="Production Key"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          API Key Value
+                        </label>
+                        <input
+                          type="text"
+                          value={secretValue}
+                          onChange={(e) => setSecretValue(e.target.value)}
+                          placeholder={definitions.find(d => d.service_name === selectedService)?.placeholder || 'Enter your API key'}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            const def = definitions.find(d => d.service_name === selectedService);
+                            if (def) {
+                              handleSaveSecret(def.service_name, def.keyName);
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm flex items-center gap-2"
+                        >
+                          <Save className="w-4 h-4" />
+                          Save Key
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAddingNew(false);
+                            setSelectedService(null);
+                            setSecretValue('');
+                            setNewKeyLabel('');
+                          }}
+                          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
               {/* Custom Category Creation - Always at Top */}
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600">
                 {isAddingCustomCategory ? (
