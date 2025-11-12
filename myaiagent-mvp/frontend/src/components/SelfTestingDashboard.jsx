@@ -30,7 +30,9 @@ export default function SelfTestingDashboard() {
       });
       return response.data.test;
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: false, // CRITICAL: Disabled to prevent 429 errors
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    retry: false, // Don't retry on errors
   });
 
   // Fetch test history
