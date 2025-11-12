@@ -152,7 +152,7 @@ export async function searchOpportunities(options = {}, userId = null) {
       postedTo: postedTo || defaultPostedTo,
     };
 
-    if (keyword) params.q = keyword;
+    if (keyword) params.title = keyword;
 
     const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
       params,
