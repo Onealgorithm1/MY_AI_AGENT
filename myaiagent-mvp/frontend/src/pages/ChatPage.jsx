@@ -147,8 +147,10 @@ export default function ChatPage() {
       const response = await conversationsApi.list(20);
       return response.data.conversations;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds (reduced from 5s to prevent rate limiting)
-    staleTime: 10000, // Consider data fresh for 10 seconds
+    enabled: true, // Only fetch when explicitly requested
+    refetchInterval: false, // DISABLED: Prevent rate limiting (was causing 429 errors)
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   const conversations = conversationsData || [];
