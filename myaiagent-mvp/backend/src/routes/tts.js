@@ -67,9 +67,9 @@ router.get('/voices', async (req, res) => {
 
 router.post('/synthesize', async (req, res) => {
   const backendStartTime = Date.now();
-  
+
   try {
-    let { text, voiceId = 'en-US-Neural2-F' } = req.body;
+    let { text, voiceId = 'en-US-Wavenet-F' } = req.body;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ 
@@ -88,13 +88,13 @@ router.post('/synthesize', async (req, res) => {
     // Validate and sanitize voice ID - reject old ElevenLabs IDs
     const isGoogleVoice = /^[a-zA-Z]{2}-[a-zA-Z]{2}-[a-zA-Z0-9\-]+$/.test(voiceId);
     const isOldElevenLabsVoice = /^[a-zA-Z0-9]{15,30}$/.test(voiceId);
-    
+
     if (isOldElevenLabsVoice) {
-      console.warn(`⚠️  Old ElevenLabs voice ID detected: ${voiceId}, using default Google voice`);
-      voiceId = 'en-US-Neural2-F'; // Default Google voice
+      console.warn(`⚠️  Old ElevenLabs voice ID detected: ${voiceId}, using default Wavenet voice`);
+      voiceId = 'en-US-Wavenet-F'; // Default Wavenet voice
     } else if (!isGoogleVoice) {
-      console.warn(`⚠️  Invalid voice ID: ${voiceId}, using default Google voice`);
-      voiceId = 'en-US-Neural2-F';
+      console.warn(`⚠️  Invalid voice ID: ${voiceId}, using default Wavenet voice`);
+      voiceId = 'en-US-Wavenet-F';
     }
 
     console.log(`🔊 Synthesizing speech: ${text.substring(0, 50)}... (voice: ${voiceId})`);
@@ -154,9 +154,9 @@ router.post('/synthesize', async (req, res) => {
  */
 router.post('/synthesize-stream', async (req, res) => {
   const requestStartTime = Date.now();
-  
+
   try {
-    let { text, voiceId = 'en-US-Neural2-F' } = req.body;
+    let { text, voiceId = 'en-US-Wavenet-F' } = req.body;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ 
@@ -175,7 +175,7 @@ router.post('/synthesize-stream', async (req, res) => {
     // Validate voice ID
     const isGoogleVoice = /^[a-zA-Z]{2}-[a-zA-Z]{2}-[a-zA-Z0-9\-]+$/.test(voiceId);
     if (!isGoogleVoice) {
-      voiceId = 'en-US-Neural2-F';
+      voiceId = 'en-US-Wavenet-F';
     }
 
     console.log(`🎙️  Streaming TTS synthesis: ${text.substring(0, 50)}... (voice: ${voiceId})`);
