@@ -355,6 +355,7 @@ export function estimateTokens(text) {
 
 /**
  * Build messages with memory context and optional UI awareness
+ * Per VUI requirements: Hybrid approach with last 2-3 turns verbatim + summary
  */
 export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gemini-2.5-flash', uiAwarePrompt = null) {
   const memoryContext = memoryFacts && memoryFacts.length > 0
@@ -362,7 +363,7 @@ export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gemi
     : null;
 
   let systemContent = uiAwarePrompt || `You are a helpful AI assistant powered by Google's ${modelName} model.`;
-  
+
   if (memoryContext) {
     systemContent += `\n\n## WHAT YOU REMEMBER ABOUT THIS USER:\n\n- ${memoryContext}\n\n**IMPORTANT**: You have ${memoryFacts.length} fact${memoryFacts.length !== 1 ? 's' : ''} about this user stored in your memory system. Proactively reference relevant facts when appropriate to personalize responses and demonstrate continuity. For example:
 - Mention their preferences when making recommendations
@@ -373,13 +374,56 @@ export function buildMessagesWithMemory(messages, memoryFacts, modelName = 'gemi
 Your memory makes conversations feel more natural and personalized. Use it to create a better user experience!`;
   }
 
+  // VUI Optimization: Hybrid conversational memory approach
+  // Keep last 2-3 turns (4-6 messages) verbatim for immediate context
+  // Summarize older messages to maintain coherence while reducing tokens
+  const RECENT_TURNS_TO_KEEP = 3; // 3 turns = 6 messages (user + assistant)
+  const recentMessageCount = RECENT_TURNS_TO_KEEP * 2;
+
+  let contextMessages = [];
+  let conversationSummary = null;
+
+  if (messages.length > recentMessageCount) {
+    // Split messages into old (to summarize) and recent (keep verbatim)
+    const olderMessages = messages.slice(0, -recentMessageCount);
+    const recentMessages = messages.slice(-recentMessageCount);
+
+    // Create summary of older conversation
+    if (olderMessages.length > 0) {
+      const summaryPoints = [];
+      for (let i = 0; i < olderMessages.length; i += 2) {
+        const userMsg = olderMessages[i];
+        const assistantMsg = olderMessages[i + 1];
+        if (userMsg && assistantMsg) {
+          // Extract key topics from exchange
+          const userTopic = userMsg.content.substring(0, 100);
+          summaryPoints.push(`- User asked about: ${userTopic}${userMsg.content.length > 100 ? '...' : ''}`);
+        }
+      }
+
+      if (summaryPoints.length > 0) {
+        conversationSummary = `\n\n## EARLIER IN THIS CONVERSATION:\n${summaryPoints.join('\n')}`;
+      }
+    }
+
+    contextMessages = recentMessages;
+  } else {
+    // Conversation is short, keep all messages verbatim
+    contextMessages = messages;
+  }
+
+  // Add conversation summary to system prompt if exists
+  if (conversationSummary) {
+    systemContent += conversationSummary;
+  }
+
   const systemMessage = {
     role: 'system',
     content: systemContent,
   };
 
-  // Insert system message at the beginning
-  return [systemMessage, ...messages];
+  // Insert system message at the beginning with recent turns
+  return [systemMessage, ...contextMessages];
 }
 
 export async function generateContent(prompt, options = {}) {
