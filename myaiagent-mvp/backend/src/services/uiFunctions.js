@@ -620,6 +620,64 @@ export const UI_FUNCTIONS = [
       required: [],
     },
   },
+  {
+    name: 'getSAMGovEntityDetails',
+    description: 'Get comprehensive details for a specific SAM.gov entity by UEI, including full registration data, certifications, points of contact, and representations. Use this when the user wants complete information about a specific entity, not just basic search results. Examples: "Get full details for UEI [number]", "Show me everything about this contractor", "What certifications does this company have?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        ueiSAM: {
+          type: 'string',
+          description: 'Unique Entity Identifier (UEI) SAM - 12-character alphanumeric code',
+        },
+      },
+      required: ['ueiSAM'],
+    },
+  },
+  {
+    name: 'searchSAMGovOpportunities',
+    description: 'Search federal contract opportunities and procurement notices. Use this when the user asks about government contracts, RFPs, bids, or federal opportunities. Examples: "Find federal contracts for [keyword]", "Search for government RFPs", "What contract opportunities are available?", "Find bids posted in the last week".',
+    parameters: {
+      type: 'object',
+      properties: {
+        keyword: {
+          type: 'string',
+          description: 'Keyword to search for in opportunities',
+        },
+        postedFrom: {
+          type: 'string',
+          description: 'Start date for opportunities (YYYY-MM-DD format)',
+        },
+        postedTo: {
+          type: 'string',
+          description: 'End date for opportunities (YYYY-MM-DD format)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'getSAMGovExclusions',
+    description: 'Search for excluded/debarred entities in SAM.gov. Use this when the user wants to check if a company or individual is barred from federal contracting. Examples: "Is [company] debarred?", "Check exclusions for UEI [number]", "Find excluded contractors", "Is this entity on the exclusion list?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Entity name to search for exclusions',
+        },
+        ueiSAM: {
+          type: 'string',
+          description: 'UEI SAM to check for exclusions',
+        },
+        cageCode: {
+          type: 'string',
+          description: 'CAGE code to check for exclusions',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 /**
@@ -715,6 +773,154 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `SAM.gov search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'getSAMGovEntityDetails') {
+    const { getEntityByUEI } = await import('./samGov.js');
+
+    try {
+      const result = await getEntityByUEI(args.ueiSAM, userId);
+
+      if (result.success && result.entity) {
+        const entity = result.entity;
+        const coreData = entity.coreData || {};
+        const entityRegistration = entity.entityRegistration || {};
+        const pointsOfContact = entity.pointsOfContact || [];
+
+        let message = `Full details for ${coreData.legalBusinessName || 'Entity'}\n\n`;
+        message += `📋 Basic Information:\n`;
+        message += `   Legal Business Name: ${coreData.legalBusinessName || 'N/A'}\n`;
+        message += `   DBA Name: ${coreData.dbaName || 'N/A'}\n`;
+        message += `   UEI: ${coreData.ueiSAM || 'N/A'}\n`;
+        message += `   CAGE Code: ${coreData.cageCode || 'N/A'}\n`;
+        message += `   Entity Type: ${coreData.entityStructureCode || 'N/A'}\n\n`;
+
+        message += `📅 Registration Status:\n`;
+        message += `   Status: ${entityRegistration.registrationStatus || 'N/A'}\n`;
+        message += `   Registration Date: ${entityRegistration.registrationDate || 'N/A'}\n`;
+        message += `   Expiration Date: ${entityRegistration.expirationDate || 'N/A'}\n\n`;
+
+        if (coreData.physicalAddress) {
+          message += `📍 Physical Address:\n`;
+          message += `   ${coreData.physicalAddress.addressLine1 || ''}\n`;
+          if (coreData.physicalAddress.addressLine2) message += `   ${coreData.physicalAddress.addressLine2}\n`;
+          message += `   ${coreData.physicalAddress.city || ''}, ${coreData.physicalAddress.stateOrProvinceCode || ''} ${coreData.physicalAddress.zipCode || ''}\n`;
+          message += `   ${coreData.physicalAddress.countryCode || ''}\n\n`;
+        }
+
+        if (pointsOfContact && pointsOfContact.length > 0) {
+          message += `👤 Points of Contact:\n`;
+          pointsOfContact.slice(0, 3).forEach((poc, i) => {
+            message += `   ${i + 1}. ${poc.firstName || ''} ${poc.lastName || ''} (${poc.title || 'N/A'})\n`;
+            if (poc.email) message += `      Email: ${poc.email}\n`;
+            if (poc.phone) message += `      Phone: ${poc.phone}\n`;
+          });
+        }
+
+        return {
+          success: true,
+          message: message,
+          data: result,
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message || 'Entity not found',
+          data: null,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get entity details: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'searchSAMGovOpportunities') {
+    const { searchOpportunities } = await import('./samGov.js');
+
+    try {
+      const searchParams = {
+        keyword: args.keyword,
+        postedFrom: args.postedFrom,
+        postedTo: args.postedTo,
+      };
+
+      const result = await searchOpportunities(searchParams, userId);
+
+      let message = `Found ${result.totalRecords} federal contract ${result.totalRecords === 1 ? 'opportunity' : 'opportunities'}`;
+
+      if (result.opportunities && result.opportunities.length > 0) {
+        message += '\n\n🔔 Contract Opportunities:\n\n';
+        message += result.opportunities.slice(0, 5).map((opp, i) => {
+          return `${i + 1}. ${opp.title || 'Untitled'}\n` +
+                 `   Type: ${opp.type || 'N/A'}\n` +
+                 `   Posted: ${opp.postedDate || 'N/A'}\n` +
+                 `   Response Deadline: ${opp.responseDeadLine || 'N/A'}\n` +
+                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}`;
+        }).join('\n\n');
+
+        if (result.opportunities.length > 5) {
+          message += `\n\n...and ${result.opportunities.length - 5} more opportunities`;
+        }
+      }
+
+      return {
+        success: true,
+        message: message,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `SAM.gov opportunities search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'getSAMGovExclusions') {
+    const { getExclusions } = await import('./samGov.js');
+
+    try {
+      const searchParams = {
+        name: args.name,
+        ueiSAM: args.ueiSAM,
+        cageCode: args.cageCode,
+      };
+
+      const result = await getExclusions(searchParams, userId);
+
+      let message = `Found ${result.exclusions ? result.exclusions.length : 0} exclusion ${result.exclusions && result.exclusions.length === 1 ? 'record' : 'records'}`;
+
+      if (result.exclusions && result.exclusions.length > 0) {
+        message += '\n\n⚠️ Excluded/Debarred Entities:\n\n';
+        message += result.exclusions.map((exc, i) => {
+          return `${i + 1}. ${exc.name || 'N/A'}\n` +
+                 `   UEI: ${exc.ueiSAM || 'N/A'}\n` +
+                 `   CAGE Code: ${exc.cageCode || 'N/A'}\n` +
+                 `   Exclusion Type: ${exc.exclusionType || 'N/A'}\n` +
+                 `   Active Date: ${exc.activeDate || 'N/A'}\n` +
+                 `   Termination Date: ${exc.terminationDate || 'N/A'}`;
+        }).join('\n\n');
+      } else {
+        message += '\n\n✅ No exclusions found - entity is eligible for federal contracting';
+      }
+
+      return {
+        success: true,
+        message: message,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `SAM.gov exclusions search failed: ${error.message}`,
         data: null,
       };
     }
