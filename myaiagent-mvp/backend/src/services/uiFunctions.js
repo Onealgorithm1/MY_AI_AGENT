@@ -636,13 +636,13 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchSAMGovOpportunities',
-    description: 'Search federal contract opportunities and procurement notices. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. You can optionally ask about date range preferences, but it will default to recent opportunities. Focus on getting a good keyword from the user.',
+    description: 'Search federal contract opportunities and procurement notices. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. You can optionally ask about date range preferences, but it will default to recent opportunities. Focus on getting a good keyword from the user. IMPORTANT: Extract the PRIMARY keyword from user queries - use single words or simple terms, not full phrases. Examples: "salesforce consulting" → use "salesforce", "cybersecurity services" → use "cybersecurity", "cloud computing infrastructure" → use "cloud".',
     parameters: {
       type: 'object',
       properties: {
         keyword: {
           type: 'string',
-          description: 'Keyword to search for in opportunities (industry, service type, technology, etc.). This is the most important parameter.',
+          description: 'Primary keyword to search in opportunity titles. Use a SINGLE WORD or simple term, not a full phrase. Extract the main topic from user query. Examples: "salesforce" (not "salesforce consulting"), "cybersecurity" (not "cybersecurity services"), "cloud" (not "cloud computing"). The API searches opportunity titles for this keyword.',
         },
         postedFrom: {
           type: 'string',
