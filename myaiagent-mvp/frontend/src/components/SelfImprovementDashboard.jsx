@@ -21,13 +21,15 @@ export default function SelfImprovementDashboard() {
   const [activeView, setActiveView] = useState('summary');
   const queryClient = useQueryClient();
 
-  const { data: summaryData, isLoading: summaryLoading } = useQuery({
+  const { data: summaryData, isLoading: summaryLoading, refetch: refetchSummary } = useQuery({
     queryKey: ['selfImprovementSummary'],
     queryFn: async () => {
       const response = await api.get('/self-improvement/summary');
       return response.data;
     },
-    refetchInterval: 30000,
+    refetchInterval: false, // CRITICAL: Disabled to prevent 429 errors
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    retry: false, // Don't retry on errors
   });
 
   const { data: researchData } = useQuery({

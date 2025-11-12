@@ -50,14 +50,16 @@ export default function AdminPage() {
   const [editKeyValue, setEditKeyValue] = useState('');
   const [editKeyLast4, setEditKeyLast4] = useState('');
 
-  // Get stats
-  const { data: statsData } = useQuery({
+  // Get stats - DISABLED POLLING to prevent rate limiting
+  const { data: statsData, refetch: refetchStats } = useQuery({
     queryKey: ['adminStats'],
     queryFn: async () => {
       const response = await admin.stats();
       return response.data;
     },
-    refetchInterval: 30000,
+    refetchInterval: false, // CRITICAL: Disabled to prevent 429 errors
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    retry: false, // Don't retry on errors
   });
 
   // Get secrets
