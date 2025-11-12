@@ -132,10 +132,11 @@ export default function VoiceInputIndicator({
             </div>
           )}
 
-          {/* Error Message */}
+          {/* Error Message - Gentle and clarifying per VUI requirements */}
           {error && (
-            <div className="mt-1 text-xs text-red-600 dark:text-red-400">
-              {error}
+            <div className="mt-1 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-md border border-amber-200 dark:border-amber-800">
+              <p className="font-medium">I want to make sure I understood you correctly.</p>
+              <p className="text-xs mt-0.5">Could you please rephrase that?</p>
             </div>
           )}
         </div>
