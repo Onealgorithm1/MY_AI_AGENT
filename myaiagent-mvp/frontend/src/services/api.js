@@ -263,13 +263,52 @@ export const secrets = {
 // TTS endpoints
 export const tts = {
   getVoices: () => api.get('/tts/voices'),
-  
+
   synthesize: async (text, voiceId) => {
-    const response = await api.post('/tts/synthesize', 
-      { text, voiceId },
-      { responseType: 'blob' }
-    );
-    return response.data;
+    // Use streaming endpoint for faster TTS by splitting into sentences
+    try {
+      const response = await api.post('/tts/synthesize-stream',
+        { text, voiceId },
+        { responseType: 'text' }
+      );
+
+      // Parse newline-delimited JSON response
+      const lines = response.data.trim().split('\n');
+      const audioChunks = [];
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        const chunk = JSON.parse(line);
+        if (chunk.error) {
+          throw new Error(chunk.error);
+        }
+
+        if (chunk.audioData) {
+          // Convert base64 to binary
+          const binaryString = atob(chunk.audioData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          audioChunks.push(bytes);
+        }
+      }
+
+      // Combine all chunks into a single blob
+      const combinedBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
+      return combinedBlob;
+
+    } catch (error) {
+      console.warn('Streaming TTS failed, falling back to regular synthesis:', error.message);
+
+      // Fallback to regular synthesis if streaming fails
+      const response = await api.post('/tts/synthesize',
+        { text, voiceId },
+        { responseType: 'blob' }
+      );
+      return response.data;
+    }
   },
 };
 
