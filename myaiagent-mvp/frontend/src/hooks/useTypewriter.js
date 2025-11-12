@@ -20,6 +20,7 @@ const useTypewriter = (text, options = {}) => {
       snappy: wpmToMs(250),      // ~48ms per char
       thoughtful: wpmToMs(150),  // ~80ms per char
       professional: wpmToMs(180), // ~67ms per char
+      natural: 45,                 // VUI optimized: 45ms per char (mid-range 30-60ms)
     };
     return speeds[speedSetting] || speeds.snappy;
   };
