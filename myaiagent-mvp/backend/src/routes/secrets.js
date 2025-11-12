@@ -655,10 +655,10 @@ router.post('/:id/test', async (req, res) => {
       const axios = (await import('axios')).default;
       try {
         // Test with a simple entity lookup to verify the key works
+        // Note: SAM.gov Entity API v3 does not accept limit/offset parameters
         const response = await axios.get('https://api.sam.gov/entity-information/v3/entities', {
           params: {
             api_key: decryptedValue,
-            limit: 1,
           },
         });
         testResult = {
