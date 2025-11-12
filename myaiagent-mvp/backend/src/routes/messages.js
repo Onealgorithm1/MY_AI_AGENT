@@ -294,6 +294,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Core functions that are ALWAYS available (self-awareness, web search, UI control, SAM.gov)
     const coreFunctions = [
       'websearch', 'searchsamgov', 'getsamgoventitydetails', 'searchsamgovopportunities', 'getsamgovexclusions',
+      'createopportunity', 'listopportunities', 'getopportunitydetails', 'updateopportunitystatus',
+      'assignopportunity', 'updateopportunityscore', 'addopportunitynotes', 'getopportunitystats',
       'navigate', 'changemodel', 'createnewchat', 'renameconversation', 'deleteconversation',
       'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies'
     ];
