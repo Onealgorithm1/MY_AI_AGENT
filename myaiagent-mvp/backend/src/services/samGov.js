@@ -131,12 +131,20 @@ export async function searchOpportunities(options = {}, userId = null) {
 
     // SAM.gov requires postedFrom and postedTo - use defaults if not provided
     // Default: last 30 days
+    // Format: MM/dd/yyyy (SAM.gov requirement)
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
-    const defaultPostedTo = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    const defaultPostedFrom = thirtyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD
+    const formatDate = (date) => {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`; // MM/dd/yyyy
+    };
+
+    const defaultPostedTo = formatDate(today);
+    const defaultPostedFrom = formatDate(thirtyDaysAgo);
 
     const params = {
       api_key: apiKey,

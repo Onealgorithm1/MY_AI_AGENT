@@ -646,11 +646,11 @@ export const UI_FUNCTIONS = [
         },
         postedFrom: {
           type: 'string',
-          description: 'Start date for opportunities (YYYY-MM-DD format). Optional - defaults to 30 days ago.',
+          description: 'Start date for opportunities (MM/dd/yyyy format, e.g., 10/13/2025). Optional - defaults to 30 days ago.',
         },
         postedTo: {
           type: 'string',
-          description: 'End date for opportunities (YYYY-MM-DD format). Optional - defaults to today.',
+          description: 'End date for opportunities (MM/dd/yyyy format, e.g., 11/12/2025). Optional - defaults to today.',
         },
       },
       required: [],
