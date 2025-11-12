@@ -674,9 +674,41 @@ export async function executeUIFunction(functionName, args, context) {
 
       const result = await searchEntities(searchParams, userId);
 
+      // Format entity details for presentation
+      let message = `Found ${result.totalRecords} SAM.gov ${result.totalRecords === 1 ? 'entity' : 'entities'}`;
+
+      if (result.entities && result.entities.length > 0) {
+        const entityDetails = result.entities.map(entity => {
+          const coreData = entity.coreData || {};
+          const entityRegistration = entity.entityRegistration || {};
+
+          return {
+            legalBusinessName: coreData.legalBusinessName || 'N/A',
+            dbaName: coreData.dbaName || 'N/A',
+            ueiSAM: coreData.ueiSAM || 'N/A',
+            cageCode: coreData.cageCode || 'N/A',
+            physicalAddress: coreData.physicalAddress || {},
+            registrationStatus: entityRegistration.registrationStatus || 'N/A',
+            registrationDate: entityRegistration.registrationDate || 'N/A',
+            expirationDate: entityRegistration.expirationDate || 'N/A',
+          };
+        });
+
+        message += '\n\nEntity Details:\n' + entityDetails.map((e, i) =>
+          `${i + 1}. ${e.legalBusinessName}\n` +
+          `   UEI: ${e.ueiSAM}\n` +
+          `   CAGE Code: ${e.cageCode}\n` +
+          `   DBA: ${e.dbaName}\n` +
+          `   Status: ${e.registrationStatus}\n` +
+          `   Registration Date: ${e.registrationDate}\n` +
+          `   Expiration Date: ${e.expirationDate}\n` +
+          (e.physicalAddress.addressLine1 ? `   Address: ${e.physicalAddress.addressLine1}, ${e.physicalAddress.city || ''}, ${e.physicalAddress.stateOrProvinceCode || ''} ${e.physicalAddress.zipCode || ''}` : '')
+        ).join('\n\n');
+      }
+
       return {
         success: true,
-        message: `Found ${result.totalRecords} SAM.gov entities`,
+        message: message,
         data: result,
       };
     } catch (error) {
