@@ -593,6 +593,33 @@ export const UI_FUNCTIONS = [
       required: ['spreadsheetId', 'range', 'values'],
     },
   },
+  // SAM.gov Functions
+  {
+    name: 'searchSAMGov',
+    description: 'Search the SAM.gov database for federal contractors, government entities, and procurement data. Use this when the user asks about federal contractors, UEI numbers, CAGE codes, SAM.gov registrations, or government procurement entities. Examples: "Search SAM.gov for [company name]", "Look up UEI [number]", "Find contractor with CAGE code [code]", "Check if [company] is registered in SAM.gov".',
+    parameters: {
+      type: 'object',
+      properties: {
+        ueiSAM: {
+          type: 'string',
+          description: 'Unique Entity Identifier (UEI) SAM - 12-character alphanumeric code',
+        },
+        legalBusinessName: {
+          type: 'string',
+          description: 'Legal business name of the entity to search for',
+        },
+        dbaName: {
+          type: 'string',
+          description: 'Doing Business As (DBA) name',
+        },
+        cageCode: {
+          type: 'string',
+          description: 'Commercial and Government Entity (CAGE) code',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 /**
@@ -614,12 +641,12 @@ export async function executeUIFunction(functionName, args, context) {
   
   if (functionName === 'webSearch') {
     const { performWebSearch, logSearchUsage } = await import('./webSearch.js');
-    
+
     try {
       const searchResults = await performWebSearch(args.query, args.numResults || 5);
-      
+
       await logSearchUsage(userId, args.query, searchResults.results.length, conversationId);
-      
+
       return {
         success: true,
         message: `Found ${searchResults.results.length} results for "${args.query}"`,
@@ -633,7 +660,34 @@ export async function executeUIFunction(functionName, args, context) {
       };
     }
   }
-  
+
+  if (functionName === 'searchSAMGov') {
+    const { searchEntities } = await import('./samGov.js');
+
+    try {
+      const searchParams = {
+        ueiSAM: args.ueiSAM,
+        legalBusinessName: args.legalBusinessName,
+        dbaName: args.dbaName,
+        cageCode: args.cageCode,
+      };
+
+      const result = await searchEntities(searchParams, userId);
+
+      return {
+        success: true,
+        message: `Found ${result.totalRecords} SAM.gov entities`,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `SAM.gov search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+
   // Performance Monitoring Functions - AI Self-Awareness
   if (functionName === 'getPerformanceMetrics') {
     const monitoringService = (await import('./monitoringService.js')).default;

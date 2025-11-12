@@ -291,9 +291,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Trigger functions if current OR recent conversation mentions Google services
     const mentionsGoogle = mentionsGoogleNow || mentionsGoogleRecent;
     
-    // Core functions that are ALWAYS available (self-awareness, web search, UI control)
+    // Core functions that are ALWAYS available (self-awareness, web search, UI control, SAM.gov)
     const coreFunctions = [
-      'websearch', 'navigate', 'changemodel', 'createnewchat', 'renameconversation', 'deleteconversation',
+      'websearch', 'searchsamgov', 'navigate', 'changemodel', 'createnewchat', 'renameconversation', 'deleteconversation',
       'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies'
     ];
     
