@@ -82,9 +82,13 @@ export default function ChatPage() {
   
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('en-US-Neural2-F');
+  const [selectedVoice, setSelectedVoice] = useState('en-US-Wavenet-F');
   const [ttsAutoPlay, setTtsAutoPlay] = useState(false);
-  
+
+  // VUI status states (Listening → Transcribing → Thinking → Speaking)
+  const [isThinking, setIsThinking] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   // Typewriter state
   const [typingSpeed, setTypingSpeed] = useState('snappy');
   const [streamingContent, setStreamingContent] = useState('');
@@ -307,6 +311,7 @@ export default function ChatPage() {
     addMessage(userMessage);
     setInputMessage('');
     setIsSending(true);
+    setIsThinking(true); // VUI: Show "Thinking" state
     setStreamingMessage('●●●');
     setStreamingContent('');
 
@@ -343,6 +348,7 @@ export default function ChatPage() {
         toast.error(errorData.error || 'Failed to send message');
         setStreamingMessage('');
         setIsSending(false);
+        setIsThinking(false); // VUI: Clear thinking state on error
         return;
       }
 
@@ -371,6 +377,10 @@ export default function ChatPage() {
               }
               
               if (data.content) {
+                // VUI: First content chunk received, stop "Thinking" state
+                if (fullResponse === '') {
+                  setIsThinking(false);
+                }
                 fullResponse += data.content;
                 setStreamingContent(fullResponse);
               }
@@ -402,6 +412,7 @@ export default function ChatPage() {
       toast.error('Failed to send message');
       setStreamingMessage('');
       setStreamingContent('');
+      setIsThinking(false); // VUI: Clear thinking state on error
     } finally {
       setIsSending(false);
     }
@@ -1092,9 +1103,12 @@ export default function ChatPage() {
 
               <div className="flex-1 relative">
                 {/* Enhanced voice input indicator with real-time feedback */}
+                {/* VUI States: Listening → Transcribing → Thinking → Speaking */}
                 <VoiceInputIndicator
                   isListening={isListening}
                   isTranscribing={isTranscribing}
+                  isThinking={isThinking}
+                  isSpeaking={isSpeaking}
                   partialTranscript={partialTranscript}
                   isUsingWebSocket={isUsingWebSocket}
                   error={sttError}
