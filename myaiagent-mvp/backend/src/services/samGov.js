@@ -42,8 +42,6 @@ export async function searchEntities(options = {}, userId = null) {
 
     const params = {
       api_key: apiKey,
-      limit: Math.min(limit, 100),
-      offset,
     };
 
     // Add search criteria
