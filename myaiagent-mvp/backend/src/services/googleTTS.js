@@ -3,6 +3,47 @@ import monitoringService from './monitoringService.js';
 
 const GOOGLE_TTS_API_BASE = 'https://texttospeech.googleapis.com/v1';
 
+/**
+ * Transform plain text into SSML with natural pausing rules
+ * Per VUI optimization requirements:
+ * - Comma (,): 250ms break
+ * - Sentence End (.?!): 500ms break
+ * - Paragraph Break (\n\n): 800ms break
+ * - Colon/Semicolon (:;): 300ms break
+ */
+export function transformToSSML(text) {
+  // Escape XML special characters
+  let ssmlText = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  // Add breaks for paragraph breaks (double newlines) - must come first
+  ssmlText = ssmlText.replace(/\n\n+/g, '<break time="800ms"/>');
+
+  // Add breaks for sentence endings followed by space or newline
+  ssmlText = ssmlText.replace(/([.!?])(\s+)/g, '$1<break time="500ms"/>$2');
+
+  // Add breaks for colons and semicolons
+  ssmlText = ssmlText.replace(/([;:])(\s+)/g, '$1<break time="300ms"/>$2');
+
+  // Add breaks for commas
+  ssmlText = ssmlText.replace(/,(\s+)/g, ',<break time="250ms"/>$1');
+
+  // Wrap in SSML speak tag
+  return `<speak>${ssmlText}</speak>`;
+}
+
+/**
+ * Add "thinking" pause for complex processing
+ * Uses prosody rate="slow" with long break for natural-sounding delay
+ */
+export function addThinkingPause(introPhrase = "Let me think about that") {
+  return `<speak>${introPhrase}...<prosody rate="slow"><break time="1000ms"/></prosody></speak>`;
+}
+
 // Get available Google voices using REST API
 export async function getVoices() {
   try {
@@ -43,24 +84,31 @@ export async function getVoices() {
 // Generate speech with Google TTS using REST API
 export async function generateSpeechGoogle(
   text,
-  voiceId = 'en-US-Neural2-F',
-  languageCode = 'en-US'
+  voiceId = 'en-US-Wavenet-F',
+  languageCode = 'en-US',
+  useSSML = true
 ) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    
+
     if (!apiKey) {
       throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
     }
-    
+
+    // Transform text to SSML with natural pausing if enabled
+    const ssmlText = useSSML ? transformToSSML(text) : text;
+    const inputType = useSSML ? 'ssml' : 'text';
+
     console.log('🔊 Google TTS Request:', {
       textLength: text.length,
       voiceId,
-      languageCode
+      languageCode,
+      useSSML,
+      ssmlLength: useSSML ? ssmlText.length : 0
     });
 
     const requestBody = {
-      input: { text },
+      input: useSSML ? { ssml: ssmlText } : { text },
       voice: {
         languageCode,
         name: voiceId
@@ -143,4 +191,6 @@ export default {
   getVoices,
   generateSpeechGoogle,
   isGoogleTTSAvailable,
+  transformToSSML,
+  addThinkingPause,
 };
