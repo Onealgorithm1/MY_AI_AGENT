@@ -129,13 +129,22 @@ export async function searchOpportunities(options = {}, userId = null) {
       offset = 0,
     } = options;
 
+    // SAM.gov requires postedFrom and postedTo - use defaults if not provided
+    // Default: last 30 days
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const defaultPostedTo = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const defaultPostedFrom = thirtyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD
+
     const params = {
       api_key: apiKey,
+      postedFrom: postedFrom || defaultPostedFrom,
+      postedTo: postedTo || defaultPostedTo,
     };
 
     if (keyword) params.q = keyword;
-    if (postedFrom) params.postedFrom = postedFrom;
-    if (postedTo) params.postedTo = postedTo;
 
     const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
       params,

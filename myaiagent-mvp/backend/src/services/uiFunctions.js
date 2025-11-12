@@ -636,21 +636,21 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchSAMGovOpportunities',
-    description: 'Search federal contract opportunities and procurement notices. IMPORTANT: Before calling this function, ask the user clarifying questions to narrow down the search: (1) What specific keywords, industry, or services? (2) What date range? (recent, last week, last month, specific dates?) (3) Any specific NAICS codes? Only call this function once you have at least a keyword or date range from the user. Do not search without any criteria.',
+    description: 'Search federal contract opportunities and procurement notices. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. You can optionally ask about date range preferences, but it will default to recent opportunities. Focus on getting a good keyword from the user.',
     parameters: {
       type: 'object',
       properties: {
         keyword: {
           type: 'string',
-          description: 'Keyword to search for in opportunities (industry, service type, technology, etc.)',
+          description: 'Keyword to search for in opportunities (industry, service type, technology, etc.). This is the most important parameter.',
         },
         postedFrom: {
           type: 'string',
-          description: 'Start date for opportunities (YYYY-MM-DD format). Ask user for date range if not provided.',
+          description: 'Start date for opportunities (YYYY-MM-DD format). Optional - defaults to 30 days ago.',
         },
         postedTo: {
           type: 'string',
-          description: 'End date for opportunities (YYYY-MM-DD format). Ask user for date range if not provided.',
+          description: 'End date for opportunities (YYYY-MM-DD format). Optional - defaults to today.',
         },
       },
       required: [],
