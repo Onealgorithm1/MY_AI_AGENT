@@ -131,8 +131,6 @@ export async function searchOpportunities(options = {}, userId = null) {
 
     const params = {
       api_key: apiKey,
-      limit: Math.min(limit, 100),
-      offset,
     };
 
     if (keyword) params.q = keyword;
@@ -175,7 +173,6 @@ export async function getExclusions(options = {}, userId = null) {
 
     const params = {
       api_key: apiKey,
-      limit: Math.min(limit, 100),
     };
 
     if (name) params.name = name;
