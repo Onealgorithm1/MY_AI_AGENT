@@ -7,6 +7,7 @@ A full-stack AI chat application with **real-time voice** capabilities, built wi
 ### Getting Started
 - 🚀 **[Quick Start Guide](docs/setup/QUICK_START.md)** - Begin here for setup
 - 🔧 **[Deployment Guide](docs/setup/DEPLOYMENT.md)** - Production deployment
+- ☁️ **[AWS Production Deployment](docs/setup/AWS_PRODUCTION_DEPLOYMENT.md)** - AWS infrastructure and deployment (EC2, API Gateway)
 - 🔑 **[API Key Setup](docs/setup/API_KEY_SETUP.md)** - Configure API keys
 - 🐙 **[GitHub Guide](docs/setup/GITHUB_GUIDE.md)** - Git workflow
 
