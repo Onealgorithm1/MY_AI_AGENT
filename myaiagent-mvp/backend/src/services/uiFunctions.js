@@ -596,7 +596,7 @@ export const UI_FUNCTIONS = [
   // SAM.gov Functions
   {
     name: 'searchSAMGov',
-    description: 'Search the SAM.gov database for federal contractors, government entities, and procurement data. Use this when the user asks about federal contractors, UEI numbers, CAGE codes, SAM.gov registrations, or government procurement entities. Examples: "Search SAM.gov for [company name]", "Look up UEI [number]", "Find contractor with CAGE code [code]", "Check if [company] is registered in SAM.gov".',
+    description: 'Search the SAM.gov database for federal contractors and government entities. Use this when the user provides a specific company name, UEI number, CAGE code, or DBA name. If the user asks a vague question like "find contractors", ask them to specify: (1) Company name or identifier, or (2) What type of contractor/industry they are looking for. Only search when you have at least one specific search criterion.',
     parameters: {
       type: 'object',
       properties: {
@@ -606,7 +606,7 @@ export const UI_FUNCTIONS = [
         },
         legalBusinessName: {
           type: 'string',
-          description: 'Legal business name of the entity to search for',
+          description: 'Legal business name of the entity to search for (must be specific)',
         },
         dbaName: {
           type: 'string',
@@ -614,7 +614,7 @@ export const UI_FUNCTIONS = [
         },
         cageCode: {
           type: 'string',
-          description: 'Commercial and Government Entity (CAGE) code',
+          description: 'Commercial and Government Entity (CAGE) code (5-character alphanumeric)',
         },
       },
       required: [],
@@ -636,21 +636,21 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchSAMGovOpportunities',
-    description: 'Search federal contract opportunities and procurement notices. Use this when the user asks about government contracts, RFPs, bids, or federal opportunities. Examples: "Find federal contracts for [keyword]", "Search for government RFPs", "What contract opportunities are available?", "Find bids posted in the last week".',
+    description: 'Search federal contract opportunities and procurement notices. IMPORTANT: Before calling this function, ask the user clarifying questions to narrow down the search: (1) What specific keywords, industry, or services? (2) What date range? (recent, last week, last month, specific dates?) (3) Any specific NAICS codes? Only call this function once you have at least a keyword or date range from the user. Do not search without any criteria.',
     parameters: {
       type: 'object',
       properties: {
         keyword: {
           type: 'string',
-          description: 'Keyword to search for in opportunities',
+          description: 'Keyword to search for in opportunities (industry, service type, technology, etc.)',
         },
         postedFrom: {
           type: 'string',
-          description: 'Start date for opportunities (YYYY-MM-DD format)',
+          description: 'Start date for opportunities (YYYY-MM-DD format). Ask user for date range if not provided.',
         },
         postedTo: {
           type: 'string',
-          description: 'End date for opportunities (YYYY-MM-DD format)',
+          description: 'End date for opportunities (YYYY-MM-DD format). Ask user for date range if not provided.',
         },
       },
       required: [],
