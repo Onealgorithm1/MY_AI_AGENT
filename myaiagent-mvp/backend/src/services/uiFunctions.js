@@ -678,6 +678,224 @@ export const UI_FUNCTIONS = [
       required: [],
     },
   },
+  // Internal Opportunity Management Functions
+  {
+    name: 'createOpportunity',
+    description: 'Save a SAM.gov opportunity to the internal tracking system. Use this when the user wants to track, save, qualify, or work on a federal contract opportunity. This starts the internal workflow (New → Qualified → In Progress → Submitted → Won/Lost). The user will then be able to assign it, score it, and track progress.',
+    parameters: {
+      type: 'object',
+      properties: {
+        noticeId: {
+          type: 'string',
+          description: 'Unique SAM.gov notice ID from the opportunity',
+        },
+        solicitationNumber: {
+          type: 'string',
+          description: 'Solicitation number',
+        },
+        title: {
+          type: 'string',
+          description: 'Opportunity title',
+        },
+        type: {
+          type: 'string',
+          description: 'Opportunity type (e.g., "Presolicitation", "Combined Synopsis/Solicitation")',
+        },
+        postedDate: {
+          type: 'string',
+          description: 'Posted date (ISO 8601 format)',
+        },
+        responseDeadline: {
+          type: 'string',
+          description: 'Response deadline (ISO 8601 format)',
+        },
+        description: {
+          type: 'string',
+          description: 'Opportunity description',
+        },
+        naicsCode: {
+          type: 'string',
+          description: 'NAICS code',
+        },
+        setAsideType: {
+          type: 'string',
+          description: 'Set-aside type (e.g., "Small Business", "8(a)", "WOSB")',
+        },
+        contractingOffice: {
+          type: 'string',
+          description: 'Contracting office name',
+        },
+        placeOfPerformance: {
+          type: 'string',
+          description: 'Place of performance location',
+        },
+        initialStatus: {
+          type: 'string',
+          enum: ['New', 'Qualified'],
+          description: 'Initial status for the opportunity (default: New)',
+        },
+        initialScore: {
+          type: 'number',
+          description: 'Initial qualification score 0-100 (optional)',
+        },
+        initialNotes: {
+          type: 'string',
+          description: 'Initial notes about the opportunity (optional)',
+        },
+      },
+      required: ['noticeId', 'title'],
+    },
+  },
+  {
+    name: 'listOpportunities',
+    description: 'List opportunities from the internal tracking system with filtering options. Use this when the user wants to see opportunities, check pipeline status, view assigned opportunities, or get opportunity counts. Examples: "Show me our opportunities", "What opportunities are assigned to me?", "List qualified opportunities", "Show high-scoring opportunities".',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['New', 'Qualified', 'In Progress', 'Submitted', 'Won', 'Lost', 'Archived'],
+          description: 'Filter by internal status',
+        },
+        assignedTo: {
+          type: 'string',
+          description: 'Filter by assigned user: "me" for current user, "unassigned" for unassigned, or specific user ID',
+        },
+        minScore: {
+          type: 'number',
+          description: 'Filter by minimum qualification score (0-100)',
+        },
+        search: {
+          type: 'string',
+          description: 'Search in opportunity title and description',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results (default: 20)',
+          default: 20,
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'getOpportunityDetails',
+    description: 'Get full details of a specific opportunity including activity history. Use this when the user asks for more information about a specific opportunity, wants to see the full details, or wants to check the status history.',
+    parameters: {
+      type: 'object',
+      properties: {
+        opportunityId: {
+          type: 'number',
+          description: 'ID of the opportunity to retrieve',
+        },
+      },
+      required: ['opportunityId'],
+    },
+  },
+  {
+    name: 'updateOpportunityStatus',
+    description: 'Update the workflow status of an opportunity. Use this when the user wants to move an opportunity through the pipeline: New → Qualified → In Progress → Submitted → Won/Lost. Examples: "Mark opportunity #5 as qualified", "Move this to in progress", "We won this contract", "This opportunity was lost".',
+    parameters: {
+      type: 'object',
+      properties: {
+        opportunityId: {
+          type: 'number',
+          description: 'ID of the opportunity to update',
+        },
+        status: {
+          type: 'string',
+          enum: ['New', 'Qualified', 'In Progress', 'Submitted', 'Won', 'Lost', 'Archived'],
+          description: 'New status for the opportunity',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional notes about the status change',
+        },
+      },
+      required: ['opportunityId', 'status'],
+    },
+  },
+  {
+    name: 'assignOpportunity',
+    description: 'Assign an opportunity to a team member or unassign it. Use this when the user wants to assign work, delegate an opportunity, or take ownership. Examples: "Assign this to me", "Give opportunity #3 to Sarah", "Unassign this opportunity".',
+    parameters: {
+      type: 'object',
+      properties: {
+        opportunityId: {
+          type: 'number',
+          description: 'ID of the opportunity to assign',
+        },
+        userId: {
+          type: 'string',
+          description: 'UUID of the user to assign to, or null to unassign. Use "me" to assign to current user.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional notes about the assignment',
+        },
+      },
+      required: ['opportunityId'],
+    },
+  },
+  {
+    name: 'updateOpportunityScore',
+    description: 'Update the internal qualification score for an opportunity (0-100). Use this when the user evaluates, rates, or scores an opportunity. Higher scores indicate better fit. Examples: "Score this 85", "Rate opportunity #2 as 70", "This looks like a 90".',
+    parameters: {
+      type: 'object',
+      properties: {
+        opportunityId: {
+          type: 'number',
+          description: 'ID of the opportunity to score',
+        },
+        score: {
+          type: 'number',
+          description: 'Qualification score from 0-100',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional notes about the scoring rationale',
+        },
+      },
+      required: ['opportunityId', 'score'],
+    },
+  },
+  {
+    name: 'addOpportunityNotes',
+    description: 'Add or update notes on an opportunity. Use this when the user wants to document information, add comments, record meeting notes, or update opportunity details. Examples: "Add a note to opportunity #5", "Note that we need technical lead approval", "Update notes with client feedback".',
+    parameters: {
+      type: 'object',
+      properties: {
+        opportunityId: {
+          type: 'number',
+          description: 'ID of the opportunity',
+        },
+        notes: {
+          type: 'string',
+          description: 'Notes to add or update',
+        },
+        append: {
+          type: 'boolean',
+          description: 'If true, append to existing notes. If false, replace notes. Default: true',
+          default: true,
+        },
+      },
+      required: ['opportunityId', 'notes'],
+    },
+  },
+  {
+    name: 'getOpportunityStats',
+    description: 'Get summary statistics about opportunities in the pipeline. Use this when the user wants dashboard metrics, pipeline overview, or status counts. Examples: "Show me our pipeline stats", "How many opportunities do we have?", "What\'s our win rate?", "Pipeline summary".',
+    parameters: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string',
+          description: 'Optional: filter stats to specific user (use "me" for current user)',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 /**
@@ -685,6 +903,29 @@ export const UI_FUNCTIONS = [
  */
 export function getFunctionByName(name) {
   return UI_FUNCTIONS.find(fn => fn.name === name);
+}
+
+/**
+ * Helper function to get JWT token for internal API calls
+ */
+async function getUserToken(userId) {
+  try {
+    const { query } = await import('../utils/database.js');
+    const { generateToken } = await import('../utils/auth.js');
+
+    // Get user details from database
+    const result = await query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
+
+    if (result.rows.length === 0) {
+      throw new Error('User not found');
+    }
+
+    const user = result.rows[0];
+    return generateToken(user);
+  } catch (error) {
+    console.error('Error generating user token:', error);
+    throw error;
+  }
 }
 
 /**
@@ -696,7 +937,7 @@ export function getFunctionByName(name) {
  */
 export async function executeUIFunction(functionName, args, context) {
   const { conversationId, userId } = context;
-  
+
   if (functionName === 'webSearch') {
     const { performWebSearch, logSearchUsage } = await import('./webSearch.js');
 
@@ -921,6 +1162,406 @@ export async function executeUIFunction(functionName, args, context) {
       return {
         success: false,
         message: `SAM.gov exclusions search failed: ${error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  // Internal Opportunity Management Functions
+  if (functionName === 'createOpportunity') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const requestBody = {
+        notice_id: args.noticeId,
+        solicitation_number: args.solicitationNumber,
+        title: args.title,
+        type: args.type,
+        posted_date: args.postedDate,
+        response_deadline: args.responseDeadline,
+        description: args.description,
+        naics_code: args.naicsCode,
+        set_aside_type: args.setAsideType,
+        contracting_office: args.contractingOffice,
+        place_of_performance: args.placeOfPerformance,
+        internal_status: args.initialStatus || 'New',
+        internal_score: args.initialScore,
+        internal_notes: args.initialNotes,
+      };
+
+      const response = await axios.post(
+        `${API_BASE}/api/opportunities`,
+        requestBody,
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const opportunity = response.data.opportunity;
+
+      return {
+        success: true,
+        message: `✅ Opportunity "${args.title}" saved to tracking system (ID: ${opportunity.id})\nStatus: ${opportunity.internal_status}\nYou can now assign it, score it, and track progress through the pipeline.`,
+        data: { opportunity },
+      };
+    } catch (error) {
+      if (error.response?.status === 409) {
+        return {
+          success: false,
+          message: `This opportunity is already in your tracking system (ID: ${error.response.data.id})`,
+          data: { opportunityId: error.response.data.id },
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to create opportunity: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'listOpportunities') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const params = {
+        status: args.status,
+        assignedTo: args.assignedTo === 'me' ? 'me' : args.assignedTo,
+        minScore: args.minScore,
+        search: args.search,
+        limit: args.limit || 20,
+      };
+
+      const response = await axios.get(`${API_BASE}/api/opportunities`, {
+        params,
+        headers: {
+          'Authorization': `Bearer ${await getUserToken(userId)}`,
+        }
+      });
+
+      const { opportunities, pagination } = response.data;
+
+      let message = `Found ${pagination.total} ${pagination.total === 1 ? 'opportunity' : 'opportunities'}`;
+
+      if (args.status) message += ` with status "${args.status}"`;
+      if (args.assignedTo === 'me') message += ` assigned to you`;
+      if (args.assignedTo === 'unassigned') message += ` that are unassigned`;
+      if (args.minScore) message += ` with score >= ${args.minScore}`;
+
+      if (opportunities.length > 0) {
+        message += '\n\n📋 Opportunities:\n\n';
+        message += opportunities.map((opp, i) => {
+          return `${i + 1}. ${opp.title} (ID: ${opp.id})\n` +
+                 `   Status: ${opp.internal_status}` +
+                 (opp.internal_score ? ` | Score: ${opp.internal_score}/100` : '') +
+                 (opp.assigned_to_name ? ` | Assigned to: ${opp.assigned_to_name}` : ' | Unassigned') + '\n' +
+                 `   Posted: ${opp.posted_date ? new Date(opp.posted_date).toLocaleDateString() : 'N/A'}` +
+                 (opp.response_deadline ? ` | Deadline: ${new Date(opp.response_deadline).toLocaleDateString()}` : '');
+        }).join('\n\n');
+
+        if (pagination.hasMore) {
+          message += `\n\n...and ${pagination.total - opportunities.length} more`;
+        }
+      }
+
+      return {
+        success: true,
+        message: message,
+        data: { opportunities, pagination },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to list opportunities: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'getOpportunityDetails') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const response = await axios.get(
+        `${API_BASE}/api/opportunities/${args.opportunityId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+          }
+        }
+      );
+
+      const { opportunity, activity } = response.data;
+
+      let message = `📄 Opportunity Details: ${opportunity.title}\n\n`;
+      message += `🔢 ID: ${opportunity.id}\n`;
+      message += `📝 Status: ${opportunity.internal_status}\n`;
+      message += opportunity.internal_score ? `⭐ Score: ${opportunity.internal_score}/100\n` : '';
+      message += opportunity.assigned_to_name ? `👤 Assigned to: ${opportunity.assigned_to_name}\n` : '👤 Unassigned\n';
+      message += `📅 Posted: ${opportunity.posted_date ? new Date(opportunity.posted_date).toLocaleDateString() : 'N/A'}\n`;
+      message += opportunity.response_deadline ? `⏰ Deadline: ${new Date(opportunity.response_deadline).toLocaleDateString()}\n` : '';
+      message += `🔖 Solicitation: ${opportunity.solicitation_number || 'N/A'}\n`;
+      message += opportunity.type ? `📋 Type: ${opportunity.type}\n` : '';
+      message += opportunity.naics_code ? `🏢 NAICS: ${opportunity.naics_code}\n` : '';
+      message += opportunity.set_aside_type ? `🎯 Set-Aside: ${opportunity.set_aside_type}\n` : '';
+
+      if (opportunity.internal_notes) {
+        message += `\n📝 Notes:\n${opportunity.internal_notes}\n`;
+      }
+
+      if (activity && activity.length > 0) {
+        message += `\n\n📊 Recent Activity:\n`;
+        message += activity.slice(0, 10).map(act => {
+          const date = new Date(act.created_at).toLocaleDateString();
+          const user = act.user_name || 'System';
+          return `  • ${date} - ${user}: ${act.activity_type} ${act.new_value ? `→ ${act.new_value}` : ''}`;
+        }).join('\n');
+      }
+
+      return {
+        success: true,
+        message: message,
+        data: { opportunity, activity },
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: `Opportunity #${args.opportunityId} not found`,
+          data: null,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to get opportunity details: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'updateOpportunityStatus') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const response = await axios.patch(
+        `${API_BASE}/api/opportunities/${args.opportunityId}/status`,
+        {
+          status: args.status,
+          notes: args.notes,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const opportunity = response.data.opportunity;
+
+      return {
+        success: true,
+        message: `✅ Opportunity #${opportunity.id} status updated to "${args.status}"${args.notes ? '\nNote: ' + args.notes : ''}`,
+        data: { opportunity },
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: `Opportunity #${args.opportunityId} not found`,
+          data: null,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to update status: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'assignOpportunity') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      // Handle "me" shorthand
+      let targetUserId = args.userId;
+      if (args.userId === 'me') {
+        targetUserId = userId;
+      }
+
+      const response = await axios.patch(
+        `${API_BASE}/api/opportunities/${args.opportunityId}/assign`,
+        {
+          userId: targetUserId,
+          notes: args.notes,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const opportunity = response.data.opportunity;
+      const assignmentMsg = args.userId === 'me' ? 'you' : (args.userId ? 'user' : 'unassigned');
+
+      return {
+        success: true,
+        message: `✅ Opportunity #${opportunity.id} ${args.userId ? 'assigned to ' + assignmentMsg : 'unassigned'}${args.notes ? '\nNote: ' + args.notes : ''}`,
+        data: { opportunity },
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: error.response.data.error || `Opportunity or user not found`,
+          data: null,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to assign opportunity: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'updateOpportunityScore') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const response = await axios.patch(
+        `${API_BASE}/api/opportunities/${args.opportunityId}/score`,
+        {
+          score: args.score,
+          notes: args.notes,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const opportunity = response.data.opportunity;
+
+      return {
+        success: true,
+        message: `✅ Opportunity #${opportunity.id} scored as ${args.score}/100${args.notes ? '\nNote: ' + args.notes : ''}`,
+        data: { opportunity },
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: `Opportunity #${args.opportunityId} not found`,
+          data: null,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to update score: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'addOpportunityNotes') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const response = await axios.patch(
+        `${API_BASE}/api/opportunities/${args.opportunityId}/notes`,
+        {
+          notes: args.notes,
+          append: args.append !== false, // Default to true
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${await getUserToken(userId)}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const opportunity = response.data.opportunity;
+
+      return {
+        success: true,
+        message: `✅ Notes ${args.append !== false ? 'added to' : 'updated for'} opportunity #${opportunity.id}`,
+        data: { opportunity },
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: `Opportunity #${args.opportunityId} not found`,
+          data: null,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to update notes: ${error.response?.data?.error || error.message}`,
+        data: null,
+      };
+    }
+  }
+
+  if (functionName === 'getOpportunityStats') {
+    try {
+      const axios = (await import('axios')).default;
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+
+      const params = {};
+      if (args.userId === 'me') {
+        params.userId = userId;
+      } else if (args.userId) {
+        params.userId = args.userId;
+      }
+
+      const response = await axios.get(`${API_BASE}/api/opportunities/stats/summary`, {
+        params,
+        headers: {
+          'Authorization': `Bearer ${await getUserToken(userId)}`,
+        }
+      });
+
+      const stats = response.data.stats;
+
+      let message = `📊 Opportunity Pipeline Statistics${args.userId === 'me' ? ' (Your Opportunities)' : ''}\n\n`;
+      message += `📈 Total Opportunities: ${stats.total || 0}\n\n`;
+      message += `Status Breakdown:\n`;
+      message += `  🆕 New: ${stats.new_count || 0}\n`;
+      message += `  ✅ Qualified: ${stats.qualified_count || 0}\n`;
+      message += `  🔄 In Progress: ${stats.in_progress_count || 0}\n`;
+      message += `  📤 Submitted: ${stats.submitted_count || 0}\n`;
+      message += `  🏆 Won: ${stats.won_count || 0}\n`;
+      message += `  ❌ Lost: ${stats.lost_count || 0}\n\n`;
+      message += `👥 Unassigned: ${stats.unassigned_count || 0}\n`;
+      message += stats.avg_score ? `⭐ Average Score: ${Math.round(stats.avg_score)}/100` : '';
+
+      return {
+        success: true,
+        message: message,
+        data: { stats },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get opportunity statistics: ${error.response?.data?.error || error.message}`,
         data: null,
       };
     }
