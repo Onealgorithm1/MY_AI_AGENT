@@ -1171,7 +1171,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'createOpportunity') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const requestBody = {
         notice_id: args.noticeId,
@@ -1227,7 +1227,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'listOpportunities') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const params = {
         status: args.status,
@@ -1286,7 +1286,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'getOpportunityDetails') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const response = await axios.get(
         `${API_BASE}/api/opportunities/${args.opportunityId}`,
@@ -1348,7 +1348,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'updateOpportunityStatus') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const response = await axios.patch(
         `${API_BASE}/api/opportunities/${args.opportunityId}/status`,
@@ -1390,7 +1390,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'assignOpportunity') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       // Handle "me" shorthand
       let targetUserId = args.userId;
@@ -1439,7 +1439,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'updateOpportunityScore') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const response = await axios.patch(
         `${API_BASE}/api/opportunities/${args.opportunityId}/score`,
@@ -1481,7 +1481,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'addOpportunityNotes') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const response = await axios.patch(
         `${API_BASE}/api/opportunities/${args.opportunityId}/notes`,
@@ -1523,7 +1523,7 @@ export async function executeUIFunction(functionName, args, context) {
   if (functionName === 'getOpportunityStats') {
     try {
       const axios = (await import('axios')).default;
-      const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
+      const API_BASE = process.env.BACKEND_URL || 'http://localhost:3000';
 
       const params = {};
       if (args.userId === 'me') {
