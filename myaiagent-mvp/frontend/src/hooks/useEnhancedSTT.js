@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { stt } from '../services/api.js';
+import { stt, auth } from '../services/api.js';
 
 /**
  * Enhanced Speech-to-Text hook with WebSocket streaming and Voice Activity Detection
@@ -43,12 +43,14 @@ export default function useEnhancedSTT(options = {}) {
    * Initialize WebSocket connection for streaming
    */
   const initWebSocket = useCallback(() => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
-        // Get auth token
-        const token = localStorage.getItem('token');
+        // Get WebSocket token from API (uses HTTP-only cookie for auth)
+        const response = await auth.getWebSocketToken();
+        const token = response.data.token;
+
         if (!token) {
-          reject(new Error('No authentication token'));
+          reject(new Error('No WebSocket token received'));
           return;
         }
 
