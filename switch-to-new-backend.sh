@@ -16,7 +16,40 @@ NC='\033[0m' # No Color
 OLD_BACKEND_DIR="/home/ubuntu/myaiagent/myaiagent-mvp/backend"
 NEW_BACKEND_DIR="/home/ubuntu/MY_AI_AGENT/myaiagent-mvp/backend"
 
-echo "1. Finding all Node.js processes on port 3000..."
+echo "1. Stopping auto-restart services (PM2/systemd)..."
+echo "-------------------"
+
+# Check for PM2
+if command -v pm2 &> /dev/null; then
+    PM2_PROCESSES=$(pm2 list | grep -E "(online|stopped|errored)" || true)
+    if [ -n "$PM2_PROCESSES" ]; then
+        echo -e "${YELLOW}⚠️  Found PM2 processes${NC}"
+        pm2 list
+        echo ""
+        echo "🛑 Stopping all PM2 processes..."
+        pm2 stop all
+        pm2 delete all
+        echo -e "${GREEN}✅ PM2 processes stopped${NC}"
+    else
+        echo -e "${GREEN}✅ No PM2 processes running${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ PM2 not installed${NC}"
+fi
+
+# Check for systemd service
+if systemctl list-units --full --all | grep -q "myaiagent.service"; then
+    echo -e "${YELLOW}⚠️  Found systemd service: myaiagent.service${NC}"
+    echo "🛑 Stopping systemd service..."
+    sudo systemctl stop myaiagent.service
+    sudo systemctl disable myaiagent.service
+    echo -e "${GREEN}✅ Systemd service stopped and disabled${NC}"
+else
+    echo -e "${GREEN}✅ No systemd service found${NC}"
+fi
+echo ""
+
+echo "2. Finding and killing all Node.js processes on port 3000..."
 echo "-------------------"
 PIDS=$(sudo lsof -ti:3000)
 if [ -z "$PIDS" ]; then
@@ -32,20 +65,25 @@ else
     echo ""
     echo "🛑 Killing all processes on port 3000..."
     echo "$PIDS" | xargs -r sudo kill -9
-    sleep 2
 
-    # Verify they're dead
-    REMAINING=$(sudo lsof -ti:3000)
-    if [ -z "$REMAINING" ]; then
-        echo -e "${GREEN}✅ All processes killed${NC}"
-    else
-        echo -e "${RED}❌ Some processes still running: $REMAINING${NC}"
-        exit 1
-    fi
+    # Wait and verify port is free with retries
+    echo "⏳ Waiting for port to be released..."
+    for i in {1..10}; do
+        sleep 1
+        REMAINING=$(sudo lsof -ti:3000)
+        if [ -z "$REMAINING" ]; then
+            echo -e "${GREEN}✅ Port 3000 is now free${NC}"
+            break
+        fi
+        if [ $i -eq 10 ]; then
+            echo -e "${RED}❌ Port still in use after 10 seconds: $REMAINING${NC}"
+            exit 1
+        fi
+    done
 fi
 echo ""
 
-echo "2. Checking environment configuration..."
+echo "3. Checking environment configuration..."
 echo "-------------------"
 if [ -f "$NEW_BACKEND_DIR/.env" ]; then
     echo -e "${GREEN}✅ .env exists in new backend${NC}"
@@ -76,7 +114,7 @@ else
 fi
 echo ""
 
-echo "3. Verifying new backend has STT code..."
+echo "4. Verifying new backend has STT code..."
 echo "-------------------"
 if grep -q "createSTTWebSocketServer" "$NEW_BACKEND_DIR/src/server.js"; then
     echo -e "${GREEN}✅ STT WebSocket code found in server.js${NC}"
@@ -87,7 +125,20 @@ else
 fi
 echo ""
 
-echo "4. Starting new backend..."
+echo "5. Verifying port 3000 is free before starting..."
+echo "-------------------"
+if sudo lsof -ti:3000 > /dev/null 2>&1; then
+    echo -e "${RED}❌ Port 3000 is still in use!${NC}"
+    sudo lsof -ti:3000 | while read PID; do
+        echo "   PID $PID: $(ps -p $PID -o cmd --no-headers)"
+    done
+    exit 1
+else
+    echo -e "${GREEN}✅ Port 3000 is free${NC}"
+fi
+echo ""
+
+echo "6. Starting new backend..."
 echo "-------------------"
 cd "$NEW_BACKEND_DIR"
 LOG_FILE="$NEW_BACKEND_DIR/backend.log"
@@ -99,29 +150,42 @@ echo "   Started with PID: $NEW_PID"
 echo "   Log file: $LOG_FILE"
 echo ""
 
-echo "⏳ Waiting for backend to start (15 seconds)..."
-sleep 15
+echo "⏳ Waiting for backend to start..."
+# Check process and port with retries
+for i in {1..20}; do
+    sleep 1
+
+    # Check if process is still alive
+    if ! ps -p $NEW_PID > /dev/null 2>&1; then
+        echo -e "${RED}❌ Backend process died after $i seconds${NC}"
+        echo ""
+        echo "Last 30 lines of log:"
+        tail -30 "$LOG_FILE"
+        exit 1
+    fi
+
+    # Check if port is in use
+    if sudo lsof -ti:3000 > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Backend started successfully (after $i seconds)${NC}"
+        break
+    fi
+
+    if [ $i -eq 20 ]; then
+        echo -e "${RED}❌ Backend process is running but port 3000 not in use after 20 seconds${NC}"
+        echo ""
+        echo "Last 30 lines of log:"
+        tail -30 "$LOG_FILE"
+        exit 1
+    fi
+done
 echo ""
 
-echo "5. Checking if backend is running..."
-echo "-------------------"
-if ps -p $NEW_PID > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Backend process is running (PID: $NEW_PID)${NC}"
-else
-    echo -e "${RED}❌ Backend process died${NC}"
-    echo ""
-    echo "Last 20 lines of log:"
-    tail -20 "$LOG_FILE"
-    exit 1
-fi
-echo ""
-
-echo "6. Verifying port 3000 is in use..."
+echo "7. Verifying backend location..."
 echo "-------------------"
 PORT_PID=$(sudo lsof -ti:3000)
 if [ -n "$PORT_PID" ]; then
-    echo -e "${GREEN}✅ Port 3000 is in use by PID: $PORT_PID${NC}"
     PROC_DIR=$(sudo pwdx $PORT_PID 2>/dev/null | awk '{print $2}')
+    echo "   Process PID: $PORT_PID"
     echo "   Working directory: $PROC_DIR"
 
     if [ "$PROC_DIR" = "$NEW_BACKEND_DIR" ]; then
@@ -130,15 +194,12 @@ if [ -n "$PORT_PID" ]; then
         echo -e "${YELLOW}⚠️  Different location: $PROC_DIR${NC}"
     fi
 else
-    echo -e "${RED}❌ Port 3000 not in use - backend may have failed${NC}"
-    echo ""
-    echo "Last 20 lines of log:"
-    tail -20 "$LOG_FILE"
+    echo -e "${RED}❌ Port 3000 not in use - this shouldn't happen${NC}"
     exit 1
 fi
 echo ""
 
-echo "7. Testing STT WebSocket endpoint..."
+echo "8. Testing STT WebSocket endpoint..."
 echo "-------------------"
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/stt-stream)
 if [ "$RESPONSE" = "404" ]; then
