@@ -20,7 +20,8 @@ export async function transcribeAudioGoogle(audioBuffer, languageCode = 'en-US')
     const requestBody = {
       config: {
         encoding: 'WEBM_OPUS',
-        sampleRateHertz: 16000,  // Optimized for speech (was 48000)
+        // sampleRateHertz removed - let Google auto-detect from audio header
+        // Browser MediaRecorder produces 48kHz, not 16kHz
         languageCode: languageCode,
         enableAutomaticPunctuation: true,
         model: 'latest_short',  // Better model for short speech
