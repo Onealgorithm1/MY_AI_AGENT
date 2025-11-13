@@ -207,6 +207,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// WebSocket endpoint - return 426 for non-upgrade requests
+app.get('/stt-stream', (req, res) => {
+  res.status(426).json({
+    error: 'Upgrade Required',
+    message: 'This is a WebSocket endpoint. Use ws:// protocol to connect.',
+    endpoint: 'ws://localhost:3000/stt-stream?token=YOUR_JWT_TOKEN'
+  });
+});
+
 // Serve uploaded files
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
