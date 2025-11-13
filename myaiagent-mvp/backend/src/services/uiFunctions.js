@@ -681,69 +681,69 @@ export const UI_FUNCTIONS = [
   // Internal Opportunity Management Functions
   {
     name: 'createOpportunity',
-    description: 'Save a SAM.gov opportunity to the internal tracking system. Use this when the user wants to track, save, qualify, or work on a federal contract opportunity. This starts the internal workflow (New → Qualified → In Progress → Submitted → Won/Lost). The user will then be able to assign it, score it, and track progress.',
+    description: 'Save a SAM.gov opportunity to the internal tracking system. Use this when the user says "save", "track", or "add" an opportunity. CRITICAL: When you just displayed search results and the user wants to save one, you MUST extract ALL available data from those search results (title, solicitation number, type, posted date, response deadline, etc.) and pass it to this function. Do NOT just pass the noticeId alone - include every field you showed in the search results.',
     parameters: {
       type: 'object',
       properties: {
         noticeId: {
           type: 'string',
-          description: 'Unique SAM.gov notice ID from the opportunity',
+          description: 'Unique SAM.gov notice ID (REQUIRED)',
         },
         solicitationNumber: {
           type: 'string',
-          description: 'Solicitation number',
+          description: 'Solicitation number from your recent search results',
         },
         title: {
           type: 'string',
-          description: 'Opportunity title',
+          description: 'Opportunity title from your recent search results (REQUIRED if available)',
         },
         type: {
           type: 'string',
-          description: 'Opportunity type (e.g., "Presolicitation", "Combined Synopsis/Solicitation")',
+          description: 'Opportunity type from your recent search results (e.g., "Solicitation")',
         },
         postedDate: {
           type: 'string',
-          description: 'Posted date (ISO 8601 format)',
+          description: 'Posted date from your recent search results',
         },
         responseDeadline: {
           type: 'string',
-          description: 'Response deadline (ISO 8601 format)',
+          description: 'Response deadline from your recent search results',
         },
         description: {
           type: 'string',
-          description: 'Opportunity description',
+          description: 'Opportunity description if available',
         },
         naicsCode: {
           type: 'string',
-          description: 'NAICS code',
+          description: 'NAICS code if available',
         },
         setAsideType: {
           type: 'string',
-          description: 'Set-aside type (e.g., "Small Business", "8(a)", "WOSB")',
+          description: 'Set-aside type if available',
         },
         contractingOffice: {
           type: 'string',
-          description: 'Contracting office name',
+          description: 'Contracting office if available',
         },
         placeOfPerformance: {
           type: 'string',
-          description: 'Place of performance location',
+          description: 'Place of performance if available',
         },
         initialStatus: {
           type: 'string',
           enum: ['New', 'Qualified'],
-          description: 'Initial status for the opportunity (default: New)',
+          description: 'Initial status (default: New)',
         },
         initialScore: {
           type: 'number',
-          description: 'Initial qualification score 0-100 (optional)',
+          description: 'Initial score 0-100 (optional)',
         },
         initialNotes: {
           type: 'string',
-          description: 'Initial notes about the opportunity (optional)',
+          description: 'Initial notes (optional)',
         },
       },
-      required: ['noticeId', 'title'],
+      required: ['noticeId'],
     },
   },
   {
@@ -1176,7 +1176,7 @@ export async function executeUIFunction(functionName, args, context) {
       const requestBody = {
         notice_id: args.noticeId,
         solicitation_number: args.solicitationNumber,
-        title: args.title,
+        title: args.title || `Opportunity ${args.noticeId}`,
         type: args.type,
         posted_date: args.postedDate,
         response_deadline: args.responseDeadline,
@@ -1202,10 +1202,11 @@ export async function executeUIFunction(functionName, args, context) {
       );
 
       const opportunity = response.data.opportunity;
+      const oppTitle = opportunity.title || args.noticeId;
 
       return {
         success: true,
-        message: `✅ Opportunity "${args.title}" saved to tracking system (ID: ${opportunity.id})\nStatus: ${opportunity.internal_status}\nYou can now assign it, score it, and track progress through the pipeline.`,
+        message: `✅ Opportunity "${oppTitle}" saved to tracking system (ID: ${opportunity.id})\nNotice ID: ${args.noticeId}\nStatus: ${opportunity.internal_status}\nYou can now assign it, score it, and track progress through the pipeline.`,
         data: { opportunity },
       };
     } catch (error) {
