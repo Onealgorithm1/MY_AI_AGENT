@@ -49,27 +49,35 @@ When the backend tries to connect to Google Cloud STT without credentials:
 
 ### Option 1: Add Google Cloud Credentials to Database (Recommended)
 
+**📖 For detailed step-by-step instructions with screenshots and troubleshooting, see:**
+- **[Complete Setup Guide](setup/GOOGLE_CLOUD_API_SETUP.md)** - Full walkthrough from Google Cloud Console to testing
+- **[Quick Form Reference](setup/GOOGLE_CLOUD_FORM_QUICK_REF.md)** - Quick guide for filling out the admin panel form
+
+**Quick Summary**:
+
 1. **Get Google Cloud Service Account Key**:
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Enable Speech-to-Text API
-   - Create a service account with STT permissions
+   - Create a service account with "Cloud Speech Client" role
    - Download the JSON key file
+   - **[Detailed instructions →](setup/GOOGLE_CLOUD_API_SETUP.md#part-1-setting-up-google-cloud-service-account-for-stt)**
 
 2. **Add to Database via Admin Panel**:
+   - Access the admin panel at https://werkules.com/admin
+   - Scroll to "API Keys" section
+   - Click "+ Create Custom Category" or find "Google Cloud" category
+   - Fill in the form:
+     - **Key Name**: `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+     - **Key Label**: `Production STT Service Account`
+     - **Key Value**: [Paste entire JSON content from downloaded file]
+   - Click "Create Category" or "Save Key"
+   - **[Form filling guide →](setup/GOOGLE_CLOUD_FORM_QUICK_REF.md)**
+
+3. **Restart Backend**:
    ```bash
    # SSH into your server
    ssh -i ~/Downloads/myaiagent-key.pem ubuntu@3.144.201.118
 
-   # Access the admin panel at https://werkules.com/admin
-   # Navigate to "API Secrets" section
-   # Add new secret:
-   #   - Key Name: GOOGLE_APPLICATION_CREDENTIALS_JSON
-   #   - Key Value: (paste entire JSON content from service account key)
-   #   - Make sure "Is Active" is checked
-   ```
-
-3. **Restart Backend**:
-   ```bash
    cd ~/MY_AI_AGENT
    ./switch-to-new-backend.sh
    ```
