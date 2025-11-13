@@ -53,6 +53,18 @@ const SECRET_DEFINITIONS = {
     placeholder: 'SAM-...',
     docs_url: 'https://open.gsa.gov/api/sam-entity-api/',
   },
+  GOOGLE_APPLICATION_CREDENTIALS_JSON: {
+    service_name: 'Google Cloud',
+    description: 'Google Cloud Service Account credentials (JSON) for Speech-to-Text, Vertex AI, and other Cloud APIs',
+    placeholder: '{"type":"service_account","project_id":"...","private_key":"...",...}',
+    docs_url: 'https://console.cloud.google.com/iam-admin/serviceaccounts',
+  },
+  GOOGLE_OAUTH_CLIENT_CREDENTIALS: {
+    service_name: 'Google OAuth',
+    description: 'Google OAuth 2.0 Client credentials for user authentication and Gmail integration',
+    placeholder: '{"web":{"client_id":"...","client_secret":"...","redirect_uris":[...]}}',
+    docs_url: 'https://console.cloud.google.com/apis/credentials',
+  },
 };
 
 // Get all available secret definitions
@@ -671,6 +683,75 @@ router.post('/:id/test', async (req, res) => {
           success: false,
           message: error.response?.data?.message || 'Invalid API key',
           hint: 'Verify your API key at open.gsa.gov'
+        };
+      }
+    } else if (secret.service_name === 'Google Cloud') {
+      // Test Google Cloud Service Account credentials
+      try {
+        const credentials = JSON.parse(decryptedValue);
+
+        // Validate required fields
+        if (!credentials.type || credentials.type !== 'service_account') {
+          testResult = {
+            success: false,
+            message: 'Invalid service account format',
+            hint: 'Credentials must be a service account JSON with type: "service_account"'
+          };
+        } else if (!credentials.project_id || !credentials.private_key || !credentials.client_email) {
+          testResult = {
+            success: false,
+            message: 'Missing required fields in service account JSON',
+            hint: 'Required: project_id, private_key, client_email'
+          };
+        } else {
+          testResult = {
+            success: true,
+            message: 'Google Cloud Service Account credentials are valid',
+            projectId: credentials.project_id,
+            clientEmail: credentials.client_email,
+            hint: 'Credentials format is correct. Actual API access depends on enabled APIs and permissions.'
+          };
+        }
+      } catch (error) {
+        testResult = {
+          success: false,
+          message: 'Invalid JSON format',
+          hint: 'Credentials must be valid JSON from Google Cloud Console'
+        };
+      }
+    } else if (secret.service_name === 'Google OAuth') {
+      // Test Google OAuth Client credentials
+      try {
+        const credentials = JSON.parse(decryptedValue);
+
+        // Validate required fields for web or installed app
+        const config = credentials.web || credentials.installed;
+        if (!config) {
+          testResult = {
+            success: false,
+            message: 'Invalid OAuth client format',
+            hint: 'Credentials must contain "web" or "installed" configuration'
+          };
+        } else if (!config.client_id || !config.client_secret) {
+          testResult = {
+            success: false,
+            message: 'Missing required OAuth fields',
+            hint: 'Required: client_id and client_secret'
+          };
+        } else {
+          testResult = {
+            success: true,
+            message: 'Google OAuth Client credentials are valid',
+            clientId: config.client_id.substring(0, 20) + '...',
+            projectId: config.project_id,
+            hint: 'Credentials format is correct. Configure redirect URIs in Google Cloud Console.'
+          };
+        }
+      } catch (error) {
+        testResult = {
+          success: false,
+          message: 'Invalid JSON format',
+          hint: 'Credentials must be valid JSON from Google Cloud Console'
         };
       }
     }
