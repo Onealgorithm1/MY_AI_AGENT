@@ -457,7 +457,13 @@ async function checkRequiredGoogleCloudKeys() {
     'VERTEX_AI_PROJECT_ID',
     'VERTEX_AI_LOCATION'
   ];
-  
+
+  // Vertex AI is currently disabled, so we don't warn about missing Vertex AI keys
+  const vertexAIDisabled = true;
+  const keysToWarnAbout = vertexAIDisabled
+    ? ['GOOGLE_APPLICATION_CREDENTIALS_JSON']  // Only warn about creds needed for other Google services
+    : requiredKeys;  // Warn about all keys if Vertex AI is enabled
+
   const keyStatus = {};
 
   for (const keyName of requiredKeys) {
@@ -468,12 +474,13 @@ async function checkRequiredGoogleCloudKeys() {
          LIMIT 1`,
         [keyName]
       );
-      
+
       const found = result.rows.length > 0 && result.rows[0].key_value;
       keyStatus[keyName] = found;
-      
-      if (!found) {
-        console.warn(`Google Cloud/Vertex AI key '${keyName}' is MISSING in api_secrets table.`);
+
+      // Only warn about missing keys if they're actually needed
+      if (!found && keysToWarnAbout.includes(keyName)) {
+        console.warn(`Google Cloud key '${keyName}' is MISSING in api_secrets table.`);
       }
     } catch (error) {
       console.error(`Error checking key '${keyName}':`, error);

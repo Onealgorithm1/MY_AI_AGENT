@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { getCsrfToken } from '../services/api.js';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -41,11 +42,18 @@ class ErrorBoundary extends Component {
       };
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       await fetch(`${apiUrl}/telemetry/error`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify(telemetryData),
       });

@@ -1,3 +1,5 @@
+import { getCsrfToken } from './api.js';
+
 const SAMPLE_RATE = 0.1;
 const MAX_EVENTS_PER_MINUTE = 100;
 
@@ -84,12 +86,19 @@ class TelemetryService {
         },
       };
 
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Session-ID': this.sessionId,
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       await fetch(`${this.apiUrl}/telemetry/event`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': this.sessionId,
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify(telemetryPayload),
       });
