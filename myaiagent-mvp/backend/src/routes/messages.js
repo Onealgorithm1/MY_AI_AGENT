@@ -347,12 +347,12 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     ];
     
     const needsGrounding = groundingKeywords.some(kw => userQuery.includes(kw));
-    const vertexAIAvailable = await isVertexAIConfigured();
-    
-    // CRITICAL: Only use Vertex AI if no UI functions are required
-    // If functionsToPass is set, user needs Gmail/Google functions which Vertex AI doesn't support
-    // DISABLED: Vertex AI has authentication issues, fall back to regular Gemini
-    const useVertexAI = false; // needsGrounding && vertexAIAvailable && !functionsToPass;
+
+    // VERTEX AI IS DISABLED
+    // Vertex AI has authentication issues, so it's disabled to prevent warnings and errors
+    // To re-enable: uncomment the line below and set useVertexAI to the commented condition
+    // const vertexAIAvailable = await isVertexAIConfigured();
+    const useVertexAI = false; // To re-enable: needsGrounding && vertexAIAvailable && !functionsToPass;
 
     // Map Gemini model names to Vertex AI equivalents
     const vertexModelMap = {
