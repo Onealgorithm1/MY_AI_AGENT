@@ -52,6 +52,7 @@ import selfTestRoutes from './routes/selfTest.js';
 import emailRoutes from './routes/emails.js';
 import samGovRoutes from './routes/samGov.js';
 import opportunitiesRoutes from './routes/opportunities.js';
+import urlContentRoutes from './routes/urlContent.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -288,6 +289,7 @@ app.use('/api/self-test', selfTestRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/sam-gov', samGovRoutes);
 app.use('/api/opportunities', opportunitiesRoutes);
+app.use('/api/url-content', urlContentRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
