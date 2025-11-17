@@ -113,8 +113,9 @@ export async function getEntityByUEI(ueiSAM, userId = null) {
  * @param {string} options.keyword - Keyword search
  * @param {string} options.postedFrom - Posted from date (YYYY-MM-DD)
  * @param {string} options.postedTo - Posted to date (YYYY-MM-DD)
- * @param {number} options.limit - Number of results
+ * @param {number} options.limit - Number of results (default: 50, max: 100)
  * @param {number} options.offset - Pagination offset
+ * @param {boolean} options.fetchAll - If true, fetches all available results using pagination
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Opportunities
  */
@@ -125,8 +126,9 @@ export async function searchOpportunities(options = {}, userId = null) {
       keyword,
       postedFrom,
       postedTo,
-      limit = 10,
+      limit = 50,
       offset = 0,
+      fetchAll = false,
     } = options;
 
     // SAM.gov requires postedFrom and postedTo - use defaults if not provided
@@ -150,10 +152,49 @@ export async function searchOpportunities(options = {}, userId = null) {
       api_key: apiKey,
       postedFrom: postedFrom || defaultPostedFrom,
       postedTo: postedTo || defaultPostedTo,
+      limit: Math.min(limit, 100), // SAM.gov max is 100 per request
+      offset,
     };
 
     if (keyword) params.title = keyword;
 
+    // If fetchAll is true, paginate through all results
+    if (fetchAll) {
+      let allOpportunities = [];
+      let currentOffset = 0;
+      let totalRecords = 0;
+      const pageSize = 100; // Use max page size for efficiency
+
+      do {
+        const pageParams = { ...params, limit: pageSize, offset: currentOffset };
+        const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
+          params: pageParams,
+          timeout: 30000,
+        });
+
+        const opportunities = response.data.opportunitiesData || [];
+        allOpportunities = allOpportunities.concat(opportunities);
+        totalRecords = response.data.totalRecords || 0;
+        currentOffset += pageSize;
+
+        // Stop if we've fetched all records or if no more results
+        if (allOpportunities.length >= totalRecords || opportunities.length === 0) {
+          break;
+        }
+
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } while (true);
+
+      return {
+        success: true,
+        data: { totalRecords, opportunitiesData: allOpportunities },
+        totalRecords,
+        opportunities: allOpportunities,
+      };
+    }
+
+    // Regular single-page request
     const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
       params,
       timeout: 30000,

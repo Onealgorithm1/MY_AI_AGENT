@@ -636,7 +636,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchSAMGovOpportunities',
-    description: 'Search federal contract opportunities and procurement notices. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. You can optionally ask about date range preferences, but it will default to recent opportunities. Focus on getting a good keyword from the user. IMPORTANT: Extract the PRIMARY keyword from user queries - use single words or simple terms, not full phrases. Examples: "salesforce consulting" → use "salesforce", "cybersecurity services" → use "cybersecurity", "cloud computing infrastructure" → use "cloud".',
+    description: 'Search federal contract opportunities and procurement notices. AUTOMATICALLY caches results and identifies NEW vs EXISTING opportunities in database. When user searches, you will see which opportunities are new discoveries vs ones already tracked. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. Focus on getting a good keyword from the user. IMPORTANT: Extract the PRIMARY keyword from user queries - use single words or simple terms, not full phrases. Examples: "salesforce consulting" → use "salesforce", "cybersecurity services" → use "cybersecurity", "cloud computing infrastructure" → use "cloud".',
     parameters: {
       type: 'object',
       properties: {
@@ -651,6 +651,14 @@ export const UI_FUNCTIONS = [
         postedTo: {
           type: 'string',
           description: 'End date for opportunities (MM/dd/yyyy format, e.g., 11/12/2025). Optional - defaults to today.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Number of results to fetch per request (default: 50, max: 100). Use higher values to get more comprehensive results.',
+        },
+        fetchAll: {
+          type: 'boolean',
+          description: 'If true, fetches ALL available results using pagination (may take longer). Use when user wants comprehensive/complete results.',
         },
       },
       required: [],
@@ -1084,30 +1092,59 @@ export async function executeUIFunction(functionName, args, context) {
 
   if (functionName === 'searchSAMGovOpportunities') {
     const { searchOpportunities } = await import('./samGov.js');
+    const { searchAndCache } = await import('./samGovCache.js');
 
     try {
       const searchParams = {
         keyword: args.keyword,
         postedFrom: args.postedFrom,
         postedTo: args.postedTo,
+        fetchAll: args.fetchAll || false,
+        limit: args.limit || 50,
       };
 
-      const result = await searchOpportunities(searchParams, userId);
+      // Use cached search to automatically save and categorize results
+      const result = await searchAndCache(searchParams, searchOpportunities, userId);
 
       let message = `Found ${result.totalRecords} federal contract ${result.totalRecords === 1 ? 'opportunity' : 'opportunities'}`;
 
-      if (result.opportunities && result.opportunities.length > 0) {
-        message += '\n\n🔔 Contract Opportunities:\n\n';
-        message += result.opportunities.slice(0, 5).map((opp, i) => {
-          return `${i + 1}. ${opp.title || 'Untitled'}\n` +
+      // Add summary of new vs existing
+      if (result.cache) {
+        message += `\n📊 ${result.cache.new} NEW | ${result.cache.existing} already in database`;
+      }
+
+      // Show NEW opportunities first
+      if (result.categorized && result.categorized.new && result.categorized.new.length > 0) {
+        message += '\n\n✨ NEW Opportunities:\n\n';
+        message += result.categorized.new.slice(0, 5).map((opp, i) => {
+          return `${i + 1}. ${opp.title || 'Untitled'} 🆕\n` +
                  `   Type: ${opp.type || 'N/A'}\n` +
                  `   Posted: ${opp.postedDate || 'N/A'}\n` +
                  `   Response Deadline: ${opp.responseDeadLine || 'N/A'}\n` +
-                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}`;
+                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}\n` +
+                 `   Notice ID: ${opp.noticeId || 'N/A'}`;
         }).join('\n\n');
 
-        if (result.opportunities.length > 5) {
-          message += `\n\n...and ${result.opportunities.length - 5} more opportunities`;
+        if (result.categorized.new.length > 5) {
+          message += `\n\n...and ${result.categorized.new.length - 5} more NEW opportunities`;
+        }
+      }
+
+      // Show EXISTING opportunities
+      if (result.categorized && result.categorized.existing && result.categorized.existing.length > 0) {
+        const showExisting = Math.min(3, result.categorized.existing.length);
+        message += '\n\n📋 Already in Database:\n\n';
+        message += result.categorized.existing.slice(0, showExisting).map((opp, i) => {
+          const cacheInfo = opp._cache_info;
+          const seenCount = cacheInfo?.seen_count || 0;
+          return `${i + 1}. ${opp.title || 'Untitled'}\n` +
+                 `   Type: ${opp.type || 'N/A'}\n` +
+                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}\n` +
+                 `   Seen ${seenCount} time${seenCount !== 1 ? 's' : ''} | First seen: ${cacheInfo?.first_seen_at ? new Date(cacheInfo.first_seen_at).toLocaleDateString() : 'N/A'}`;
+        }).join('\n\n');
+
+        if (result.categorized.existing.length > showExisting) {
+          message += `\n\n...and ${result.categorized.existing.length - showExisting} more existing opportunities`;
         }
       }
 
