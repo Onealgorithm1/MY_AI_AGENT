@@ -1,4 +1,4 @@
-import pool from '../db.js';
+import pool from '../utils/database.js';
 
 /**
  * Extract notice_id from SAM.gov opportunity data
