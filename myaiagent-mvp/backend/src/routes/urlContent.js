@@ -7,7 +7,7 @@ import {
   analyzeContentType,
 } from '../services/contentExtractor.js';
 import { verifyToken } from '../middleware/auth.js';
-import { pool } from '../utils/database.js';
+import pool from '../utils/database.js';
 
 const router = express.Router();
 
