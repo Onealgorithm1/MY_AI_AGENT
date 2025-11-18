@@ -6,7 +6,7 @@ import {
   compareUrls,
   analyzeContentType,
 } from '../services/contentExtractor.js';
-import { verifyToken } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import pool from '../utils/database.js';
 
 const router = express.Router();
@@ -15,7 +15,7 @@ const router = express.Router();
  * POST /api/url-content/fetch
  * Fetch and extract content from a URL
  */
-router.post('/fetch', verifyToken, async (req, res) => {
+router.post('/fetch', authenticate, async (req, res) => {
   try {
     const { url, includeImages = true, includeLinks = false } = req.body;
 
@@ -76,7 +76,7 @@ router.post('/fetch', verifyToken, async (req, res) => {
  * POST /api/url-content/summarize
  * Fetch and summarize a URL using Gemini
  */
-router.post('/summarize', verifyToken, async (req, res) => {
+router.post('/summarize', authenticate, async (req, res) => {
   try {
     const {
       url,
@@ -153,7 +153,7 @@ router.post('/summarize', verifyToken, async (req, res) => {
  * POST /api/url-content/extract
  * Extract specific information from a URL based on a query
  */
-router.post('/extract', verifyToken, async (req, res) => {
+router.post('/extract', authenticate, async (req, res) => {
   try {
     const { url, query, responseFormat = 'text' } = req.body;
 
@@ -206,7 +206,7 @@ router.post('/extract', verifyToken, async (req, res) => {
  * POST /api/url-content/compare
  * Compare content from multiple URLs
  */
-router.post('/compare', verifyToken, async (req, res) => {
+router.post('/compare', authenticate, async (req, res) => {
   try {
     const { urls, comparisonCriteria = 'general comparison' } = req.body;
 
@@ -260,7 +260,7 @@ router.post('/compare', verifyToken, async (req, res) => {
  * POST /api/url-content/analyze
  * Analyze URL for content type and extract structured data
  */
-router.post('/analyze', verifyToken, async (req, res) => {
+router.post('/analyze', authenticate, async (req, res) => {
   try {
     const { url } = req.body;
 
@@ -297,7 +297,7 @@ router.post('/analyze', verifyToken, async (req, res) => {
  * POST /api/url-content/batch
  * Fetch multiple URLs at once
  */
-router.post('/batch', verifyToken, async (req, res) => {
+router.post('/batch', authenticate, async (req, res) => {
   try {
     const { urls, includeImages = false, includeLinks = false, concurrent = 3 } = req.body;
 
@@ -361,7 +361,7 @@ router.post('/batch', verifyToken, async (req, res) => {
  * GET /api/url-content/history
  * Get user's URL fetch history
  */
-router.get('/history', verifyToken, async (req, res) => {
+router.get('/history', authenticate, async (req, res) => {
   try {
     const { limit = 20, offset = 0 } = req.query;
     const userId = req.user.userId;
@@ -403,7 +403,7 @@ router.get('/history', verifyToken, async (req, res) => {
  * GET /api/url-content/summaries
  * Get user's URL summaries history
  */
-router.get('/summaries', verifyToken, async (req, res) => {
+router.get('/summaries', authenticate, async (req, res) => {
   try {
     const { limit = 20, offset = 0 } = req.query;
     const userId = req.user.userId;
