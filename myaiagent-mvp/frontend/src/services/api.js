@@ -340,6 +340,45 @@ export const webSearch = {
   },
 };
 
+// SAM.gov endpoints
+export const samGov = {
+  // Search for entities
+  searchEntities: async (params) => {
+    const response = await api.post('/sam-gov/search/entities', params);
+    return response.data;
+  },
+
+  // Get entity by UEI
+  getEntity: async (uei) => {
+    const response = await api.get(`/sam-gov/entity/${uei}`);
+    return response.data;
+  },
+
+  // Search opportunities with automatic caching
+  searchOpportunities: async (params) => {
+    const response = await api.post('/sam-gov/search/opportunities', params);
+    return response.data;
+  },
+
+  // Get exclusions
+  getExclusions: async (params) => {
+    const response = await api.post('/sam-gov/exclusions', params);
+    return response.data;
+  },
+
+  // Get cached opportunity by notice ID
+  getCachedOpportunity: async (noticeId) => {
+    const response = await api.get(`/sam-gov/cache/${noticeId}`);
+    return response.data;
+  },
+
+  // Get recent search history
+  getSearchHistory: async (limit = 10) => {
+    const response = await api.get(`/sam-gov/search-history?limit=${limit}`);
+    return response.data;
+  },
+};
+
 // Export both default and named export for flexibility
 export { api };
 export default api;

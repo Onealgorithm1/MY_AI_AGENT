@@ -35,6 +35,7 @@ import {
   Search,
   Globe,
   Menu,
+  Building2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
@@ -43,6 +44,7 @@ import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
+import SAMGovPanel from '../components/SAMGovPanel';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
@@ -78,8 +80,9 @@ export default function ChatPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [showSAMGovPanel, setShowSAMGovPanel] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('en-US-Wavenet-F');
@@ -880,7 +883,20 @@ export default function ChatPage() {
                 <BarChart3 className="w-5 h-5" />
               </button>
             )}
-            
+
+            {/* SAM.gov Panel Toggle */}
+            <button
+              onClick={() => setShowSAMGovPanel(!showSAMGovPanel)}
+              className={`p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
+                showSAMGovPanel
+                  ? 'bg-green-500 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title="SAM.gov Cache"
+            >
+              <Building2 className="w-5 h-5" />
+            </button>
+
             {/* TTS Toggle Button */}
             <button
               onClick={() => handleTtsToggle(!ttsEnabled)}
@@ -1173,6 +1189,12 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+
+      {/* SAM.gov Panel */}
+      <SAMGovPanel
+        isOpen={showSAMGovPanel}
+        onClose={() => setShowSAMGovPanel(false)}
+      />
     </div>
   );
 }
