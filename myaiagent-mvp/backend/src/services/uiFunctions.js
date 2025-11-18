@@ -636,7 +636,7 @@ export const UI_FUNCTIONS = [
   },
   {
     name: 'searchSAMGovOpportunities',
-    description: 'Search federal contract opportunities and procurement notices. AUTOMATICALLY caches results and identifies NEW vs EXISTING opportunities in database. When user searches, you will see which opportunities are new discoveries vs ones already tracked. Asks user for keywords/industry to narrow the search. If no date range is specified, automatically searches the last 30 days. Focus on getting a good keyword from the user. IMPORTANT: Extract the PRIMARY keyword from user queries - use single words or simple terms, not full phrases. Examples: "salesforce consulting" → use "salesforce", "cybersecurity services" → use "cybersecurity", "cloud computing infrastructure" → use "cloud".',
+    description: 'Search federal contract opportunities and procurement notices with COMPREHENSIVE DETAILS. Returns FULL opportunity data including: descriptions, resource/attachment links, points of contact, NAICS codes, set-asides, place of performance, organization info, and all metadata. AUTOMATICALLY caches results and identifies NEW vs EXISTING opportunities. After searching, ANALYZE the opportunities and provide insights about best fits, requirements, deadlines, and strategy. You have access to ALL data fields - use them to give detailed briefings. Extract PRIMARY keyword from user queries (single words). Examples: "salesforce consulting" → use "salesforce", "cybersecurity services" → use "cybersecurity".',
     parameters: {
       type: 'object',
       properties: {
@@ -1106,47 +1106,171 @@ export async function executeUIFunction(functionName, args, context) {
       // Use cached search to automatically save and categorize results
       const result = await searchAndCache(searchParams, searchOpportunities, userId);
 
-      let message = `Found ${result.totalRecords} federal contract ${result.totalRecords === 1 ? 'opportunity' : 'opportunities'}`;
+      // Helper function to format detailed opportunity
+      const formatDetailedOpportunity = (opp, index, isNew = false) => {
+        const status = isNew ? '🆕 NEW' : '📋 IN DATABASE';
+        let details = `\n${'='.repeat(80)}\n`;
+        details += `${index + 1}. ${opp.title || 'Untitled'} ${isNew ? '🆕' : ''}\n`;
+        details += `${'='.repeat(80)}\n\n`;
 
-      // Add summary of new vs existing
+        // Basic Information
+        details += `📌 BASIC INFORMATION:\n`;
+        details += `   • Type: ${opp.type || opp.baseType || 'N/A'}\n`;
+        details += `   • Status: ${status}\n`;
+        details += `   • Posted Date: ${opp.postedDate || 'N/A'}\n`;
+        details += `   • Response Deadline: ${opp.responseDeadLine || 'N/A'}\n`;
+        details += `   • Archive Date: ${opp.archiveDate || 'N/A'}\n`;
+        details += `   • Solicitation #: ${opp.solicitationNumber || 'N/A'}\n`;
+        details += `   • Notice ID: ${opp.noticeId || 'N/A'}\n`;
+        details += `   • Active: ${opp.active || 'N/A'}\n\n`;
+
+        // Classification & Set-Aside
+        details += `🏷️ CLASSIFICATION:\n`;
+        if (opp.naicsCode || opp.naicsCodes) {
+          const naics = opp.naicsCodes || [opp.naicsCode];
+          details += `   • NAICS Code(s): ${naics.filter(Boolean).join(', ')}\n`;
+        }
+        if (opp.classificationCode) {
+          details += `   • Classification Code: ${opp.classificationCode}\n`;
+        }
+        if (opp.typeOfSetAside || opp.typeOfSetAsideDescription) {
+          details += `   • Set-Aside: ${opp.typeOfSetAsideDescription || opp.typeOfSetAside || 'N/A'}\n`;
+        }
+        details += `\n`;
+
+        // Organization & Office
+        details += `🏢 ORGANIZATION:\n`;
+        if (opp.fullParentPathName) {
+          details += `   • Department: ${opp.fullParentPathName}\n`;
+        }
+        if (opp.fullParentPathCode) {
+          details += `   • Org Code: ${opp.fullParentPathCode}\n`;
+        }
+        if (opp.organizationType) {
+          details += `   • Type: ${opp.organizationType}\n`;
+        }
+        if (opp.officeAddress) {
+          const addr = opp.officeAddress;
+          details += `   • Office: ${addr.city || ''}, ${addr.state || ''} ${addr.zipcode || ''} ${addr.countryCode || ''}\n`;
+        }
+        details += `\n`;
+
+        // Place of Performance
+        if (opp.placeOfPerformance) {
+          details += `📍 PLACE OF PERFORMANCE:\n`;
+          const pop = opp.placeOfPerformance;
+          if (pop.city?.name) {
+            details += `   • Location: ${pop.city.name}, ${pop.state?.name || pop.state?.code || ''}\n`;
+          }
+          if (pop.country?.name) {
+            details += `   • Country: ${pop.country.name}\n`;
+          }
+          details += `\n`;
+        }
+
+        // Points of Contact
+        if (opp.pointOfContact && opp.pointOfContact.length > 0) {
+          details += `👤 POINTS OF CONTACT:\n`;
+          opp.pointOfContact.forEach(poc => {
+            details += `   • ${poc.fullName || 'N/A'} (${poc.type || 'contact'})\n`;
+            if (poc.email) details += `     Email: ${poc.email}\n`;
+            if (poc.phone) details += `     Phone: ${poc.phone}\n`;
+            if (poc.title) details += `     Title: ${poc.title}\n`;
+          });
+          details += `\n`;
+        }
+
+        // Links & Resources
+        details += `🔗 LINKS & RESOURCES:\n`;
+        if (opp.uiLink) {
+          details += `   • View on SAM.gov: ${opp.uiLink}\n`;
+        }
+        if (opp.description) {
+          details += `   • Description: ${opp.description}\n`;
+        }
+        if (opp.additionalInfoLink) {
+          details += `   • Additional Info: ${opp.additionalInfoLink}\n`;
+        }
+        if (opp.resourceLinks && opp.resourceLinks.length > 0) {
+          details += `   • Attachments (${opp.resourceLinks.length}):\n`;
+          opp.resourceLinks.forEach((link, idx) => {
+            details += `     ${idx + 1}. ${link}\n`;
+          });
+        }
+        details += `\n`;
+
+        // Cache info for existing opportunities
+        if (!isNew && opp._cache_info) {
+          const cache = opp._cache_info;
+          details += `💾 CACHE INFO:\n`;
+          details += `   • First Seen: ${cache.first_seen_at ? new Date(cache.first_seen_at).toLocaleString() : 'N/A'}\n`;
+          details += `   • Times Seen: ${cache.seen_count || 0}\n\n`;
+        }
+
+        return details;
+      };
+
+      // Build comprehensive message
+      let message = `# SAM.gov Opportunities Search Results\n\n`;
+      message += `📊 **SUMMARY**: Found ${result.totalRecords} federal contract ${result.totalRecords === 1 ? 'opportunity' : 'opportunities'}\n`;
+
+      // Add cache summary
       if (result.cache) {
-        message += `\n📊 ${result.cache.new} NEW | ${result.cache.existing} already in database`;
+        message += `🔍 **CACHE STATUS**: ${result.cache.new} NEW | ${result.cache.existing} already in database\n`;
       }
 
-      // Show NEW opportunities first
+      // Detailed NEW opportunities
       if (result.categorized && result.categorized.new && result.categorized.new.length > 0) {
-        message += '\n\n✨ NEW Opportunities:\n\n';
-        message += result.categorized.new.slice(0, 5).map((opp, i) => {
-          return `${i + 1}. ${opp.title || 'Untitled'} 🆕\n` +
-                 `   Type: ${opp.type || 'N/A'}\n` +
-                 `   Posted: ${opp.postedDate || 'N/A'}\n` +
-                 `   Response Deadline: ${opp.responseDeadLine || 'N/A'}\n` +
-                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}\n` +
-                 `   Notice ID: ${opp.noticeId || 'N/A'}`;
-        }).join('\n\n');
+        message += `\n\n## ✨ NEW OPPORTUNITIES (${result.categorized.new.length})\n`;
+        message += `These opportunities were just discovered and are new to your database:\n`;
 
-        if (result.categorized.new.length > 5) {
-          message += `\n\n...and ${result.categorized.new.length - 5} more NEW opportunities`;
+        // Show detailed info for up to 3 new opportunities
+        const detailedCount = Math.min(3, result.categorized.new.length);
+        for (let i = 0; i < detailedCount; i++) {
+          message += formatDetailedOpportunity(result.categorized.new[i], i, true);
+        }
+
+        // Brief summary for remaining new opportunities
+        if (result.categorized.new.length > detailedCount) {
+          message += `\n📝 ADDITIONAL NEW OPPORTUNITIES (${result.categorized.new.length - detailedCount}):\n\n`;
+          result.categorized.new.slice(detailedCount).forEach((opp, idx) => {
+            message += `${detailedCount + idx + 1}. ${opp.title}\n`;
+            message += `   • Type: ${opp.type} | Deadline: ${opp.responseDeadLine}\n`;
+            message += `   • Link: ${opp.uiLink}\n\n`;
+          });
         }
       }
 
-      // Show EXISTING opportunities
+      // Detailed EXISTING opportunities
       if (result.categorized && result.categorized.existing && result.categorized.existing.length > 0) {
-        const showExisting = Math.min(3, result.categorized.existing.length);
-        message += '\n\n📋 Already in Database:\n\n';
-        message += result.categorized.existing.slice(0, showExisting).map((opp, i) => {
-          const cacheInfo = opp._cache_info;
-          const seenCount = cacheInfo?.seen_count || 0;
-          return `${i + 1}. ${opp.title || 'Untitled'}\n` +
-                 `   Type: ${opp.type || 'N/A'}\n` +
-                 `   Solicitation: ${opp.solicitationNumber || 'N/A'}\n` +
-                 `   Seen ${seenCount} time${seenCount !== 1 ? 's' : ''} | First seen: ${cacheInfo?.first_seen_at ? new Date(cacheInfo.first_seen_at).toLocaleDateString() : 'N/A'}`;
-        }).join('\n\n');
+        message += `\n\n## 📋 PREVIOUSLY DISCOVERED OPPORTUNITIES (${result.categorized.existing.length})\n`;
+        message += `These opportunities are already in your database:\n`;
 
+        const showExisting = Math.min(2, result.categorized.existing.length);
+        for (let i = 0; i < showExisting; i++) {
+          message += formatDetailedOpportunity(result.categorized.existing[i], i, false);
+        }
+
+        // Brief summary for remaining existing
         if (result.categorized.existing.length > showExisting) {
-          message += `\n\n...and ${result.categorized.existing.length - showExisting} more existing opportunities`;
+          message += `\n📝 ADDITIONAL EXISTING OPPORTUNITIES (${result.categorized.existing.length - showExisting}):\n\n`;
+          result.categorized.existing.slice(showExisting).forEach((opp, idx) => {
+            const cache = opp._cache_info;
+            message += `${showExisting + idx + 1}. ${opp.title}\n`;
+            message += `   • Type: ${opp.type} | Seen ${cache?.seen_count || 0} times\n`;
+            message += `   • Link: ${opp.uiLink}\n\n`;
+          });
         }
       }
+
+      // Add analysis prompt
+      message += `\n\n---\n\n`;
+      message += `💡 **ANALYSIS AVAILABLE**: I have access to all opportunity details including descriptions, attachments, contact information, and requirements. Ask me to:\n`;
+      message += `   • Analyze specific opportunities in detail\n`;
+      message += `   • Compare multiple opportunities\n`;
+      message += `   • Identify best-fit opportunities\n`;
+      message += `   • Explain requirements and qualifications\n`;
+      message += `   • Help draft response strategies\n`;
 
       return {
         success: true,
