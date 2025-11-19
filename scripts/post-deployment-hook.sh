@@ -35,9 +35,20 @@ if [[ $HEALTH_CHECK == *"healthy"* ]]; then
     echo "📝 Creating Jira deployment issue..."
 
     cd "$PROJECT_ROOT"
-    node scripts/jira-integration.js || {
-        echo "⚠️  Failed to create Jira issue (non-critical)"
-    }
+
+    # Try Node.js method first
+    if node scripts/jira-integration.js 2>/dev/null; then
+        echo "✅ Jira issue created via Node.js script"
+    else
+        echo "⚠️  Node.js method failed, trying curl method..."
+
+        # Fallback to curl method
+        if bash scripts/create-jira-issue-curl.sh; then
+            echo "✅ Jira issue created via curl"
+        else
+            echo "❌ Both methods failed to create Jira issue"
+        fi
+    fi
 else
     echo "❌ Backend health check failed"
     echo "Skipping Jira notification"
