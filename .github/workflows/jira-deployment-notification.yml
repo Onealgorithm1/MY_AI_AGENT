@@ -1,0 +1,54 @@
+name: Jira Deployment Notification
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  workflow_dispatch:
+    inputs:
+      project_key:
+        description: 'Jira Project Key (optional)'
+        required: false
+        type: string
+
+jobs:
+  notify-jira:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for git log
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Get commit information
+        id: commits
+        run: |
+          # Get last 10 commits
+          git log -10 --pretty=format:"%h - %s" > commits.txt
+
+          # Get changed files
+          git diff --name-only HEAD~1..HEAD > files.txt || echo "No previous commit" > files.txt
+
+      - name: Create Jira Issue
+        env:
+          JIRA_PROJECT_KEY: ${{ github.event.inputs.project_key }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "📝 Creating Jira issue for deployment..."
+          node scripts/jira-integration.js || echo "⚠️  Jira integration failed (non-blocking)"
+
+      - name: Summary
+        run: |
+          echo "✅ Deployment notification workflow completed"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
