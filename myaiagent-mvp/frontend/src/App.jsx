@@ -13,6 +13,8 @@ const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
+const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
+const AppLayout = lazy(() => import('./components/AppLayout'));
 
 function LoadingFallback() {
   return (
@@ -106,6 +108,14 @@ function App() {
             element={
               <PrivateRoute>
                 <PreferencesPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/samgov"
+            element={
+              <PrivateRoute>
+                <SAMGovPage />
               </PrivateRoute>
             }
           />

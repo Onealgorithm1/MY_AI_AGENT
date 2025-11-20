@@ -674,13 +674,22 @@ export default function ChatPage() {
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-2">
           <button
             onClick={() => createConversation.mutate()}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors touch-manipulation min-h-[44px] min-w-[44px]"
           >
             <Plus className="w-5 h-5 md:w-4 md:h-4" />
             <span className="text-sm font-medium">New chat</span>
+          </button>
+
+          {/* SAM.gov Navigation */}
+          <button
+            onClick={() => navigate('/samgov')}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors touch-manipulation min-h-[44px] min-w-[44px]"
+          >
+            <Building2 className="w-5 h-5 md:w-4 md:h-4" />
+            <span className="text-sm font-medium">SAM.gov</span>
           </button>
         </div>
 
