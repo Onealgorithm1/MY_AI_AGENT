@@ -7,9 +7,20 @@ import OpenAI from 'openai';
 import pool from '../utils/database.js';
 import { getDocumentById } from './samGovDocumentFetcher.js';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client
+let openai = null;
+
+function getOpenAIClient() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set. Please configure it to use AI analysis features.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 /**
  * Analyze document text using AI
@@ -98,7 +109,8 @@ Please analyze this document and provide a comprehensive breakdown in the follow
 Provide thorough, actionable analysis. Extract all relevant information from the document.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [
         {
