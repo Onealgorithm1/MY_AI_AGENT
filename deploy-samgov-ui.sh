@@ -9,14 +9,14 @@ echo "🚀 Deploying SAM.gov UI to EC2..."
 
 # Pull latest code
 echo "📥 Pulling latest code..."
-cd /home/ubuntu/myaiagent-mvp
+cd /home/ubuntu/MY_AI_AGENT
 git fetch origin claude/sam-gov-multiple-responses-01A5dkmoMPZzaXEVXY9u7u1e
 git checkout claude/sam-gov-multiple-responses-01A5dkmoMPZzaXEVXY9u7u1e
 git pull origin claude/sam-gov-multiple-responses-01A5dkmoMPZzaXEVXY9u7u1e
 
 # Build frontend
 echo "🔨 Building frontend..."
-cd frontend
+cd myaiagent-mvp/frontend
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
