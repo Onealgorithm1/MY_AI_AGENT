@@ -1224,8 +1224,8 @@ export async function executeUIFunction(functionName, args, context) {
         message += `\n\n## ✨ NEW OPPORTUNITIES (${result.categorized.new.length})\n`;
         message += `These opportunities were just discovered and are new to your database:\n`;
 
-        // Show detailed info for up to 3 new opportunities
-        const detailedCount = Math.min(3, result.categorized.new.length);
+        // Show detailed info for up to 10 new opportunities
+        const detailedCount = Math.min(10, result.categorized.new.length);
         for (let i = 0; i < detailedCount; i++) {
           message += formatDetailedOpportunity(result.categorized.new[i], i, true);
         }
@@ -1246,7 +1246,7 @@ export async function executeUIFunction(functionName, args, context) {
         message += `\n\n## 📋 PREVIOUSLY DISCOVERED OPPORTUNITIES (${result.categorized.existing.length})\n`;
         message += `These opportunities are already in your database:\n`;
 
-        const showExisting = Math.min(2, result.categorized.existing.length);
+        const showExisting = Math.min(10, result.categorized.existing.length);
         for (let i = 0; i < showExisting; i++) {
           message += formatDetailedOpportunity(result.categorized.existing[i], i, false);
         }

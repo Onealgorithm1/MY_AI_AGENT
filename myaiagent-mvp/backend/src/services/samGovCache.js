@@ -274,6 +274,39 @@ export async function linkToTrackedOpportunity(noticeId, opportunityId) {
   }
 }
 
+/**
+ * Get all cached opportunities with pagination
+ * @param {number} limit - Number of opportunities to return
+ * @param {number} offset - Offset for pagination
+ * @returns {Promise<Object>} Opportunities and total count
+ */
+export async function getAllCachedOpportunities(limit = 50, offset = 0) {
+  try {
+    const countResult = await pool.query('SELECT COUNT(*) FROM samgov_opportunities_cache');
+    const total = parseInt(countResult.rows[0].count);
+
+    const result = await pool.query(
+      `SELECT id, notice_id, solicitation_number, title, type, posted_date,
+              response_deadline, naics_code, set_aside_type, contracting_office,
+              place_of_performance, description, first_seen_at, last_seen_at, seen_count
+       FROM samgov_opportunities_cache
+       ORDER BY first_seen_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    return {
+      opportunities: result.rows,
+      total,
+      limit,
+      offset
+    };
+  } catch (error) {
+    console.error('Error getting all cached opportunities:', error);
+    throw error;
+  }
+}
+
 export default {
   cacheOpportunities,
   recordSearchHistory,
@@ -281,4 +314,5 @@ export default {
   getCachedOpportunity,
   getRecentSearches,
   linkToTrackedOpportunity,
+  getAllCachedOpportunities,
 };
