@@ -28,16 +28,21 @@ fi
 echo "🏗️  Building production bundle..."
 npm run build
 
-# Copy to Nginx
+# Copy to Nginx (correct directory is /var/www/myaiagent)
 echo "📋 Copying to Nginx..."
-sudo rm -rf /var/www/html/*
-sudo cp -r dist/* /var/www/html/
+sudo rm -rf /var/www/myaiagent/*
+sudo cp -r dist/* /var/www/myaiagent/
+
+# Restart backend (PM2)
+echo "🔄 Restarting backend..."
+cd /home/ubuntu/MY_AI_AGENT/myaiagent-mvp/backend
+pm2 restart all || true
 
 # Restart Nginx to ensure latest assets
 echo "🔄 Restarting Nginx..."
 sudo systemctl restart nginx
 
-echo "✅ SAM.gov UI deployed successfully!"
+echo "✅ SAM.gov UI and backend deployed successfully!"
 echo ""
 echo "🌐 Visit: http://werkules.com/samgov"
 echo "🌐 Or: http://54.80.235.76/samgov"

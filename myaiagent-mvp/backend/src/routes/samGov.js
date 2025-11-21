@@ -100,6 +100,21 @@ router.post('/exclusions', async (req, res) => {
 });
 
 /**
+ * GET /api/sam-gov/cached-opportunities
+ * Get all cached opportunities
+ */
+router.get('/cached-opportunities', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    const result = await samGovCache.getAllCachedOpportunities(parseInt(limit), parseInt(offset));
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Get cached opportunities error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/sam-gov/cache/:noticeId
  * Get cached opportunity by notice ID
  */
