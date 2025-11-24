@@ -297,7 +297,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'createopportunity', 'listopportunities', 'getopportunitydetails', 'updateopportunitystatus',
       'assignopportunity', 'updateopportunityscore', 'addopportunitynotes', 'getopportunitystats',
       'navigate', 'changemodel', 'createnewchat', 'renameconversation', 'deleteconversation',
-      'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies'
+      'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies',
+      'getsamgovopportunitydetails'
     ];
     
     // Start with core functions always available
@@ -429,6 +430,27 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         console.log(`✅ Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
         tokensUsed = estimateTokens(fullResponse || functionArgs);
 
+        // === ✅ FALLBACK: Handle empty responses in streaming ===
+        if (!functionCall && (!fullResponse || fullResponse.trim() === '')) {
+          console.warn('⚠️ AI returned empty streaming response, using fallback message');
+          const fallbackMessage = "I apologize, but I didn't generate a proper response. Could you please rephrase your question or provide more details?";
+
+          const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true, fallback: true }) : JSON.stringify({ fallback: true });
+          await query(
+            `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [conversationId, 'assistant', fallbackMessage, selectedModel, tokensUsed, metadata]
+          );
+
+          res.write(`data: ${JSON.stringify({
+            content: fallbackMessage,
+            warning: 'Empty response detected',
+            done: true
+          })}\n\n`);
+          res.end();
+          return;
+        }
+
         // Handle function call execution
         if (functionCall && functionCall.name) {
           console.log(`🎯 AI wants to call function: ${functionCall.name} with args: ${functionCall.arguments}`);
@@ -544,7 +566,26 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         : await createChatCompletion(messages, selectedModel, false, functionsToPass);
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
-      
+
+      // === ✅ FALLBACK: Handle empty responses ===
+      if (!responseMessage.function_call && (!responseMessage.content || responseMessage.content.trim() === '')) {
+        console.warn('⚠️ AI returned empty response, using fallback message');
+        const fallbackMessage = "I apologize, but I didn't generate a proper response. Could you please rephrase your question or provide more details?";
+
+        const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true, fallback: true }) : JSON.stringify({ fallback: true });
+        await query(
+          `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [conversationId, 'assistant', fallbackMessage, selectedModel, tokensUsed, metadata]
+        );
+
+        return res.json({
+          message: fallbackMessage,
+          warning: 'Empty response detected, fallback used',
+        });
+      }
+
       // Check if AI wants to call a function
       if (responseMessage.function_call) {
         const functionName = responseMessage.function_call.name;
