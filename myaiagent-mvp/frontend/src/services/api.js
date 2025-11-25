@@ -7,20 +7,30 @@ const getApiBaseUrl = () => {
     const hostname = window.location.hostname;
     // If on production domain, use relative path
     if (hostname === 'werkules.com' || hostname.includes('werkules')) {
-      return '';
+      console.log('🎯 Detected werkules.com - using /api');
+      return '/api';
     }
   }
 
   // Development: check environment variable first
   if (import.meta.env.VITE_API_URL) {
+    console.log('🔧 Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
 
   // Development fallback
+  console.log('🔧 Using fallback: http://localhost:3000/api');
   return 'http://localhost:3000/api';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+// Get base URL or force /api for production
+let API_BASE_URL = getApiBaseUrl();
+
+// FAILSAFE: If somehow empty or undefined, force /api for production
+if (!API_BASE_URL || API_BASE_URL === '') {
+  console.warn('⚠️ API_BASE_URL was empty, forcing /api');
+  API_BASE_URL = '/api';
+}
 
 // Debug logging
 console.log('🔧 API Configuration:', {
