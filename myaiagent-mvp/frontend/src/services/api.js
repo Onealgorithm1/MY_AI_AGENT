@@ -1,9 +1,26 @@
 import axios from 'axios';
 
-// Use relative URL in production, absolute in development
-const API_BASE_URL = import.meta.env.VITE_API_URL || (
-  import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3000/api'
-);
+// Determine API base URL based on current hostname
+const getApiBaseUrl = () => {
+  // If environment variable is set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // In production (deployed), use relative path
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If on production domain, use relative path
+    if (hostname === 'werkules.com' || hostname.includes('werkules')) {
+      return '/api';
+    }
+  }
+
+  // Development fallback
+  return 'http://localhost:3000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // CSRF token storage
 let csrfToken = null;
