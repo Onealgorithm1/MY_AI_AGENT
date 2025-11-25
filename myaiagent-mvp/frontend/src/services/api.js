@@ -22,6 +22,14 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Debug logging
+console.log('🔧 API Configuration:', {
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+  apiBaseURL: API_BASE_URL,
+  mode: import.meta.env.MODE,
+  viteApiUrl: import.meta.env.VITE_API_URL
+});
+
 // CSRF token storage
 let csrfToken = null;
 
