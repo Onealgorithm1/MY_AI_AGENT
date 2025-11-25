@@ -3,24 +3,9 @@
  * Uses AI to analyze document content and extract key information
  */
 
-import OpenAI from 'openai';
+import { createChatCompletion } from './gemini.js';
 import pool from '../utils/database.js';
 import { getDocumentById } from './samGovDocumentFetcher.js';
-
-// Lazy initialization of OpenAI client
-let openai = null;
-
-function getOpenAIClient() {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is not set. Please configure it to use AI analysis features.');
-    }
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return openai;
-}
 
 /**
  * Analyze document text using AI
@@ -109,24 +94,24 @@ Please analyze this document and provide a comprehensive breakdown in the follow
 Provide thorough, actionable analysis. Extract all relevant information from the document.`;
 
   try {
-    const client = getOpenAIClient();
-    const response = await client.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert government contract analyst. Provide detailed, accurate analysis in valid JSON format.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3, // Lower temperature for more consistent analysis
-    });
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an expert government contract analyst. Provide detailed, accurate analysis in valid JSON format. Return ONLY valid JSON, no markdown code blocks.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ];
 
-    const analysisText = response.choices[0].message.content;
+    const response = await createChatCompletion(messages, 'gemini-2.5-flash', false, null);
+
+    let analysisText = response.choices[0].message.content;
+
+    // Clean up response - remove markdown code blocks if present
+    analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
     const analysis = JSON.parse(analysisText);
 
     return analysis;

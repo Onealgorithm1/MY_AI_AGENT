@@ -12,8 +12,8 @@ const SAMGovPage = () => {
     pendingAnalysis: 0,
   });
 
-  const [recentOpportunities, setRecentOpportunities] = useState([]);
-  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [cachedOpportunities, setCachedOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiKeyStatus, setApiKeyStatus] = useState(null);
 
@@ -25,9 +25,14 @@ const SAMGovPage = () => {
     try {
       setLoading(true);
 
-      // Load search history
-      const historyRes = await samGov.getSearchHistory(5);
-      const searches = historyRes.searches || [];
+      // Load search history and cached opportunities in parallel
+      const [historyRes, oppsRes] = await Promise.all([
+        api.get('/api/sam-gov/search-history?limit=5'),
+        api.get('/api/sam-gov/cached-opportunities?limit=20')
+      ]);
+
+      const searches = historyRes.data.searches || [];
+      const opportunities = oppsRes.data.opportunities || [];
 
       // Load cached opportunities
       const cachedRes = await samGov.getCachedOpportunities({ limit: 20 });
@@ -35,16 +40,16 @@ const SAMGovPage = () => {
 
       // Calculate stats from search history
       const totalNew = searches.reduce((sum, s) => sum + (s.new_records || 0), 0);
-      const totalExisting = searches.reduce((sum, s) => sum + (s.existing_records || 0), 0);
 
       setStats({
-        totalOpportunities: cachedRes.total || 0,
+        totalOpportunities: oppsRes.data.total || opportunities.length,
         newOpportunities: totalNew,
-        analyzedDocuments: 0, // Will update when we fetch document stats
+        analyzedDocuments: 0,
         pendingAnalysis: 0,
       });
 
-      setRecentOpportunities(opportunities.slice(0, 5));
+      setRecentSearches(searches);
+      setCachedOpportunities(opportunities);
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -134,7 +139,7 @@ const SAMGovPage = () => {
         </button>
       </div>
 
-      {recentOpportunities.length === 0 ? (
+      {recentSearches.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm">No searches yet</p>
@@ -144,7 +149,7 @@ const SAMGovPage = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {recentOpportunities.map((search, idx) => (
+          {recentSearches.map((search, idx) => (
             <div
               key={idx}
               className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
@@ -180,6 +185,45 @@ const SAMGovPage = () => {
                     {search.existing_records || 0} existing
                   </span>
                 </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const CachedOpportunities = () => (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Cached Opportunities</h3>
+        <span className="text-sm text-gray-500">{stats.totalOpportunities} total</span>
+      </div>
+
+      {cachedOpportunities.length === 0 ? (
+        <div className="text-center py-8">
+          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No opportunities cached yet</p>
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {cachedOpportunities.map((opp) => (
+            <div
+              key={opp.id}
+              className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <p className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                {opp.title}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                <span>{opp.notice_id}</span>
+                {opp.type && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">{opp.type}</span>}
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Posted: {opp.posted_date ? new Date(opp.posted_date).toLocaleDateString() : 'N/A'}</span>
+                {opp.response_deadline && (
+                  <span className="text-orange-600">Due: {new Date(opp.response_deadline).toLocaleDateString()}</span>
+                )}
               </div>
             </div>
           ))}
@@ -297,6 +341,7 @@ const SAMGovPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - 2 cols */}
           <div className="lg:col-span-2 space-y-6">
+            <CachedOpportunities />
             <RecentSearches />
           </div>
 
@@ -317,7 +362,7 @@ const SAMGovPage = () => {
               </h4>
               <p className="text-sm text-blue-700">
                 The system can automatically fetch and analyze PDFs and documents attached to opportunities.
-                Configure your OpenAI API key to enable AI-powered analysis including bid recommendations,
+                Uses Gemini AI for analysis including bid recommendations,
                 requirements extraction, and win probability estimates.
               </p>
             </div>
