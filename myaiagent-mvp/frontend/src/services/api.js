@@ -7,7 +7,7 @@ const getApiBaseUrl = () => {
     const hostname = window.location.hostname;
     // If on production domain, use relative path
     if (hostname === 'werkules.com' || hostname.includes('werkules')) {
-      return '/api';
+      return '';
     }
   }
 
