@@ -255,6 +255,75 @@ export async function getRecentSearches(userId = null, limit = 10) {
 }
 
 /**
+ * Get cached opportunities with filters
+ * @param {Object} options - Filter options
+ * @param {number} options.limit - Number of results
+ * @param {number} options.offset - Offset for pagination
+ * @param {string} options.keyword - Filter by keyword in title
+ * @param {string} options.type - Filter by opportunity type
+ * @param {string} options.status - Filter by active status
+ * @param {string} options.userId - User ID (optional)
+ * @returns {Promise<Object>} Cached opportunities
+ */
+export async function getCachedOpportunities(options = {}) {
+  try {
+    const {
+      limit = 20,
+      offset = 0,
+      keyword,
+      type,
+      status,
+      userId
+    } = options;
+
+    let queryText = 'SELECT * FROM samgov_opportunities_cache WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+
+    // Add filters
+    if (keyword) {
+      queryText += ` AND (title ILIKE $${paramIndex} OR solicitation_number ILIKE $${paramIndex})`;
+      params.push(`%${keyword}%`);
+      paramIndex++;
+    }
+
+    if (type) {
+      queryText += ` AND type = $${paramIndex}`;
+      params.push(type);
+      paramIndex++;
+    }
+
+    if (userId) {
+      queryText += ` AND created_by = $${paramIndex}`;
+      params.push(userId);
+      paramIndex++;
+    }
+
+    // Count total
+    const countQuery = queryText.replace('SELECT *', 'SELECT COUNT(*)');
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].count);
+
+    // Add ordering and pagination
+    queryText += ` ORDER BY last_seen_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(queryText, params);
+
+    return {
+      success: true,
+      total,
+      opportunities: result.rows,
+      limit,
+      offset
+    };
+  } catch (error) {
+    console.error('Error getting cached opportunities:', error);
+    throw error;
+  }
+}
+
+/**
  * Link cached opportunity to manually tracked opportunity
  * @param {string} noticeId - Notice ID from SAM.gov
  * @param {number} opportunityId - ID from opportunities table
@@ -279,6 +348,7 @@ export default {
   recordSearchHistory,
   searchAndCache,
   getCachedOpportunity,
+  getCachedOpportunities,
   getRecentSearches,
   linkToTrackedOpportunity,
 };

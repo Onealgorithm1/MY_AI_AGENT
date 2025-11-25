@@ -136,6 +136,29 @@ router.get('/search-history', async (req, res) => {
 });
 
 /**
+ * GET /api/sam-gov/cached-opportunities
+ * Get all cached opportunities with optional filters
+ */
+router.get('/cached-opportunities', async (req, res) => {
+  try {
+    const { limit = 20, offset = 0, keyword, type, status } = req.query;
+    const result = await samGovCache.getCachedOpportunities({
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      keyword,
+      type,
+      status,
+      userId: req.user.id
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Get cached opportunities error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/sam-gov/documents/fetch
  * Fetch and store documents for an opportunity
  * Body: { opportunityCacheId, noticeId, documentUrls: [] }

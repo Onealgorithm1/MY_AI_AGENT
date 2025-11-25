@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, AlertCircle, CheckCircle, Clock, DollarSign, Award, Users, ArrowLeft, MessageSquare } from 'lucide-react';
-import api from '../services/api';
+import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
   const navigate = useNavigate();
@@ -26,22 +26,25 @@ const SAMGovPage = () => {
       setLoading(true);
 
       // Load search history
-      const historyRes = await api.get('/api/sam-gov/search-history?limit=5');
-      const searches = historyRes.data.searches || [];
+      const historyRes = await samGov.getSearchHistory(5);
+      const searches = historyRes.searches || [];
 
-      // Calculate stats
+      // Load cached opportunities
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 20 });
+      const opportunities = cachedRes.opportunities || [];
+
+      // Calculate stats from search history
       const totalNew = searches.reduce((sum, s) => sum + (s.new_records || 0), 0);
       const totalExisting = searches.reduce((sum, s) => sum + (s.existing_records || 0), 0);
 
       setStats({
-        totalOpportunities: totalNew + totalExisting,
+        totalOpportunities: cachedRes.total || 0,
         newOpportunities: totalNew,
         analyzedDocuments: 0, // Will update when we fetch document stats
         pendingAnalysis: 0,
       });
 
-      // TODO: Fetch recent analyses when endpoint is ready
-      setRecentOpportunities(searches);
+      setRecentOpportunities(opportunities.slice(0, 5));
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -99,7 +102,7 @@ const SAMGovPage = () => {
               <AlertCircle className="w-5 h-5 text-yellow-500" />
             )}
             <div>
-              <p className="text-sm font-medium text-gray-900">OpenAI API (Analysis)</p>
+              <p className="text-sm font-medium text-gray-900">Gemini API (Analysis)</p>
               <p className="text-xs text-gray-500">
                 {apiKeyStatus === 'configured'
                   ? 'AI analysis available'
