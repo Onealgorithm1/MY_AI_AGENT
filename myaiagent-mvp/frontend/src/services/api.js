@@ -2,18 +2,18 @@ import axios from 'axios';
 
 // Determine API base URL based on current hostname
 const getApiBaseUrl = () => {
-  // If environment variable is set, use it
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // In production (deployed), use relative path
+  // In production (deployed), always use relative path
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     // If on production domain, use relative path
     if (hostname === 'werkules.com' || hostname.includes('werkules')) {
       return '/api';
     }
+  }
+
+  // Development: check environment variable first
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
 
   // Development fallback
