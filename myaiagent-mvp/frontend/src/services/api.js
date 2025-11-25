@@ -378,6 +378,20 @@ export const samGov = {
     const response = await api.get(`/sam-gov/search-history?limit=${limit}`);
     return response.data;
   },
+
+  // Get cached opportunities
+  getCachedOpportunities: async (params = {}) => {
+    const { limit = 20, offset = 0, keyword, type, status } = params;
+    const queryParams = new URLSearchParams();
+    queryParams.append('limit', limit);
+    queryParams.append('offset', offset);
+    if (keyword) queryParams.append('keyword', keyword);
+    if (type) queryParams.append('type', type);
+    if (status) queryParams.append('status', status);
+
+    const response = await api.get(`/sam-gov/cached-opportunities?${queryParams.toString()}`);
+    return response.data;
+  },
 };
 
 // Export both default and named export for flexibility
