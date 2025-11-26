@@ -18,6 +18,11 @@ const SAMGovPage = () => {
   const [loading, setLoading] = useState(true);
   const [apiKeyStatus, setApiKeyStatus] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [filters, setFilters] = useState({
+    setAsideType: '',
+    naicsCode: '',
+    keyword: ''
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -233,10 +238,44 @@ const SAMGovPage = () => {
     </div>
   );
 
+  // Helper function to format contract value
+  const formatContractValue = (opportunity) => {
+    const award = opportunity.raw_data?.award;
+    if (award?.amount) {
+      const amount = parseFloat(award.amount);
+      if (amount >= 1000000) {
+        return `$${(amount / 1000000).toFixed(1)}M`;
+      } else if (amount >= 1000) {
+        return `$${(amount / 1000).toFixed(0)}K`;
+      }
+      return `$${amount.toLocaleString()}`;
+    }
+    return null;
+  };
+
+  // Filter opportunities based on current filters
+  const filteredOpportunities = recentOpportunities.filter(opp => {
+    if (filters.setAsideType && opp.set_aside_type !== filters.setAsideType) {
+      return false;
+    }
+    if (filters.naicsCode && !opp.naics_code?.includes(filters.naicsCode)) {
+      return false;
+    }
+    if (filters.keyword && !opp.title?.toLowerCase().includes(filters.keyword.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  // Get unique set-aside types for filter dropdown
+  const setAsideTypes = [...new Set(recentOpportunities.map(o => o.set_aside_type).filter(Boolean))];
+
   const OpportunitiesList = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Cached Opportunities</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Cached Opportunities ({filteredOpportunities.length})
+        </h3>
         <button
           onClick={loadDashboardData}
           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -245,7 +284,35 @@ const SAMGovPage = () => {
         </button>
       </div>
 
-      {recentOpportunities.length === 0 ? (
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search by keyword..."
+          value={filters.keyword}
+          onChange={(e) => setFilters({...filters, keyword: e.target.value})}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="text"
+          placeholder="Filter by NAICS code..."
+          value={filters.naicsCode}
+          onChange={(e) => setFilters({...filters, naicsCode: e.target.value})}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select
+          value={filters.setAsideType}
+          onChange={(e) => setFilters({...filters, setAsideType: e.target.value})}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">All Set-Aside Types</option>
+          {setAsideTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+
+      {filteredOpportunities.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm">No opportunities cached yet</p>
@@ -255,46 +322,62 @@ const SAMGovPage = () => {
         </div>
       ) : (
         <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {recentOpportunities.map((opp) => (
-            <div
-              key={opp.id}
-              onClick={() => setSelectedOpportunity(opp)}
-              className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer border border-gray-200 hover:border-blue-300"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
-                    {opp.title}
-                  </p>
-                  <p className="text-xs text-gray-600 mb-2">
-                    {opp.solicitation_number}
-                  </p>
+          {filteredOpportunities.map((opp) => {
+            const contractValue = formatContractValue(opp);
+            return (
+              <div
+                key={opp.id}
+                onClick={() => setSelectedOpportunity(opp)}
+                className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer border border-gray-200 hover:border-blue-300"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                      {opp.title}
+                    </p>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {opp.solicitation_number}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1 ml-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded whitespace-nowrap ${
+                      opp.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
+                      opp.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
+                      opp.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
+                      opp.type === 'Award Notice' ? 'bg-purple-100 text-purple-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {opp.type}
+                    </span>
+                    {contractValue && (
+                      <span className="px-2 py-1 text-xs font-bold rounded whitespace-nowrap bg-emerald-100 text-emerald-700 text-center">
+                        {contractValue}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className={`ml-3 px-2 py-1 text-xs font-medium rounded whitespace-nowrap ${
-                  opp.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
-                  opp.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
-                  opp.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {opp.type}
-                </span>
-              </div>
 
-              <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {opp.response_deadline ? new Date(opp.response_deadline).toLocaleDateString() : 'No deadline'}
-                </span>
-                {opp.naics_code && (
-                  <span>NAICS: {opp.naics_code}</span>
-                )}
-              </div>
+                <div className="flex items-center flex-wrap gap-3 text-xs text-gray-500 mb-2">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {opp.response_deadline ? new Date(opp.response_deadline).toLocaleDateString() : 'No deadline'}
+                  </span>
+                  {opp.naics_code && (
+                    <span className="font-medium">NAICS: {opp.naics_code}</span>
+                  )}
+                  {opp.set_aside_type && (
+                    <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded font-medium">
+                      {opp.set_aside_type}
+                    </span>
+                  )}
+                </div>
 
-              <p className="text-xs text-gray-600 line-clamp-2">
-                {opp.contracting_office}
-              </p>
-            </div>
-          ))}
+                <p className="text-xs text-gray-600 line-clamp-1">
+                  {opp.contracting_office}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -303,13 +386,25 @@ const SAMGovPage = () => {
   const OpportunityDetail = ({ opportunity, onClose }) => {
     if (!opportunity) return null;
 
+    const contractValue = formatContractValue(opportunity);
+    const agencyHierarchy = opportunity.raw_data?.fullParentPathName?.split('.') || [];
+    const awardInfo = opportunity.raw_data?.award;
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
           <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-start justify-between">
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">{opportunity.title}</h2>
-              <p className="text-sm text-gray-600">Solicitation: {opportunity.solicitation_number}</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-sm text-gray-600">Solicitation: {opportunity.solicitation_number}</p>
+                {contractValue && (
+                  <span className="px-3 py-1 text-sm font-bold rounded bg-emerald-100 text-emerald-700">
+                    <DollarSign className="w-4 h-4 inline mr-1" />
+                    {contractValue}
+                  </span>
+                )}
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -367,15 +462,95 @@ const SAMGovPage = () => {
 
             {/* Details */}
             <div className="space-y-4">
+              {/* Agency Hierarchy */}
+              {agencyHierarchy.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Agency Hierarchy
+                  </h3>
+                  <div className="bg-blue-50 p-3 rounded">
+                    <ol className="text-sm text-gray-700 space-y-1">
+                      {agencyHierarchy.map((level, idx) => (
+                        <li key={idx} className="flex items-start">
+                          <span className="text-blue-600 font-medium mr-2">{idx + 1}.</span>
+                          <span>{level.trim()}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {/* Award Information (for awarded contracts) */}
+              {awardInfo && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Award className="w-4 h-4" />
+                    Award Information
+                  </h3>
+                  <div className="bg-emerald-50 p-3 rounded space-y-2">
+                    {awardInfo.number && (
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Award Number:</span> {awardInfo.number}
+                      </p>
+                    )}
+                    {awardInfo.date && (
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Award Date:</span> {new Date(awardInfo.date).toLocaleDateString()}
+                      </p>
+                    )}
+                    {awardInfo.amount && (
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Contract Value:</span> {contractValue}
+                      </p>
+                    )}
+                    {awardInfo.awardee?.name && (
+                      <div className="pt-2 border-t border-emerald-200">
+                        <p className="text-sm font-medium text-gray-900 mb-1">Awardee:</p>
+                        <p className="text-sm text-gray-700">{awardInfo.awardee.name}</p>
+                        {awardInfo.awardee.location && (
+                          <p className="text-xs text-gray-600">
+                            {[
+                              awardInfo.awardee.location.city?.name,
+                              awardInfo.awardee.location.state?.code,
+                              awardInfo.awardee.location.zip
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Contracting Office</h3>
                 <p className="text-sm text-gray-700">{opportunity.contracting_office}</p>
+                {opportunity.raw_data?.officeAddress && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    {[
+                      opportunity.raw_data.officeAddress.city,
+                      opportunity.raw_data.officeAddress.state,
+                      opportunity.raw_data.officeAddress.zipcode
+                    ].filter(Boolean).join(', ')}
+                  </p>
+                )}
               </div>
 
               {opportunity.naics_code && (
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">NAICS Code</h3>
-                  <p className="text-sm text-gray-700">{opportunity.naics_code}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded font-mono text-sm font-bold">
+                      {opportunity.naics_code}
+                    </span>
+                    {opportunity.raw_data?.naicsCodes && opportunity.raw_data.naicsCodes.length > 1 && (
+                      <span className="text-xs text-gray-500">
+                        +{opportunity.raw_data.naicsCodes.length - 1} more
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -389,17 +564,41 @@ const SAMGovPage = () => {
               {/* Raw Data - Contact Info */}
               {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Point of Contact</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Contracting Officer / Point of Contact
+                  </h3>
                   {opportunity.raw_data.pointOfContact.map((contact, idx) => (
-                    <div key={idx} className="bg-gray-50 p-3 rounded mb-2">
-                      <p className="text-sm font-medium text-gray-900">{contact.fullName}</p>
-                      {contact.email && (
-                        <p className="text-sm text-gray-700">Email: {contact.email}</p>
+                    <div key={idx} className="bg-gray-50 p-4 rounded mb-2">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-sm font-semibold text-gray-900">{contact.fullName}</p>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded capitalize">
+                          {contact.type} Contact
+                        </span>
+                      </div>
+                      {contact.title && (
+                        <p className="text-sm text-gray-600 mb-2">{contact.title}</p>
                       )}
-                      {contact.phone && (
-                        <p className="text-sm text-gray-700">Phone: {contact.phone}</p>
-                      )}
-                      <span className="text-xs text-gray-500 capitalize">{contact.type} Contact</span>
+                      <div className="space-y-1">
+                        {contact.email && (
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Email:</span>{' '}
+                            <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
+                              {contact.email}
+                            </a>
+                          </p>
+                        )}
+                        {contact.phone && (
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Phone:</span> {contact.phone}
+                          </p>
+                        )}
+                        {contact.fax && (
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Fax:</span> {contact.fax}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -414,18 +613,26 @@ const SAMGovPage = () => {
                     rel="noopener noreferrer"
                     className="block w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg transition-colors"
                   >
-                    View on SAM.gov →
+                    View Full Details on SAM.gov →
                   </a>
                 )}
-                {opportunity.description && opportunity.description.startsWith('http') && (
-                  <a
-                    href={opportunity.description}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-center rounded-lg transition-colors"
-                  >
-                    View Description →
-                  </a>
+                {opportunity.raw_data?.resourceLinks && opportunity.raw_data.resourceLinks.length > 0 && (
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Attachments ({opportunity.raw_data.resourceLinks.length})</h4>
+                    <div className="space-y-1">
+                      {opportunity.raw_data.resourceLinks.map((link, idx) => (
+                        <a
+                          key={idx}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          📎 Document {idx + 1}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
