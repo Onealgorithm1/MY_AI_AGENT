@@ -13,9 +13,11 @@ const SAMGovPage = () => {
   });
 
   const [recentOpportunities, setRecentOpportunities] = useState([]);
+  const [searchHistory, setSearchHistory] = useState([]);
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiKeyStatus, setApiKeyStatus] = useState(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -44,7 +46,8 @@ const SAMGovPage = () => {
         pendingAnalysis: 0,
       });
 
-      setRecentOpportunities(opportunities.slice(0, 5));
+      setRecentOpportunities(opportunities);
+      setSearchHistory(searches);
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -134,7 +137,7 @@ const SAMGovPage = () => {
         </button>
       </div>
 
-      {recentOpportunities.length === 0 ? (
+      {searchHistory.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm">No searches yet</p>
@@ -144,9 +147,9 @@ const SAMGovPage = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {recentOpportunities.map((search, idx) => (
+          {searchHistory.map((search, idx) => (
             <div
-              key={idx}
+              key={search.id || idx}
               className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <div className="flex items-start justify-between mb-2">
@@ -230,6 +233,208 @@ const SAMGovPage = () => {
     </div>
   );
 
+  const OpportunitiesList = () => (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Cached Opportunities</h3>
+        <button
+          onClick={loadDashboardData}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {recentOpportunities.length === 0 ? (
+        <div className="text-center py-8">
+          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No opportunities cached yet</p>
+          <p className="text-gray-400 text-xs mt-1">
+            Search for opportunities in the chat to see them here
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          {recentOpportunities.map((opp) => (
+            <div
+              key={opp.id}
+              onClick={() => setSelectedOpportunity(opp)}
+              className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer border border-gray-200 hover:border-blue-300"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                    {opp.title}
+                  </p>
+                  <p className="text-xs text-gray-600 mb-2">
+                    {opp.solicitation_number}
+                  </p>
+                </div>
+                <span className={`ml-3 px-2 py-1 text-xs font-medium rounded whitespace-nowrap ${
+                  opp.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
+                  opp.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
+                  opp.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {opp.type}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {opp.response_deadline ? new Date(opp.response_deadline).toLocaleDateString() : 'No deadline'}
+                </span>
+                {opp.naics_code && (
+                  <span>NAICS: {opp.naics_code}</span>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-600 line-clamp-2">
+                {opp.contracting_office}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const OpportunityDetail = ({ opportunity, onClose }) => {
+    if (!opportunity) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-start justify-between">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{opportunity.title}</h2>
+              <p className="text-sm text-gray-600">Solicitation: {opportunity.solicitation_number}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* Type and Status */}
+            <div className="flex flex-wrap gap-2">
+              <span className={`px-3 py-1 text-sm font-medium rounded ${
+                opportunity.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
+                opportunity.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
+                opportunity.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                {opportunity.type}
+              </span>
+              {opportunity.set_aside_type && (
+                <span className="px-3 py-1 text-sm font-medium rounded bg-purple-100 text-purple-700">
+                  {opportunity.set_aside_type}
+                </span>
+              )}
+            </div>
+
+            {/* Key Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Posted Date</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {new Date(opportunity.posted_date).toLocaleDateString()}
+                </p>
+              </div>
+              {opportunity.response_deadline && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Response Deadline</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(opportunity.response_deadline).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              {opportunity.archive_date && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Archive Date</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(opportunity.archive_date).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Contracting Office</h3>
+                <p className="text-sm text-gray-700">{opportunity.contracting_office}</p>
+              </div>
+
+              {opportunity.naics_code && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">NAICS Code</h3>
+                  <p className="text-sm text-gray-700">{opportunity.naics_code}</p>
+                </div>
+              )}
+
+              {opportunity.place_of_performance && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Place of Performance</h3>
+                  <p className="text-sm text-gray-700">{opportunity.place_of_performance}</p>
+                </div>
+              )}
+
+              {/* Raw Data - Contact Info */}
+              {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Point of Contact</h3>
+                  {opportunity.raw_data.pointOfContact.map((contact, idx) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded mb-2">
+                      <p className="text-sm font-medium text-gray-900">{contact.fullName}</p>
+                      {contact.email && (
+                        <p className="text-sm text-gray-700">Email: {contact.email}</p>
+                      )}
+                      {contact.phone && (
+                        <p className="text-sm text-gray-700">Phone: {contact.phone}</p>
+                      )}
+                      <span className="text-xs text-gray-500 capitalize">{contact.type} Contact</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Links */}
+              <div className="space-y-2">
+                {opportunity.raw_data?.uiLink && (
+                  <a
+                    href={opportunity.raw_data.uiLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg transition-colors"
+                  >
+                    View on SAM.gov →
+                  </a>
+                )}
+                {opportunity.description && opportunity.description.startsWith('http') && (
+                  <a
+                    href={opportunity.description}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-center rounded-lg transition-colors"
+                  >
+                    View Description →
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -297,6 +502,7 @@ const SAMGovPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - 2 cols */}
           <div className="lg:col-span-2 space-y-6">
+            <OpportunitiesList />
             <RecentSearches />
           </div>
 
@@ -306,6 +512,14 @@ const SAMGovPage = () => {
             <QuickActions />
           </div>
         </div>
+
+        {/* Opportunity Detail Modal */}
+        {selectedOpportunity && (
+          <OpportunityDetail
+            opportunity={selectedOpportunity}
+            onClose={() => setSelectedOpportunity(null)}
+          />
+        )}
 
         {/* Feature Info */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
