@@ -16,6 +16,8 @@ const SAMGovPage = () => {
   const [searchHistory, setSearchHistory] = useState([]);
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
   const [apiKeyStatus, setApiKeyStatus] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [filters, setFilters] = useState({
@@ -26,18 +28,32 @@ const SAMGovPage = () => {
 
   useEffect(() => {
     loadDashboardData();
+
+    // Auto-refresh every 1 hour
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing SAM.gov opportunities...');
+      loadDashboardData(true); // Pass true to indicate background refresh
+    }, 60 * 60 * 1000); // 1 hour in milliseconds
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isBackgroundRefresh = false) => {
     try {
-      setLoading(true);
+      // For background refresh, don't show full loading spinner
+      if (isBackgroundRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       // Load search history
       const historyRes = await samGov.getSearchHistory(5);
       const searches = historyRes.searches || [];
 
-      // Load cached opportunities
-      const cachedRes = await samGov.getCachedOpportunities({ limit: 20 });
+      // Load ALL cached opportunities (increased limit)
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 1000, offset: 0 });
       const opportunities = cachedRes.opportunities || [];
 
       // Calculate stats from search history
@@ -53,11 +69,20 @@ const SAMGovPage = () => {
 
       setRecentOpportunities(opportunities);
       setSearchHistory(searches);
+      setLastRefreshTime(new Date());
+
+      if (isBackgroundRefresh) {
+        console.log(`✅ Auto-refresh complete: ${opportunities.length} opportunities loaded`);
+      }
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
-      setLoading(false);
+      if (isBackgroundRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -270,19 +295,45 @@ const SAMGovPage = () => {
   // Get unique set-aside types for filter dropdown
   const setAsideTypes = [...new Set(recentOpportunities.map(o => o.set_aside_type).filter(Boolean))];
 
-  const OpportunitiesList = () => (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Cached Opportunities ({filteredOpportunities.length})
-        </h3>
-        <button
-          onClick={loadDashboardData}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          Refresh
-        </button>
-      </div>
+  const OpportunitiesList = () => {
+    const formatLastRefresh = () => {
+      if (!lastRefreshTime) return '';
+      const now = new Date();
+      const diff = Math.floor((now - lastRefreshTime) / 1000); // seconds
+
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    };
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Cached Opportunities ({filteredOpportunities.length})
+            </h3>
+            {lastRefreshTime && (
+              <p className="text-xs text-gray-500 mt-1">
+                {refreshing ? (
+                  <span className="flex items-center gap-1">
+                    <span className="animate-spin inline-block w-3 h-3 border border-blue-600 border-t-transparent rounded-full"></span>
+                    Refreshing...
+                  </span>
+                ) : (
+                  <>Last updated: {formatLastRefresh()} • Auto-refresh every 1 hour</>
+                )}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => loadDashboardData()}
+            disabled={refreshing}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh Now'}
+          </button>
+        </div>
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -380,8 +431,9 @@ const SAMGovPage = () => {
           })}
         </div>
       )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const OpportunityDetail = ({ opportunity, onClose }) => {
     if (!opportunity) return null;
@@ -665,12 +717,22 @@ const SAMGovPage = () => {
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back to Chat</span>
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            SAM.gov Opportunities
-          </h1>
-          <p className="text-gray-600">
-            Federal contract opportunities analysis and tracking
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                SAM.gov Opportunities
+              </h1>
+              <p className="text-gray-600">
+                Federal contract opportunities analysis and tracking
+              </p>
+            </div>
+            {refreshing && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+                <span className="text-sm text-blue-700 font-medium">Checking for new opportunities...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats Grid */}
