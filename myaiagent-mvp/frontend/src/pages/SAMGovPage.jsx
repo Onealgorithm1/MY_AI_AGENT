@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle } from 'lucide-react';
 import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
@@ -39,6 +39,12 @@ const SAMGovPage = () => {
     setAside: false,
     status: true,
   });
+
+  // Domain filtering and AI features
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [aiSummaries, setAiSummaries] = useState({});
+  const [loadingSummary, setLoadingSummary] = useState(null);
+  const [shareStatus, setShareStatus] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -101,6 +107,12 @@ const SAMGovPage = () => {
     if (filters.setAsideType && opp.set_aside_type !== filters.setAsideType) return false;
     if (filters.naicsCode && !opp.naics_code?.includes(filters.naicsCode)) return false;
     if (filters.noticeType && opp.type !== filters.noticeType) return false;
+
+    // Domain filter
+    if (selectedDomain) {
+      const oppDomain = opp.raw_data?.fullParentPathName?.split('.')[0] || opp.contracting_office?.split(',')[0] || '';
+      if (!oppDomain.toLowerCase().includes(selectedDomain.toLowerCase())) return false;
+    }
 
     // Status filter
     if (filters.status === 'active') {
@@ -173,7 +185,90 @@ const SAMGovPage = () => {
       agency: '',
       sortBy: '-modifiedDate',
     });
+    setSelectedDomain('');
     setCurrentPage(1);
+  };
+
+  // Generate AI Summary for opportunity
+  const generateAISummary = async (opportunity) => {
+    if (aiSummaries[opportunity.id]) {
+      return; // Already have summary
+    }
+
+    setLoadingSummary(opportunity.id);
+    try {
+      const response = await api.post('/messages', {
+        message: `Provide a concise 3-sentence summary of this contract opportunity:\n\nTitle: ${opportunity.title}\nAgency: ${opportunity.contracting_office}\nType: ${opportunity.type}\nNAICS: ${opportunity.naics_code || 'N/A'}\nSet-Aside: ${opportunity.set_aside_type || 'None'}\nDeadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'Not specified'}\n\nFocus on: What they need, who can bid, and key deadlines.`,
+        conversationId: null,
+      });
+
+      setAiSummaries(prev => ({
+        ...prev,
+        [opportunity.id]: response.data.response || 'Summary not available',
+      }));
+    } catch (error) {
+      console.error('Failed to generate AI summary:', error);
+      setAiSummaries(prev => ({
+        ...prev,
+        [opportunity.id]: 'Failed to generate summary. Please try again.',
+      }));
+    } finally {
+      setLoadingSummary(null);
+    }
+  };
+
+  // Open opportunity in chat for detailed discussion
+  const openInChat = (opportunity) => {
+    const context = `I'd like to discuss this SAM.gov contract opportunity:
+
+📋 **${opportunity.title}**
+🏛️ Agency: ${opportunity.contracting_office}
+📝 Solicitation: ${opportunity.solicitation_number}
+📅 Posted: ${new Date(opportunity.posted_date).toLocaleDateString()}
+${opportunity.response_deadline ? `⏰ Deadline: ${new Date(opportunity.response_deadline).toLocaleDateString()}` : ''}
+🏷️ Type: ${opportunity.type}
+${opportunity.naics_code ? `🔢 NAICS: ${opportunity.naics_code}` : ''}
+${opportunity.set_aside_type ? `🎯 Set-Aside: ${opportunity.set_aside_type}` : ''}
+${opportunity.raw_data?.uiLink ? `🔗 SAM.gov: ${opportunity.raw_data.uiLink}` : ''}
+
+What would you like to know about this opportunity?`;
+
+    // Navigate to chat with pre-filled context
+    navigate('/chat', { state: { initialMessage: context } });
+  };
+
+  // Share opportunity
+  const shareOpportunity = async (opportunity) => {
+    const shareUrl = `${window.location.origin}/sam-gov?opp=${opportunity.notice_id || opportunity.id}`;
+    const shareText = `${opportunity.title}\n${opportunity.contracting_office}\n${shareUrl}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: opportunity.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        setShareStatus({ id: opportunity.id, message: 'Shared successfully!' });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareStatus({ id: opportunity.id, message: 'Link copied to clipboard!' });
+      }
+      setTimeout(() => setShareStatus(null), 3000);
+    } catch (error) {
+      console.error('Failed to share:', error);
+      setShareStatus({ id: opportunity.id, message: 'Failed to share' });
+      setTimeout(() => setShareStatus(null), 3000);
+    }
+  };
+
+  // Extract unique domains from opportunities
+  const getDomains = () => {
+    const domains = opportunities.map(opp => {
+      const parts = opp.raw_data?.fullParentPathName?.split('.') || [];
+      return parts[0] || opp.contracting_office?.split(',')[0] || 'Unknown';
+    });
+    return [...new Set(domains)].slice(0, 15); // Top 15 domains
   };
 
   // Filter Section Component
@@ -398,8 +493,47 @@ const SAMGovPage = () => {
 
           {/* Results */}
           <div className="flex-1">
+            {/* Domain Filter Chips */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Filter by Department/Agency:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedDomain('');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    selectedDomain === ''
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  All Departments
+                </button>
+                {getDomains().map((domain, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setSelectedDomain(domain);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                      selectedDomain === domain
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {domain}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Results Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Showing {startIdx + 1} - {Math.min(endIdx, totalResults)} of {totalResults} results
@@ -453,7 +587,13 @@ const SAMGovPage = () => {
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs text-gray-600">Notice ID: {opp.notice_id || opp.solicitation_number}</span>
                           </div>
-                          <h3 className="text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-2">
+                          <h3
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOpportunity(opp);
+                            }}
+                            className="text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-2 cursor-pointer"
+                          >
                             {opp.title}
                           </h3>
                         </div>
@@ -542,6 +682,83 @@ const SAMGovPage = () => {
                             </span>
                           )}
                         </div>
+                      </div>
+
+                      {/* AI Summary Section */}
+                      {aiSummaries[opp.id] && (
+                        <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-purple-900 mb-1">AI Summary</p>
+                              <p className="text-sm text-purple-800">{aiSummaries[opp.id]}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generateAISummary(opp);
+                          }}
+                          disabled={loadingSummary === opp.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loadingSummary === opp.id ? (
+                            <>
+                              <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" />
+                              <span>AI Summary</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openInChat(opp);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Discuss in Chat</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            shareOpportunity(opp);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors"
+                        >
+                          <Share2 className="w-3 h-3" />
+                          <span>Share</span>
+                        </button>
+
+                        {shareStatus?.id === opp.id && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                            <CheckCircle className="w-3 h-3" />
+                            {shareStatus.message}
+                          </span>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedOpportunity(opp);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors ml-auto"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>View Details</span>
+                        </button>
                       </div>
                     </div>
                   );
