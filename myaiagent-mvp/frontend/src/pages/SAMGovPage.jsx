@@ -197,15 +197,29 @@ const SAMGovPage = () => {
 
     setLoadingSummary(opportunity.id);
     try {
+      // Create a temporary conversation for AI summary
+      const conversationRes = await api.post('/conversations', {
+        title: 'SAM.gov Summary',
+        model: 'gemini-2.5-flash',
+      });
+
+      const conversationId = conversationRes.data.conversation.id;
+
+      // Send message to get AI summary
       const response = await api.post('/messages', {
-        message: `Provide a concise 3-sentence summary of this contract opportunity:\n\nTitle: ${opportunity.title}\nAgency: ${opportunity.contracting_office}\nType: ${opportunity.type}\nNAICS: ${opportunity.naics_code || 'N/A'}\nSet-Aside: ${opportunity.set_aside_type || 'None'}\nDeadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'Not specified'}\n\nFocus on: What they need, who can bid, and key deadlines.`,
-        conversationId: null,
+        conversationId,
+        content: `Provide a concise 3-sentence summary of this contract opportunity:\n\nTitle: ${opportunity.title}\nAgency: ${opportunity.contracting_office}\nType: ${opportunity.type}\nNAICS: ${opportunity.naics_code || 'N/A'}\nSet-Aside: ${opportunity.set_aside_type || 'None'}\nDeadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'Not specified'}\n\nFocus on: What they need, who can bid, and key deadlines.`,
+        model: 'gemini-2.5-flash',
+        stream: false,
       });
 
       setAiSummaries(prev => ({
         ...prev,
-        [opportunity.id]: response.data.response || 'Summary not available',
+        [opportunity.id]: response.data.content || response.data.response || 'Summary not available',
       }));
+
+      // Clean up the temporary conversation
+      await api.delete(`/conversations/${conversationId}`);
     } catch (error) {
       console.error('Failed to generate AI summary:', error);
       setAiSummaries(prev => ({
