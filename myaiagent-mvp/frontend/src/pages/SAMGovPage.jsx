@@ -620,7 +620,6 @@ What would you like to know about this opportunity?`;
                   </select>
                 </div>
               </div>
-            </div>
 
             {/* Opportunity Cards */}
             <div className="space-y-3 md:space-y-4">
