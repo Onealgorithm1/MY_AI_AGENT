@@ -45,6 +45,7 @@ const SAMGovPage = () => {
   const [aiSummaries, setAiSummaries] = useState({});
   const [loadingSummary, setLoadingSummary] = useState(null);
   const [shareStatus, setShareStatus] = useState(null);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -327,45 +328,63 @@ What would you like to know about this opportunity?`;
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Mobile Filter Backdrop */}
+      {isMobileFilterOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileFilterOpen(false)}
+        />
+      )}
+
       {/* Header */}
-      <div className="bg-blue-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <div className="bg-blue-700 text-white sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-3 md:px-4 py-2 md:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
               <button
                 onClick={() => navigate('/chat')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 md:py-1.5 bg-blue-600 hover:bg-blue-500 rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm font-medium">Back</span>
+                <ArrowLeft className="w-4 h-4 md:w-4 md:h-4" />
+                <span className="text-xs md:text-sm font-medium hidden sm:inline">Back</span>
               </button>
-              <h1 className="text-xl font-bold">Contract Opportunities</h1>
+              <h1 className="text-base md:text-xl font-bold truncate">Contract Opportunities</h1>
             </div>
-            {refreshing && (
-              <div className="flex items-center gap-2 text-sm">
-                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Refreshing...</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {refreshing && (
+                <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <div className="animate-spin w-3 h-3 md:w-4 md:h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span className="hidden sm:inline">Refreshing...</span>
+                </div>
+              )}
+              {/* Mobile Filter Toggle */}
+              <button
+                onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+                className="lg:hidden flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded transition-colors touch-manipulation min-h-[44px]"
+              >
+                <Filter className="w-4 h-4" />
+                <span className="text-xs font-medium">Filters</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Search Bar */}
       <div className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex gap-2">
+        <div className="max-w-7xl mx-auto px-3 md:px-4 py-3 md:py-4">
+          <div className="flex flex-col sm:flex-row gap-2">
             <select
               value={filters.keywordType}
               onChange={(e) => setFilters({...filters, keywordType: e.target.value})}
-              className="px-3 py-2 border border-gray-300 rounded-l-lg bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 md:px-3 py-2.5 md:py-2 border border-gray-300 rounded-lg sm:rounded-l-lg bg-white text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
             >
               <option value="ALL">All Words</option>
               <option value="ANY">Any Words</option>
               <option value="EXACT">Exact Phrase</option>
             </select>
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="e.g. salesforce"
@@ -374,37 +393,60 @@ What would you like to know about this opportunity?`;
                   setFilters({...filters, keyword: e.target.value});
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 md:pl-10 pr-4 py-2.5 md:py-2 border border-gray-300 rounded-lg sm:rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
               />
             </div>
             <button
               onClick={() => loadData()}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-r-lg transition-colors flex items-center gap-2"
+              className="px-4 md:px-6 py-2.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg sm:rounded-r-lg transition-colors flex items-center justify-center gap-2 touch-manipulation min-h-[44px] md:min-h-0"
             >
               <Search className="w-4 h-4" />
-              Search
+              <span>Search</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Sidebar Filters */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden sticky top-4">
-              <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  Filter By
+      <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6">
+        <div className="flex gap-4 lg:gap-6">
+          {/* Sidebar Filters - Mobile Drawer / Desktop Sidebar */}
+          <div
+            className={`
+              fixed lg:static inset-y-0 left-0 z-50 w-80 lg:w-64 flex-shrink-0
+              transform transition-transform duration-300 ease-in-out
+              ${isMobileFilterOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}
+          >
+            <div className="h-full lg:h-auto bg-white border-r lg:border lg:border-gray-200 lg:rounded-lg overflow-y-auto lg:sticky lg:top-20">
+              {/* Mobile Header */}
+              <div className="lg:hidden bg-blue-700 text-white px-4 py-4 flex items-center justify-between sticky top-0 z-10">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Filter className="w-5 h-5" />
+                  Filters
                 </h2>
                 <button
-                  onClick={resetFilters}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="p-2 hover:bg-blue-600 rounded-lg transition-colors touch-manipulation"
                 >
-                  Reset
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Desktop Header */}
+              <div className="hidden lg:block bg-gray-100 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Filter By
+                  </h2>
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
 
               <FilterSection
@@ -506,65 +548,69 @@ What would you like to know about this opportunity?`;
           </div>
 
           {/* Results */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Domain Filter Chips */}
-            <div className="mb-4">
+            <div className="mb-3 md:mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Filter by Department/Agency:</span>
+                <span className="text-xs md:text-sm font-medium text-gray-700">Filter by Department:</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedDomain('');
-                    setCurrentPage(1);
-                  }}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                    selectedDomain === ''
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  All Departments
-                </button>
-                {getDomains().map((domain, idx) => (
+              {/* Horizontal scrollable on mobile, wrap on desktop */}
+              <div className="overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0">
+                <div className="flex md:flex-wrap gap-2 min-w-max md:min-w-0">
                   <button
-                    key={idx}
                     onClick={() => {
-                      setSelectedDomain(domain);
+                      setSelectedDomain('');
                       setCurrentPage(1);
+                      setIsMobileFilterOpen(false);
                     }}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                      selectedDomain === domain
+                    className={`px-3 py-2 md:py-1.5 text-xs md:text-sm font-medium rounded-full transition-colors touch-manipulation whitespace-nowrap ${
+                      selectedDomain === ''
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {domain}
+                    All Departments
                   </button>
-                ))}
+                  {getDomains().map((domain, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedDomain(domain);
+                        setCurrentPage(1);
+                        setIsMobileFilterOpen(false);
+                      }}
+                      className={`px-3 py-2 md:py-1.5 text-xs md:text-sm font-medium rounded-full transition-colors touch-manipulation whitespace-nowrap ${
+                        selectedDomain === domain
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {domain}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Results Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3 md:mb-4 pb-3 border-b border-gray-200">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-sm md:text-lg font-semibold text-gray-900">
                   Showing {startIdx + 1} - {Math.min(endIdx, totalResults)} of {totalResults} results
                 </h2>
                 {lastRefreshTime && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Last updated: {lastRefreshTime.toLocaleTimeString()} • Auto-refresh every hour
+                    Last updated: {lastRefreshTime.toLocaleTimeString()} <span className="hidden sm:inline">• Auto-refresh every hour</span>
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">Sort by</label>
-                  <select
-                    value={filters.sortBy}
-                    onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-                    className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <div className="flex items-center gap-2">
+                <label className="text-xs md:text-sm text-gray-600 hidden sm:inline">Sort by</label>
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+                  className="px-2 md:px-3 py-2 md:py-1.5 border border-gray-300 rounded text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation w-full sm:w-auto"
                   >
                     <option value="-modifiedDate">Updated Date (Newest)</option>
                     <option value="modifiedDate">Updated Date (Oldest)</option>
@@ -577,12 +623,12 @@ What would you like to know about this opportunity?`;
             </div>
 
             {/* Opportunity Cards */}
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {paginatedOpps.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 font-medium">No opportunities found</p>
-                  <p className="text-sm text-gray-500 mt-1">Try adjusting your filters</p>
+                <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <FileText className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm md:text-base text-gray-600 font-medium">No opportunities found</p>
+                  <p className="text-xs md:text-sm text-gray-500 mt-1">Try adjusting your filters</p>
                 </div>
               ) : (
                 paginatedOpps.map((opp) => {
@@ -593,27 +639,27 @@ What would you like to know about this opportunity?`;
                     <div
                       key={opp.id}
                       onClick={() => setSelectedOpportunity(opp)}
-                      className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                      className="bg-white border border-gray-200 rounded-lg p-3 md:p-5 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer touch-manipulation"
                     >
                       {/* Title and Notice Type */}
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs text-gray-600">Notice ID: {opp.notice_id || opp.solicitation_number}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5 md:mb-2">
+                            <span className="text-xs text-gray-600 truncate">Notice ID: {opp.notice_id || opp.solicitation_number}</span>
                           </div>
                           <h3
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedOpportunity(opp);
                             }}
-                            className="text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-2 cursor-pointer"
+                            className="text-sm md:text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-3 md:line-clamp-2 cursor-pointer"
                           >
                             {opp.title}
                           </h3>
                         </div>
                         {contractValue && (
                           <div className="flex-shrink-0">
-                            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-bold rounded">
+                            <span className="inline-block px-2.5 md:px-3 py-1 bg-emerald-100 text-emerald-700 text-xs md:text-sm font-bold rounded">
                               {contractValue}
                             </span>
                           </div>
@@ -621,28 +667,28 @@ What would you like to know about this opportunity?`;
                       </div>
 
                       {/* Agency Info */}
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-3">
-                        <div>
-                          <span className="font-medium text-gray-700">Department/Ind.Agency</span>
-                          <p className="text-gray-600">{agencyParts[0] || opp.contracting_office}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 text-xs md:text-sm mb-3">
+                        <div className="min-w-0">
+                          <span className="font-medium text-gray-700 block">Department/Ind.Agency</span>
+                          <p className="text-gray-600 truncate">{agencyParts[0] || opp.contracting_office}</p>
                         </div>
                         {agencyParts[1] && (
-                          <div>
-                            <span className="font-medium text-gray-700">Subtier</span>
-                            <p className="text-gray-600">{agencyParts[1]}</p>
+                          <div className="min-w-0">
+                            <span className="font-medium text-gray-700 block">Subtier</span>
+                            <p className="text-gray-600 truncate">{agencyParts[1]}</p>
                           </div>
                         )}
                         {agencyParts[2] && (
-                          <div>
-                            <span className="font-medium text-gray-700">Office</span>
-                            <p className="text-gray-600">{agencyParts[2]}</p>
+                          <div className="min-w-0">
+                            <span className="font-medium text-gray-700 block">Office</span>
+                            <p className="text-gray-600 truncate">{agencyParts[2]}</p>
                           </div>
                         )}
                       </div>
 
                       {/* Contract Opportunities Section */}
-                      <div className="border-t border-gray-200 pt-3 mt-3">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="border-t border-gray-200 pt-2 md:pt-3 mt-2 md:mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm">
                           <div>
                             <span className="font-medium text-gray-700">Notice Type</span>
                             <p className="text-gray-900">{opp.type}</p>
@@ -712,14 +758,14 @@ What would you like to know about this opportunity?`;
                       )}
 
                       {/* Action Buttons */}
-                      <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                      <div className="mt-3 md:mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             generateAISummary(opp);
                           }}
                           disabled={loadingSummary === opp.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] md:min-h-0"
                         >
                           {loadingSummary === opp.id ? (
                             <>
@@ -739,7 +785,7 @@ What would you like to know about this opportunity?`;
                             e.stopPropagation();
                             openInChat(opp);
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
                         >
                           <MessageSquare className="w-3 h-3" />
                           <span>Discuss in Chat</span>
@@ -750,16 +796,17 @@ What would you like to know about this opportunity?`;
                             e.stopPropagation();
                             shareOpportunity(opp);
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
                         >
                           <Share2 className="w-3 h-3" />
                           <span>Share</span>
                         </button>
 
                         {shareStatus?.id === opp.id && (
-                          <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                          <span className="flex items-center gap-1 px-2 py-2 md:py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
                             <CheckCircle className="w-3 h-3" />
-                            {shareStatus.message}
+                            <span className="hidden sm:inline">{shareStatus.message}</span>
+                            <span className="sm:hidden">Shared!</span>
                           </span>
                         )}
 
@@ -768,7 +815,7 @@ What would you like to know about this opportunity?`;
                             e.stopPropagation();
                             setSelectedOpportunity(opp);
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors ml-auto"
+                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors md:ml-auto touch-manipulation min-h-[44px] md:min-h-0"
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>View Details</span>
@@ -782,21 +829,21 @@ What would you like to know about this opportunity?`;
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+              <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Results per page</span>
+                  <span className="text-xs md:text-sm text-gray-600 hidden sm:inline">Results per page</span>
                   <select
                     value={resultsPerPage}
                     onChange={(e) => {
                       setResultsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="px-2 md:px-2 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm touch-manipulation"
                   >
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
+                    <option value="10">10 per page</option>
+                    <option value="25">25 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
                   </select>
                 </div>
 
@@ -804,17 +851,17 @@ What would you like to know about this opportunity?`;
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
                   >
                     Previous
                   </button>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-xs md:text-sm text-gray-600 px-2">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
                   >
                     Next
                   </button>
@@ -844,16 +891,16 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
   const awardInfo = opportunity.raw_data?.award;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-start justify-between">
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{opportunity.title}</h2>
-            <div className="flex items-center gap-3 flex-wrap">
-              <p className="text-sm text-gray-600">Solicitation: {opportunity.solicitation_number}</p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4">
+      <div className="bg-white md:rounded-lg max-w-4xl w-full h-full md:h-auto md:max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 md:p-6 flex items-start justify-between z-10">
+          <div className="flex-1 min-w-0 pr-2">
+            <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 md:mb-2 line-clamp-2">{opportunity.title}</h2>
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+              <p className="text-xs md:text-sm text-gray-600 truncate">Solicitation: {opportunity.solicitation_number}</p>
               {contractValue && (
-                <span className="px-3 py-1 text-sm font-bold rounded bg-emerald-100 text-emerald-700">
-                  <DollarSign className="w-4 h-4 inline mr-1" />
+                <span className="px-2 md:px-3 py-0.5 md:py-1 text-xs md:text-sm font-bold rounded bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                  <DollarSign className="w-3 h-3 md:w-4 md:h-4" />
                   {contractValue}
                 </span>
               )}
@@ -861,13 +908,13 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
           </div>
           <button
             onClick={onClose}
-            className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+            className="ml-2 md:ml-4 text-gray-400 hover:text-gray-600 transition-colors p-2 touch-manipulation"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-3 md:p-6 space-y-4 md:space-y-6">
           {/* Type and Status */}
           <div className="flex flex-wrap gap-2">
             <span className={`px-3 py-1 text-sm font-medium rounded ${
