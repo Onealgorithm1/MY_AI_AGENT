@@ -37,6 +37,8 @@ const SAMGovPage = () => {
     dates: false,
     notice: false,
     setAside: false,
+    naics: false,
+    agency: false,
     status: true,
   });
 
@@ -550,6 +552,72 @@ What would you like to know about this opportunity?`;
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
+              </FilterSection>
+
+              <FilterSection
+                title="NAICS Code"
+                name="naics"
+                count={filters.naicsCode ? 1 : 0}
+              >
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. 541511, 541512"
+                    value={filters.naicsCode}
+                    onChange={(e) => {
+                      setFilters({...filters, naicsCode: e.target.value});
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p className="font-medium text-gray-700">Common IT NAICS:</p>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, naicsCode: '541511'});
+                        setCurrentPage(1);
+                      }}
+                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
+                    >
+                      541511 - Custom Computer Programming
+                    </button>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, naicsCode: '541512'});
+                        setCurrentPage(1);
+                      }}
+                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
+                    >
+                      541512 - Computer Systems Design
+                    </button>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, naicsCode: '541519'});
+                        setCurrentPage(1);
+                      }}
+                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
+                    >
+                      541519 - Other Computer Services
+                    </button>
+                  </div>
+                </div>
+              </FilterSection>
+
+              <FilterSection
+                title="Agency"
+                name="agency"
+                count={filters.agency ? 1 : 0}
+              >
+                <input
+                  type="text"
+                  placeholder="Search agency name..."
+                  value={filters.agency}
+                  onChange={(e) => {
+                    setFilters({...filters, agency: e.target.value});
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </FilterSection>
             </div>
           </div>
