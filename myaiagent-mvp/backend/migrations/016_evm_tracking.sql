@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS evm_projects (
   project_number VARCHAR(100) UNIQUE,
 
   -- Contract Links
-  opportunity_id UUID REFERENCES opportunities(id),
+  opportunity_id INTEGER REFERENCES opportunities(id),
   contract_award_id UUID REFERENCES fpds_contract_awards(id),
   contract_piid VARCHAR(255),
 

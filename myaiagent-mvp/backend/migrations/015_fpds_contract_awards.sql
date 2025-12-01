@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS competitive_intelligence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Opportunity Link
-  opportunity_id UUID REFERENCES opportunities(id) ON DELETE CASCADE,
+  opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
   notice_id VARCHAR(255),
 
   -- Incumbent Information

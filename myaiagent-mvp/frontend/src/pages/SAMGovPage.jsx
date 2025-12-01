@@ -34,10 +34,6 @@ const SAMGovPage = () => {
       const searches = historyRes.data.searches || [];
       const opportunities = oppsRes.data.opportunities || [];
 
-      // Load cached opportunities
-      const cachedRes = await samGov.getCachedOpportunities({ limit: 20 });
-      const opportunities = cachedRes.opportunities || [];
-
       // Calculate stats from search history
       const totalNew = searches.reduce((sum, s) => sum + (s.new_records || 0), 0);
 

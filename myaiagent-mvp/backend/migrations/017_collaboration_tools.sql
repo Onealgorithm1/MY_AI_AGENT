@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS proposal_workspaces (
   workspace_code VARCHAR(50) UNIQUE,
 
   -- Linked Opportunity
-  opportunity_id UUID REFERENCES opportunities(id),
+  opportunity_id INTEGER REFERENCES opportunities(id),
   notice_id VARCHAR(255),
 
   -- Proposal Details
@@ -309,6 +309,15 @@ CREATE INDEX IF NOT EXISTS idx_deadlines_workspace ON proposal_deadlines(workspa
 CREATE INDEX IF NOT EXISTS idx_deadlines_date ON proposal_deadlines(deadline_date);
 
 -- Triggers for automatic updates
+-- Create or replace the update timestamp function
+CREATE OR REPLACE FUNCTION update_evm_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER workspaces_updated_at_trigger
   BEFORE UPDATE ON proposal_workspaces
   FOR EACH ROW

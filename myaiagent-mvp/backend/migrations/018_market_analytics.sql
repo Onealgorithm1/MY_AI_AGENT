@@ -394,6 +394,15 @@ CREATE INDEX IF NOT EXISTS idx_insights_impact ON market_insights(impact_level);
 CREATE INDEX IF NOT EXISTS idx_insights_status ON market_insights(status);
 
 -- Triggers for automatic updates
+-- Create or replace the update timestamp function
+CREATE OR REPLACE FUNCTION update_evm_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER market_data_sources_updated_at_trigger
   BEFORE UPDATE ON market_data_sources
   FOR EACH ROW
