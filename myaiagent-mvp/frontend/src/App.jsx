@@ -15,6 +15,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
 const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage'));
+const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const AppLayout = lazy(() => import('./components/AppLayout'));
 
 function LoadingFallback() {
@@ -125,6 +126,14 @@ function App() {
             element={
               <PrivateRoute>
                 <ContractAnalyticsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/proposals"
+            element={
+              <PrivateRoute>
+                <ProposalWorkspacePage />
               </PrivateRoute>
             }
           />
