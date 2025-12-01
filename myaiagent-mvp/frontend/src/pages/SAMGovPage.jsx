@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save, List, CalendarDays } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save, List, CalendarDays, Mail, Phone, CalendarPlus } from 'lucide-react';
 import api, { samGov } from '../services/api';
+import { addToGoogleCalendar, openEmailClient, initiatePhoneCall, formatPhoneNumber } from '../utils/integrations';
 
 const SAMGovPage = () => {
   const navigate = useNavigate();
@@ -1618,13 +1619,37 @@ What would you like to know about this opportunity?`;
             </button>
 
             {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && opportunity.raw_data.pointOfContact[0].email && (
-              <a
-                href={`mailto:${opportunity.raw_data.pointOfContact[0].email}?subject=Inquiry: ${opportunity.solicitation_number}&body=Dear ${opportunity.raw_data.pointOfContact[0].fullName},%0D%0A%0D%0AI am interested in the following opportunity:%0D%0A%0D%0ATitle: ${opportunity.title}%0D%0ASolicitation: ${opportunity.solicitation_number}%0D%0A%0D%0A`}
+              <button
+                onClick={() => {
+                  const contact = opportunity.raw_data.pointOfContact[0];
+                  openEmailClient(
+                    contact.email,
+                    `Inquiry: ${opportunity.solicitation_number}`,
+                    `Dear ${contact.fullName},\n\nI am interested in the following opportunity:\n\nTitle: ${opportunity.title}\nSolicitation: ${opportunity.solicitation_number}\n\n`
+                  );
+                }}
                 className="flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
               >
-                <MessageSquare className="w-4 h-4" />
-                Email CO
-              </a>
+                <Mail className="w-4 h-4" />
+                Email in Gmail
+              </button>
+            )}
+
+            {opportunity.response_deadline && (
+              <button
+                onClick={() => {
+                  addToGoogleCalendar({
+                    title: `Response Due: ${opportunity.title}`,
+                    description: `SAM.gov Opportunity\nSolicitation: ${opportunity.solicitation_number}\nAgency: ${opportunity.contracting_office}\n\nLink: ${opportunity.raw_data?.uiLink || ''}`,
+                    startDate: opportunity.response_deadline,
+                    location: 'SAM.gov',
+                  });
+                }}
+                className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
+              >
+                <CalendarPlus className="w-4 h-4" />
+                Add to Calendar
+              </button>
             )}
           </div>
 
@@ -1779,22 +1804,34 @@ What would you like to know about this opportunity?`;
                     {contact.title && (
                       <p className="text-sm text-gray-600 mb-2">{contact.title}</p>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {contact.email && (
-                        <p className="text-sm text-gray-700">
-                          <span className="font-medium">Email:</span>{' '}
-                          <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">Email:</span>
+                          <button
+                            onClick={() => openEmailClient(
+                              contact.email,
+                              `Inquiry: ${opportunity.solicitation_number}`,
+                              `Dear ${contact.fullName},\n\n`
+                            )}
+                            className="flex items-center gap-1 px-2 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            <Mail className="w-3 h-3" />
                             {contact.email}
-                          </a>
-                        </p>
+                          </button>
+                        </div>
                       )}
                       {contact.phone && (
-                        <p className="text-sm text-gray-700">
-                          <span className="font-medium">Phone:</span>{' '}
-                          <a href={`tel:${contact.phone.replace(/\D/g, '')}`} className="text-blue-600 hover:underline">
-                            {contact.phone}
-                          </a>
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">Phone:</span>
+                          <button
+                            onClick={() => initiatePhoneCall(contact.phone)}
+                            className="flex items-center gap-1 px-2 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {formatPhoneNumber(contact.phone)}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

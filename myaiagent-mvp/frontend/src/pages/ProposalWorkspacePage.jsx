@@ -16,8 +16,10 @@ import {
   Trash2,
   UserPlus,
   Settings,
+  CalendarPlus,
 } from 'lucide-react';
 import { collaboration } from '../services/collaboration';
+import { addToGoogleCalendar } from '../utils/integrations';
 
 const ProposalWorkspacePage = () => {
   const navigate = useNavigate();
@@ -302,9 +304,25 @@ const ProposalWorkspacePage = () => {
                     <div className="grid grid-cols-3 gap-4">
                       {selectedWorkspace.response_deadline && (
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Clock className="w-4 h-4 text-orange-600" />
-                            <span className="text-xs font-medium text-orange-900">Deadline</span>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-orange-600" />
+                              <span className="text-xs font-medium text-orange-900">Deadline</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                addToGoogleCalendar({
+                                  title: `Proposal Due: ${selectedWorkspace.workspace_name}`,
+                                  description: `Response deadline for ${selectedWorkspace.rfp_title || selectedWorkspace.workspace_name}\n\nAgency: ${selectedWorkspace.agency_name || 'N/A'}\nSolicitation: ${selectedWorkspace.solicitation_number || 'N/A'}`,
+                                  startDate: selectedWorkspace.response_deadline,
+                                  location: selectedWorkspace.agency_name || '',
+                                });
+                              }}
+                              className="p-1 text-orange-600 hover:bg-orange-100 rounded transition-colors"
+                              title="Add to Google Calendar"
+                            >
+                              <CalendarPlus className="w-3 h-3" />
+                            </button>
                           </div>
                           <p className="text-sm font-bold text-orange-900">
                             {new Date(selectedWorkspace.response_deadline).toLocaleDateString()}
@@ -487,11 +505,28 @@ const ProposalWorkspacePage = () => {
                                     )}
                                     <div className="flex items-center gap-4 text-xs text-gray-500">
                                       {item.due_date && (
-                                        <div className="flex items-center gap-1">
-                                          <Clock className="w-3 h-3" />
-                                          <span>
-                                            Due: {new Date(item.due_date).toLocaleDateString()}
-                                          </span>
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span>
+                                              Due: {new Date(item.due_date).toLocaleDateString()}
+                                            </span>
+                                          </div>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              addToGoogleCalendar({
+                                                title: `Task: ${item.task_name}`,
+                                                description: `${item.description || ''}\n\nWorkspace: ${selectedWorkspace.workspace_name}\nPriority: ${item.priority}`,
+                                                startDate: item.due_date,
+                                                location: selectedWorkspace.workspace_name || '',
+                                              });
+                                            }}
+                                            className="p-0.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                            title="Add to Google Calendar"
+                                          >
+                                            <CalendarPlus className="w-3 h-3" />
+                                          </button>
                                         </div>
                                       )}
                                       {item.completed_at && (
