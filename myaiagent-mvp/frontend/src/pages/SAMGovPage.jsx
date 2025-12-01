@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save } from 'lucide-react';
 import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
@@ -33,6 +33,7 @@ const SAMGovPage = () => {
 
   // Filter panel state
   const [expandedFilters, setExpandedFilters] = useState({
+    savedSearches: true,
     keyword: true,
     dates: false,
     notice: false,
@@ -49,8 +50,14 @@ const SAMGovPage = () => {
   const [shareStatus, setShareStatus] = useState(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // Saved searches state
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [showSaveSearchDialog, setShowSaveSearchDialog] = useState(false);
+  const [searchName, setSearchName] = useState('');
+
   useEffect(() => {
     loadData();
+    loadSavedSearches();
 
     // Auto-refresh every 1 hour
     const interval = setInterval(() => {
@@ -59,6 +66,18 @@ const SAMGovPage = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Load saved searches from localStorage
+  const loadSavedSearches = () => {
+    try {
+      const saved = localStorage.getItem('savedSearches');
+      if (saved) {
+        setSavedSearches(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Failed to load saved searches:', error);
+    }
+  };
 
   const loadData = async (isBackgroundRefresh = false) => {
     try {
@@ -190,6 +209,47 @@ const SAMGovPage = () => {
     });
     setSelectedDomain('');
     setCurrentPage(1);
+  };
+
+  // Save current search
+  const saveCurrentSearch = () => {
+    if (!searchName.trim()) {
+      alert('Please enter a name for this search');
+      return;
+    }
+
+    const newSearch = {
+      id: Date.now(),
+      name: searchName.trim(),
+      filters: { ...filters },
+      selectedDomain,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...savedSearches, newSearch];
+    setSavedSearches(updated);
+    localStorage.setItem('savedSearches', JSON.stringify(updated));
+
+    setSearchName('');
+    setShowSaveSearchDialog(false);
+    alert(`Search "${newSearch.name}" saved successfully!`);
+  };
+
+  // Load a saved search
+  const loadSavedSearch = (search) => {
+    setFilters(search.filters);
+    setSelectedDomain(search.selectedDomain || '');
+    setCurrentPage(1);
+    setIsMobileFilterOpen(false);
+  };
+
+  // Delete a saved search
+  const deleteSavedSearch = (id) => {
+    if (confirm('Are you sure you want to delete this saved search?')) {
+      const updated = savedSearches.filter(s => s.id !== id);
+      setSavedSearches(updated);
+      localStorage.setItem('savedSearches', JSON.stringify(updated));
+    }
   };
 
   // Generate AI Summary for opportunity
@@ -429,22 +489,34 @@ What would you like to know about this opportunity?`;
           >
             <div className="h-full lg:h-auto bg-white border-r lg:border lg:border-gray-200 lg:rounded-lg overflow-y-auto lg:sticky lg:top-20">
               {/* Mobile Header */}
-              <div className="lg:hidden bg-blue-700 text-white px-4 py-4 flex items-center justify-between sticky top-0 z-10">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
-                  Filters
-                </h2>
+              <div className="lg:hidden bg-blue-700 text-white px-4 py-4 sticky top-0 z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold flex items-center gap-2">
+                    <Filter className="w-5 h-5" />
+                    Filters
+                  </h2>
+                  <button
+                    onClick={() => setIsMobileFilterOpen(false)}
+                    className="p-2 hover:bg-blue-600 rounded-lg transition-colors touch-manipulation"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
                 <button
-                  onClick={() => setIsMobileFilterOpen(false)}
-                  className="p-2 hover:bg-blue-600 rounded-lg transition-colors touch-manipulation"
+                  onClick={() => {
+                    setShowSaveSearchDialog(true);
+                    setIsMobileFilterOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded transition-colors touch-manipulation"
                 >
-                  <X className="w-5 h-5" />
+                  <Bookmark className="w-4 h-4" />
+                  Save Current Search
                 </button>
               </div>
 
               {/* Desktop Header */}
               <div className="hidden lg:block bg-gray-100 px-4 py-3 border-b border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                     <Filter className="w-4 h-4" />
                     Filter By
@@ -456,7 +528,55 @@ What would you like to know about this opportunity?`;
                     Reset
                   </button>
                 </div>
+                <button
+                  onClick={() => setShowSaveSearchDialog(true)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                >
+                  <Bookmark className="w-3 h-3" />
+                  Save Current Search
+                </button>
               </div>
+
+              {/* Saved Searches Section */}
+              {savedSearches.length > 0 && (
+                <FilterSection
+                  title="Saved Searches"
+                  name="savedSearches"
+                  count={savedSearches.length}
+                >
+                  <div className="space-y-2">
+                    {savedSearches.map((search) => (
+                      <div
+                        key={search.id}
+                        className="flex items-center gap-2 p-2 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                      >
+                        <button
+                          onClick={() => loadSavedSearch(search)}
+                          className="flex-1 text-left flex items-center gap-2"
+                        >
+                          <Star className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">{search.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(search.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSavedSearch(search.id);
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete search"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </FilterSection>
+              )}
 
               <FilterSection
                 title="Status"
@@ -945,6 +1065,78 @@ What would you like to know about this opportunity?`;
           </div>
         </div>
       </div>
+
+      {/* Save Search Dialog */}
+      {showSaveSearchDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Bookmark className="w-5 h-5 text-blue-600" />
+                Save Current Search
+              </h3>
+              <button
+                onClick={() => {
+                  setShowSaveSearchDialog(false);
+                  setSearchName('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Name
+              </label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && saveCurrentSearch()}
+                placeholder="e.g., IT Contracts - DoD"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
+              <p className="font-medium mb-2">Current filters:</p>
+              <ul className="space-y-1">
+                {filters.keyword && <li>• Keyword: {filters.keyword}</li>}
+                {filters.naicsCode && <li>• NAICS: {filters.naicsCode}</li>}
+                {filters.agency && <li>• Agency: {filters.agency}</li>}
+                {filters.setAsideType && <li>• Set-Aside: {filters.setAsideType}</li>}
+                {filters.noticeType && <li>• Notice Type: {filters.noticeType}</li>}
+                {selectedDomain && <li>• Department: {selectedDomain}</li>}
+                {!filters.keyword && !filters.naicsCode && !filters.agency && !filters.setAsideType && !filters.noticeType && !selectedDomain && (
+                  <li className="text-gray-500">No filters applied</li>
+                )}
+              </ul>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowSaveSearchDialog(false);
+                  setSearchName('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCurrentSearch}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save Search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Opportunity Detail Modal - keep existing implementation */}
       {selectedOpportunity && (
