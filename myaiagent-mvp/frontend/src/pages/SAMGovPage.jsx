@@ -890,15 +890,69 @@ What would you like to know about this opportunity?`;
   );
 };
 
-// Opportunity Detail Modal Component (simplified)
+// Opportunity Detail Modal Component
 const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) => {
+  const navigate = useNavigate();
   const contractValue = formatContractValue(opportunity);
   const agencyHierarchy = opportunity.raw_data?.fullParentPathName?.split('.') || [];
   const awardInfo = opportunity.raw_data?.award;
+  const classificationCode = opportunity.raw_data?.classificationCode;
+  const placeOfPerformance = opportunity.raw_data?.placeOfPerformance;
+  const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
+
+  const sendToGeminiAnalysis = async () => {
+    setAnalyzingWithAI(true);
+    try {
+      // Prepare comprehensive opportunity data for AI analysis
+      const analysisContext = `
+GOVERNMENT CONTRACT OPPORTUNITY ANALYSIS REQUEST
+
+Title: ${opportunity.title}
+Solicitation Number: ${opportunity.solicitation_number}
+Notice ID: ${opportunity.notice_id || 'N/A'}
+
+Agency Information:
+${agencyHierarchy.map((level, idx) => `  Level ${idx + 1}: ${level.trim()}`).join('\n')}
+
+Contract Details:
+- Type: ${opportunity.type}
+- Set-Aside: ${opportunity.set_aside_type || 'None'}
+- NAICS Code: ${opportunity.naics_code || 'N/A'}
+- PSC Code: ${classificationCode?.code || 'N/A'}
+- Posted Date: ${new Date(opportunity.posted_date).toLocaleDateString()}
+- Response Deadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'N/A'}
+${contractValue ? `- Estimated Value: ${contractValue}` : ''}
+
+Description:
+${opportunity.description || 'No description available'}
+
+Please provide:
+1. Opportunity summary and key requirements
+2. Competitive analysis and win probability assessment
+3. Recommended approach and capture strategy
+4. Risk factors and mitigation strategies
+5. Past performance requirements analysis
+6. Teaming recommendations
+      `;
+
+      navigate('/chat', {
+        state: {
+          initialMessage: analysisContext,
+          autoSend: true
+        }
+      });
+      onClose();
+    } catch (error) {
+      console.error('Failed to initiate AI analysis:', error);
+      alert('Failed to initiate AI analysis. Please try again.');
+    } finally {
+      setAnalyzingWithAI(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white md:rounded-lg max-w-4xl w-full h-full md:h-auto md:max-h-[90vh] overflow-y-auto">
+      <div className="bg-white md:rounded-lg max-w-5xl w-full h-full md:h-auto md:max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-3 md:p-6 flex items-start justify-between z-10">
           <div className="flex-1 min-w-0 pr-2">
             <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 md:mb-2 line-clamp-2">{opportunity.title}</h2>
@@ -921,6 +975,63 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
         </div>
 
         <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+          {/* Action Buttons - Moved to top for better visibility */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <button
+              onClick={sendToGeminiAnalysis}
+              disabled={analyzingWithAI}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs md:text-sm font-medium rounded-lg transition-all shadow-md disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" />
+              {analyzingWithAI ? 'Analyzing...' : 'AI Analysis'}
+            </button>
+
+            <button
+              onClick={() => {
+                const context = `I'd like to discuss this SAM.gov contract opportunity:
+
+📋 **${opportunity.title}**
+🏛️ Agency: ${opportunity.contracting_office}
+📝 Solicitation: ${opportunity.solicitation_number}
+📅 Posted: ${new Date(opportunity.posted_date).toLocaleDateString()}
+${opportunity.response_deadline ? `⏰ Deadline: ${new Date(opportunity.response_deadline).toLocaleDateString()}` : ''}
+🏷️ Type: ${opportunity.type}
+${opportunity.naics_code ? `🔢 NAICS: ${opportunity.naics_code}` : ''}
+${opportunity.set_aside_type ? `🎯 Set-Aside: ${opportunity.set_aside_type}` : ''}
+${opportunity.raw_data?.uiLink ? `🔗 SAM.gov: ${opportunity.raw_data.uiLink}` : ''}
+
+What would you like to know about this opportunity?`;
+                navigate('/chat', { state: { initialMessage: context } });
+                onClose();
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Send to Chat
+            </button>
+
+            <button
+              onClick={() => {
+                navigate('/contract-analytics');
+                onClose();
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Market Analytics
+            </button>
+
+            {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && opportunity.raw_data.pointOfContact[0].email && (
+              <a
+                href={`mailto:${opportunity.raw_data.pointOfContact[0].email}?subject=Inquiry: ${opportunity.solicitation_number}&body=Dear ${opportunity.raw_data.pointOfContact[0].fullName},%0D%0A%0D%0AI am interested in the following opportunity:%0D%0A%0D%0ATitle: ${opportunity.title}%0D%0ASolicitation: ${opportunity.solicitation_number}%0D%0A%0D%0A`}
+                className="flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm font-medium rounded-lg transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Email CO
+              </a>
+            )}
+          </div>
+
           {/* Type and Status */}
           <div className="flex flex-wrap gap-2">
             <span className={`px-3 py-1 text-sm font-medium rounded ${
@@ -936,19 +1047,42 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
                 {opportunity.set_aside_type}
               </span>
             )}
+            {opportunity.raw_data?.active && (
+              <span className="px-3 py-1 text-sm font-medium rounded bg-green-100 text-green-700 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Active
+              </span>
+            )}
           </div>
+
+          {/* Description */}
+          {opportunity.description && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                Description
+              </h3>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{opportunity.description}</p>
+            </div>
+          )}
 
           {/* Key Dates */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">Posted Date</p>
+              <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Posted Date
+              </p>
               <p className="text-sm font-semibold text-gray-900">
                 {new Date(opportunity.posted_date).toLocaleDateString()}
               </p>
             </div>
             {opportunity.response_deadline && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Response Deadline</p>
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <p className="text-xs text-orange-600 mb-1 flex items-center gap-1 font-medium">
+                  <Clock className="w-3 h-3" />
+                  Response Deadline
+                </p>
                 <p className="text-sm font-semibold text-gray-900">
                   {new Date(opportunity.response_deadline).toLocaleDateString()}
                 </p>
@@ -964,8 +1098,51 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
             )}
           </div>
 
-          {/* Additional details as per existing implementation */}
-          {/* ... rest of detail modal content ... */}
+          {/* Classification Codes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {opportunity.naics_code && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-xs text-gray-600 mb-1">NAICS Code</p>
+                <p className="text-lg font-bold text-gray-900">{opportunity.naics_code}</p>
+                {opportunity.raw_data?.naicsCode && (
+                  <p className="text-xs text-gray-600 mt-1">{opportunity.raw_data.naicsCode}</p>
+                )}
+              </div>
+            )}
+            {classificationCode && (
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                <p className="text-xs text-gray-600 mb-1">PSC Code</p>
+                <p className="text-lg font-bold text-gray-900">{classificationCode.code}</p>
+                {classificationCode.description && (
+                  <p className="text-xs text-gray-600 mt-1">{classificationCode.description}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Place of Performance */}
+          {placeOfPerformance && (
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-purple-600" />
+                Place of Performance
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+                {placeOfPerformance.city && (
+                  <p><span className="font-medium">City:</span> {placeOfPerformance.city.name}</p>
+                )}
+                {placeOfPerformance.state && (
+                  <p><span className="font-medium">State:</span> {placeOfPerformance.state.name}</p>
+                )}
+                {placeOfPerformance.country && (
+                  <p><span className="font-medium">Country:</span> {placeOfPerformance.country.name}</p>
+                )}
+                {placeOfPerformance.zip && (
+                  <p><span className="font-medium">ZIP:</span> {placeOfPerformance.zip}</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             {/* Agency Hierarchy */}
@@ -1029,70 +1206,38 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 pb-4 border-b border-gray-200">
-              <button
-                onClick={() => {
-                  const context = `I'd like to discuss this SAM.gov contract opportunity:
-
-📋 **${opportunity.title}**
-🏛️ Agency: ${opportunity.contracting_office}
-📝 Solicitation: ${opportunity.solicitation_number}
-📅 Posted: ${new Date(opportunity.posted_date).toLocaleDateString()}
-${opportunity.response_deadline ? `⏰ Deadline: ${new Date(opportunity.response_deadline).toLocaleDateString()}` : ''}
-🏷️ Type: ${opportunity.type}
-${opportunity.naics_code ? `🔢 NAICS: ${opportunity.naics_code}` : ''}
-${opportunity.set_aside_type ? `🎯 Set-Aside: ${opportunity.set_aside_type}` : ''}
-${opportunity.raw_data?.uiLink ? `🔗 SAM.gov: ${opportunity.raw_data.uiLink}` : ''}
-
-What would you like to know about this opportunity?`;
-                  navigate('/chat', { state: { initialMessage: context } });
-                  onClose();
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Send to Chat
-              </button>
-
-              {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && opportunity.raw_data.pointOfContact[0].email && (
-                <a
-                  href={`mailto:${opportunity.raw_data.pointOfContact[0].email}?subject=Inquiry: ${opportunity.solicitation_number}&body=Dear ${opportunity.raw_data.pointOfContact[0].fullName},%0D%0A%0D%0AI am interested in the following opportunity:%0D%0A%0D%0ATitle: ${opportunity.title}%0D%0ASolicitation: ${opportunity.solicitation_number}%0D%0A%0D%0A`}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Email Contracting Officer
-                </a>
-              )}
-            </div>
-
-            {/* Links */}
-            <div className="space-y-2">
+            {/* Links and Attachments */}
+            <div className="space-y-3">
               {opportunity.raw_data?.uiLink && (
                 <a
                   href={opportunity.raw_data.uiLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg transition-colors"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all shadow-md"
                 >
-                  View Full Details on SAM.gov →
+                  <ExternalLink className="w-4 h-4" />
+                  View Full Details on SAM.gov
                 </a>
               )}
+
               {opportunity.raw_data?.resourceLinks && opportunity.raw_data.resourceLinks.length > 0 && (
-                <div className="border-t pt-3">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
                     Attachments ({opportunity.raw_data.resourceLinks.length})
                   </h4>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {opportunity.raw_data.resourceLinks.map((link, idx) => (
                       <a
                         key={idx}
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 text-sm rounded border border-gray-200 hover:border-blue-300 transition-colors"
                       >
-                        📎 Document {idx + 1}
+                        <FileText className="w-4 h-4" />
+                        <span>Document {idx + 1}</span>
+                        <ExternalLink className="w-3 h-3 ml-auto" />
                       </a>
                     ))}
                   </div>

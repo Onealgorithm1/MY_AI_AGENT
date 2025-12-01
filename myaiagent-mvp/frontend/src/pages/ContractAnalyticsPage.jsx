@@ -12,6 +12,7 @@ const ContractAnalyticsPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   const [analytics, setAnalytics] = useState({
     contractValues: [],
@@ -29,23 +30,212 @@ const ContractAnalyticsPage = () => {
       setLoading(true);
 
       const [contractRes, setAsideRes, trendingRes] = await Promise.all([
-        marketAnalytics.getAllContractAnalytics({ fiscalYear, limit: 10 }),
-        marketAnalytics.getAllSetAsideIntelligence({ fiscalYear, limit: 10 }),
-        marketAnalytics.getTrending(),
+        marketAnalytics.getAllContractAnalytics({ fiscalYear, limit: 10 }).catch(() => ({ data: { analytics: [] } })),
+        marketAnalytics.getAllSetAsideIntelligence({ fiscalYear, limit: 10 }).catch(() => ({ data: { intelligence: [] } })),
+        marketAnalytics.getTrending().catch(() => ({ data: { trending: null } })),
       ]);
 
+      const contractData = contractRes.data.analytics || [];
+      const setAsideData = setAsideRes.data.intelligence || [];
+      const trendingData = trendingRes.data.trending || null;
+
+      // Check if we need to use mock data
+      const useMock = contractData.length === 0 && setAsideData.length === 0 && !trendingData;
+      setIsUsingMockData(useMock);
+
+      // If no data from API, use sample/mock data for demonstration
       setAnalytics({
-        contractValues: contractRes.data.analytics || [],
-        setAsideIntel: setAsideRes.data.intelligence || [],
-        trending: trendingRes.data.trending || null,
+        contractValues: contractData.length > 0 ? contractData : getMockContractData(),
+        setAsideIntel: setAsideData.length > 0 ? setAsideData : getMockSetAsideData(),
+        trending: trendingData || getMockTrendingData(),
       });
 
     } catch (error) {
       console.error('Failed to load analytics:', error);
+      // Use mock data on error
+      setIsUsingMockData(true);
+      setAnalytics({
+        contractValues: getMockContractData(),
+        setAsideIntel: getMockSetAsideData(),
+        trending: getMockTrendingData(),
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  // Mock data generators for when database is empty
+  const getMockContractData = () => [
+    {
+      aggregation_key: 'DOD',
+      aggregation_label: 'Department of Defense',
+      total_value: '45000000000',
+      total_contracts: '12450',
+      average_value: '3614457.83',
+      competed_contracts: '8965',
+    },
+    {
+      aggregation_key: 'DHS',
+      aggregation_label: 'Department of Homeland Security',
+      total_value: '18500000000',
+      total_contracts: '5680',
+      average_value: '3256690.14',
+      competed_contracts: '4010',
+    },
+    {
+      aggregation_key: 'VA',
+      aggregation_label: 'Department of Veterans Affairs',
+      total_value: '12300000000',
+      total_contracts: '8920',
+      average_value: '1378924.73',
+      competed_contracts: '6240',
+    },
+    {
+      aggregation_key: 'DOE',
+      aggregation_label: 'Department of Energy',
+      total_value: '8900000000',
+      total_contracts: '2130',
+      average_value: '4178403.76',
+      competed_contracts: '1560',
+    },
+    {
+      aggregation_key: 'NASA',
+      aggregation_label: 'National Aeronautics and Space Administration',
+      total_value: '7200000000',
+      total_contracts: '1850',
+      average_value: '3891891.89',
+      competed_contracts: '1295',
+    },
+  ];
+
+  const getMockSetAsideData = () => [
+    {
+      setaside_type: 'Small Business Set-Aside',
+      total_awards: '45230',
+      total_award_value: '25600000000',
+      average_bidders: '4.8',
+      competition_intensity: 'High',
+      small_business_win_rate: '0.68',
+      total_opportunities: '8950',
+    },
+    {
+      setaside_type: '8(a) Business Development',
+      total_awards: '12840',
+      total_award_value: '8900000000',
+      average_bidders: '3.2',
+      competition_intensity: 'Medium',
+      small_business_win_rate: '0.72',
+      total_opportunities: '2340',
+    },
+    {
+      setaside_type: 'HUBZone Set-Aside',
+      total_awards: '8650',
+      total_award_value: '5400000000',
+      average_bidders: '2.8',
+      competition_intensity: 'Low',
+      small_business_win_rate: '0.78',
+      total_opportunities: '1580',
+    },
+    {
+      setaside_type: 'Service-Disabled Veteran-Owned',
+      total_awards: '15620',
+      total_award_value: '9800000000',
+      average_bidders: '3.9',
+      competition_intensity: 'Medium',
+      small_business_win_rate: '0.65',
+      total_opportunities: '3120',
+    },
+    {
+      setaside_type: 'Women-Owned Small Business',
+      total_awards: '10450',
+      total_award_value: '6200000000',
+      average_bidders: '4.1',
+      competition_intensity: 'High',
+      small_business_win_rate: '0.62',
+      total_opportunities: '2680',
+    },
+  ];
+
+  const getMockTrendingData = () => ({
+    growingAgencies: [
+      {
+        agency_name: 'Department of Homeland Security',
+        agency_code: 'DHS',
+        growth_percent: '18.5',
+        current_year: '21500000000',
+        previous_year: '18150000000',
+      },
+      {
+        agency_name: 'Department of Energy',
+        agency_code: 'DOE',
+        growth_percent: '15.2',
+        current_year: '9800000000',
+        previous_year: '8505000000',
+      },
+      {
+        agency_name: 'National Science Foundation',
+        agency_code: 'NSF',
+        growth_percent: '12.8',
+        current_year: '4200000000',
+        previous_year: '3723000000',
+      },
+    ],
+    hotNaicsCodes: [
+      {
+        naics_code: '541512',
+        naics_description: 'Computer Systems Design Services',
+        total_awards: '8950',
+        total_value: '15600000000',
+      },
+      {
+        naics_code: '541330',
+        naics_description: 'Engineering Services',
+        total_awards: '6780',
+        total_value: '12300000000',
+      },
+      {
+        naics_code: '561210',
+        naics_description: 'Facilities Support Services',
+        total_awards: '5420',
+        total_value: '8900000000',
+      },
+      {
+        naics_code: '541519',
+        naics_description: 'Other Computer Related Services',
+        total_awards: '4890',
+        total_value: '9200000000',
+      },
+    ],
+    emergingOpportunities: [
+      {
+        naics_code: '541715',
+        naics_description: 'Research and Development in Physical, Engineering, and Life Sciences',
+        setaside_type: 'Small Business',
+        total_awards: '340',
+        total_award_value: '1250000000',
+        average_bidders: '2.3',
+        competition_intensity: 'Low',
+      },
+      {
+        naics_code: '334290',
+        naics_description: 'Other Communications Equipment Manufacturing',
+        setaside_type: '8(a)',
+        total_awards: '280',
+        total_award_value: '890000000',
+        average_bidders: '2.1',
+        competition_intensity: 'Low',
+      },
+      {
+        naics_code: '541690',
+        naics_description: 'Other Scientific and Technical Consulting Services',
+        setaside_type: 'HUBZone',
+        total_awards: '190',
+        total_award_value: '450000000',
+        average_bidders: '1.9',
+        competition_intensity: 'Low',
+      },
+    ],
+  });
 
   const formatCurrency = (value) => {
     if (!value) return 'N/A';
@@ -142,6 +332,25 @@ const ContractAnalyticsPage = () => {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Mock Data Notice */}
+        {isUsingMockData && (
+          <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-amber-800">Sample Data Display</h3>
+                <p className="mt-1 text-sm text-amber-700">
+                  You're currently viewing sample analytics data. To see real contract data, please ensure the database migrations have been run and contract data has been imported via the FPDS integration.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -343,6 +552,66 @@ const ContractAnalyticsPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Top Agencies Tab */}
+        {activeTab === 'agencies' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agency</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contracts</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Value</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg Contract</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Market Share</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {analytics.contractValues.map((item, idx) => {
+                    const totalMarket = analytics.contractValues.reduce((sum, c) => sum + parseFloat(c.total_value || 0), 0);
+                    const marketShare = ((parseFloat(item.total_value) / totalMarket) * 100).toFixed(1);
+
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                          #{idx + 1}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{item.aggregation_label || item.aggregation_key}</p>
+                            <p className="text-xs text-gray-500">{item.aggregation_key}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {parseInt(item.total_contracts || 0).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                          {formatCurrency(item.total_value)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {formatCurrency(item.average_value)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${marketShare}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 w-12">{marketShare}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
