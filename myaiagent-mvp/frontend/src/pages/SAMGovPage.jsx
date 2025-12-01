@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save, List, CalendarDays } from 'lucide-react';
 import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
@@ -54,6 +54,9 @@ const SAMGovPage = () => {
   const [savedSearches, setSavedSearches] = useState([]);
   const [showSaveSearchDialog, setShowSaveSearchDialog] = useState(false);
   const [searchName, setSearchName] = useState('');
+
+  // View mode state
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
   useEffect(() => {
     loadData();
@@ -800,24 +803,57 @@ What would you like to know about this opportunity?`;
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs md:text-sm text-gray-600 hidden sm:inline">Sort by</label>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-                  className="px-2 md:px-3 py-2 md:py-1.5 border border-gray-300 rounded text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation w-full sm:w-auto"
+              <div className="flex items-center gap-2 md:gap-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 border border-gray-300 rounded overflow-hidden">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${
+                      viewMode === 'list'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                    title="List View"
                   >
-                    <option value="-modifiedDate">Updated Date (Newest)</option>
-                    <option value="modifiedDate">Updated Date (Oldest)</option>
-                    <option value="-postedDate">Posted Date (Newest)</option>
-                    <option value="postedDate">Posted Date (Oldest)</option>
-                    <option value="responseDate">Response Date (Earliest)</option>
-                  </select>
+                    <List className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">List</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('calendar')}
+                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${
+                      viewMode === 'calendar'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                    title="Calendar View"
+                  >
+                    <CalendarDays className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Calendar</span>
+                  </button>
                 </div>
-              </div>
 
-            {/* Opportunity Cards */}
-            <div className="space-y-3 md:space-y-4">
+                {viewMode === 'list' && (
+                  <>
+                    <label className="text-xs md:text-sm text-gray-600 hidden sm:inline">Sort by</label>
+                    <select
+                      value={filters.sortBy}
+                      onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+                      className="px-2 md:px-3 py-2 md:py-1.5 border border-gray-300 rounded text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation w-full sm:w-auto"
+                      >
+                        <option value="-modifiedDate">Updated Date (Newest)</option>
+                        <option value="modifiedDate">Updated Date (Oldest)</option>
+                        <option value="-postedDate">Posted Date (Newest)</option>
+                        <option value="postedDate">Posted Date (Oldest)</option>
+                        <option value="responseDate">Response Date (Earliest)</option>
+                      </select>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* List View - Opportunity Cards */}
+            {viewMode === 'list' && (
+              <div className="space-y-3 md:space-y-4">
               {paginatedOpps.length === 0 ? (
                 <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <FileText className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3" />
@@ -1062,6 +1098,17 @@ What would you like to know about this opportunity?`;
                 </div>
               </div>
             )}
+              </div>
+            )}
+
+            {/* Calendar View - Deadline Calendar */}
+            {viewMode === 'calendar' && (
+              <DeadlineCalendar
+                opportunities={sortedOpps}
+                onSelectOpportunity={setSelectedOpportunity}
+                formatContractValue={formatContractValue}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1146,6 +1193,245 @@ What would you like to know about this opportunity?`;
           formatContractValue={formatContractValue}
         />
       )}
+    </div>
+  );
+};
+
+// Deadline Calendar Component
+const DeadlineCalendar = ({ opportunities, onSelectOpportunity, formatContractValue }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Get the first and last day of the selected month
+  const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1);
+  const lastDayOfMonth = new Date(selectedYear, selectedMonth + 1, 0);
+  const startingDayOfWeek = firstDayOfMonth.getDay();
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  // Group opportunities by deadline date
+  const opportunitiesByDate = {};
+  opportunities.forEach(opp => {
+    if (opp.response_deadline) {
+      const deadline = new Date(opp.response_deadline);
+      const dateKey = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}`;
+      if (!opportunitiesByDate[dateKey]) {
+        opportunitiesByDate[dateKey] = [];
+      }
+      opportunitiesByDate[dateKey].push(opp);
+    }
+  });
+
+  // Generate calendar days
+  const calendarDays = [];
+  // Add empty cells for days before the month starts
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    calendarDays.push(null);
+  }
+  // Add all days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    calendarDays.push(day);
+  }
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setSelectedMonth(today.getMonth());
+    setSelectedYear(today.getFullYear());
+  };
+
+  const isToday = (day) => {
+    const today = new Date();
+    return day === today.getDate() &&
+           selectedMonth === today.getMonth() &&
+           selectedYear === today.getFullYear();
+  };
+
+  const getDateKey = (day) => {
+    return `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Calendar Header */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+            <CalendarDays className="w-5 h-5 text-blue-600" />
+            Deadline Calendar
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToPreviousMonth}
+              className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition-colors"
+            >
+              ← Previous
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+            >
+              Today
+            </button>
+            <button
+              onClick={goToNextMonth}
+              className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm font-medium transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+
+        <div className="text-center mb-4">
+          <h3 className="text-xl md:text-2xl font-bold text-gray-900">
+            {monthNames[selectedMonth]} {selectedYear}
+          </h3>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1 md:gap-2">
+          {/* Day headers */}
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="text-center text-xs md:text-sm font-semibold text-gray-700 py-2">
+              {day}
+            </div>
+          ))}
+
+          {/* Calendar days */}
+          {calendarDays.map((day, idx) => {
+            if (!day) {
+              return <div key={`empty-${idx}`} className="aspect-square" />;
+            }
+
+            const dateKey = getDateKey(day);
+            const oppsOnThisDay = opportunitiesByDate[dateKey] || [];
+            const hasDeadlines = oppsOnThisDay.length > 0;
+
+            return (
+              <div
+                key={day}
+                className={`aspect-square border rounded-lg p-1 md:p-2 transition-all ${
+                  isToday(day)
+                    ? 'bg-blue-50 border-blue-500 border-2'
+                    : hasDeadlines
+                    ? 'bg-red-50 border-red-300 hover:bg-red-100 cursor-pointer'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-xs md:text-sm font-medium text-gray-900 mb-1">
+                  {day}
+                </div>
+                {hasDeadlines && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-red-600">
+                      {oppsOnThisDay.length} deadline{oppsOnThisDay.length > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Upcoming Deadlines List */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-orange-600" />
+          Upcoming Deadlines This Month
+        </h3>
+        <div className="space-y-3">
+          {Object.keys(opportunitiesByDate)
+            .filter(dateKey => {
+              const date = new Date(dateKey);
+              return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+            })
+            .sort()
+            .map(dateKey => {
+              const opps = opportunitiesByDate[dateKey];
+              const date = new Date(dateKey);
+              const isOverdue = date < new Date();
+
+              return (
+                <div key={dateKey} className="border-l-4 border-red-500 pl-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className={`font-semibold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                      {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                      {isOverdue && <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">OVERDUE</span>}
+                    </h4>
+                    <span className="text-sm font-medium text-gray-600">{opps.length} opportunity{opps.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {opps.map(opp => {
+                      const contractValue = formatContractValue(opp);
+                      return (
+                        <div
+                          key={opp.id}
+                          onClick={() => onSelectOpportunity(opp)}
+                          className="bg-gray-50 hover:bg-blue-50 border border-gray-200 rounded p-3 cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h5 className="text-sm font-semibold text-blue-700 mb-1 line-clamp-2">
+                                {opp.title}
+                              </h5>
+                              <p className="text-xs text-gray-600 truncate">{opp.contracting_office}</p>
+                              {opp.naics_code && (
+                                <p className="text-xs text-gray-500 mt-1">NAICS: {opp.naics_code}</p>
+                              )}
+                            </div>
+                            {contractValue && (
+                              <span className="flex-shrink-0 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">
+                                {contractValue}
+                              </span>
+                            )}
+                          </div>
+                          {opp.set_aside_type && (
+                            <div className="mt-2">
+                              <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                {opp.set_aside_type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          {Object.keys(opportunitiesByDate).filter(dateKey => {
+            const date = new Date(dateKey);
+            return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+          }).length === 0 && (
+            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-600 font-medium">No deadlines this month</p>
+              <p className="text-xs text-gray-500 mt-1">Navigate to another month to see more deadlines</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
