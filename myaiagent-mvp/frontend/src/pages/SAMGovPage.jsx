@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3 } from 'lucide-react';
 import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
@@ -347,6 +347,13 @@ What would you like to know about this opportunity?`;
               >
                 <ArrowLeft className="w-4 h-4 md:w-4 md:h-4" />
                 <span className="text-xs md:text-sm font-medium hidden sm:inline">Back</span>
+              </button>
+              <button
+                onClick={() => navigate('/contract-analytics')}
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 md:py-1.5 bg-purple-600 hover:bg-purple-500 rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
+              >
+                <BarChart3 className="w-4 h-4 md:w-4 md:h-4" />
+                <span className="text-xs md:text-sm font-medium hidden md:inline">Analytics</span>
               </button>
               <h1 className="text-base md:text-xl font-bold truncate">Contract Opportunities</h1>
             </div>
@@ -1010,7 +1017,10 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
                       )}
                       {contact.phone && (
                         <p className="text-sm text-gray-700">
-                          <span className="font-medium">Phone:</span> {contact.phone}
+                          <span className="font-medium">Phone:</span>{' '}
+                          <a href={`tel:${contact.phone.replace(/\D/g, '')}`} className="text-blue-600 hover:underline">
+                            {contact.phone}
+                          </a>
                         </p>
                       )}
                     </div>
@@ -1018,6 +1028,43 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
                 ))}
               </div>
             )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2 pb-4 border-b border-gray-200">
+              <button
+                onClick={() => {
+                  const context = `I'd like to discuss this SAM.gov contract opportunity:
+
+📋 **${opportunity.title}**
+🏛️ Agency: ${opportunity.contracting_office}
+📝 Solicitation: ${opportunity.solicitation_number}
+📅 Posted: ${new Date(opportunity.posted_date).toLocaleDateString()}
+${opportunity.response_deadline ? `⏰ Deadline: ${new Date(opportunity.response_deadline).toLocaleDateString()}` : ''}
+🏷️ Type: ${opportunity.type}
+${opportunity.naics_code ? `🔢 NAICS: ${opportunity.naics_code}` : ''}
+${opportunity.set_aside_type ? `🎯 Set-Aside: ${opportunity.set_aside_type}` : ''}
+${opportunity.raw_data?.uiLink ? `🔗 SAM.gov: ${opportunity.raw_data.uiLink}` : ''}
+
+What would you like to know about this opportunity?`;
+                  navigate('/chat', { state: { initialMessage: context } });
+                  onClose();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Send to Chat
+              </button>
+
+              {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && opportunity.raw_data.pointOfContact[0].email && (
+                <a
+                  href={`mailto:${opportunity.raw_data.pointOfContact[0].email}?subject=Inquiry: ${opportunity.solicitation_number}&body=Dear ${opportunity.raw_data.pointOfContact[0].fullName},%0D%0A%0D%0AI am interested in the following opportunity:%0D%0A%0D%0ATitle: ${opportunity.title}%0D%0ASolicitation: ${opportunity.solicitation_number}%0D%0A%0D%0A`}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Email Contracting Officer
+                </a>
+              )}
+            </div>
 
             {/* Links */}
             <div className="space-y-2">
