@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3 } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy } from 'lucide-react';
 import api, { samGov } from '../services/api';
 
 const SAMGovPage = () => {
@@ -967,6 +967,56 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
   const classificationCode = opportunity.raw_data?.classificationCode;
   const placeOfPerformance = opportunity.raw_data?.placeOfPerformance;
   const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
+  const [incumbentData, setIncumbentData] = useState(null);
+  const [loadingIncumbent, setLoadingIncumbent] = useState(false);
+  const [contactNotes, setContactNotes] = useState('');
+  const [savedToTracking, setSavedToTracking] = useState(false);
+
+  // Load incumbent contractor data
+  useEffect(() => {
+    const loadIncumbentData = async () => {
+      if (opportunity.naics_code) {
+        setLoadingIncumbent(true);
+        try {
+          // Search for contracts with same NAICS code
+          const response = await api.get('/fpds/search/contracts', {
+            params: {
+              naicsCode: opportunity.naics_code,
+              limit: 5
+            }
+          });
+          setIncumbentData(response.data.contracts || []);
+        } catch (error) {
+          console.error('Failed to load incumbent data:', error);
+          setIncumbentData([]);
+        } finally {
+          setLoadingIncumbent(false);
+        }
+      }
+    };
+    loadIncumbentData();
+  }, [opportunity.naics_code]);
+
+  // Save to contact tracking
+  const saveToTracking = () => {
+    const trackingData = {
+      opportunityId: opportunity.id,
+      title: opportunity.title,
+      solicitation: opportunity.solicitation_number,
+      agency: opportunity.contracting_office,
+      deadline: opportunity.response_deadline,
+      notes: contactNotes,
+      savedAt: new Date().toISOString()
+    };
+
+    // Save to localStorage (could be enhanced with backend API)
+    const existing = JSON.parse(localStorage.getItem('trackedOpportunities') || '[]');
+    existing.push(trackingData);
+    localStorage.setItem('trackedOpportunities', JSON.stringify(existing));
+
+    setSavedToTracking(true);
+    setTimeout(() => setSavedToTracking(false), 3000);
+  };
 
   const sendToGeminiAnalysis = async () => {
     setAnalyzingWithAI(true);
@@ -1273,6 +1323,86 @@ What would you like to know about this opportunity?`;
                 ))}
               </div>
             )}
+
+            {/* Incumbent Contractor Analysis */}
+            {opportunity.naics_code && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-600" />
+                  Incumbent Contractors (NAICS {opportunity.naics_code})
+                </h3>
+                {loadingIncumbent ? (
+                  <div className="bg-gray-50 p-4 rounded text-center">
+                    <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600">Loading incumbent data...</p>
+                  </div>
+                ) : incumbentData && incumbentData.length > 0 ? (
+                  <div className="space-y-2">
+                    {incumbentData.slice(0, 3).map((contract, idx) => (
+                      <div key={idx} className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                        <div className="flex items-start justify-between mb-1">
+                          <p className="text-sm font-semibold text-gray-900">{contract.vendor_name || 'Unknown Vendor'}</p>
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded">
+                            ${(contract.award_amount / 1000000).toFixed(1)}M
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">
+                          Award Date: {contract.award_date ? new Date(contract.award_date).toLocaleDateString() : 'N/A'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {contract.description?.substring(0, 100) || 'No description available'}...
+                        </p>
+                      </div>
+                    ))}
+                    {incumbentData.length > 3 && (
+                      <p className="text-xs text-gray-500 text-center">
+                        + {incumbentData.length - 3} more incumbent contracts
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-3 rounded text-sm text-gray-600">
+                    No incumbent contractor data available for this NAICS code.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contact Tracking & Notes */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4 text-green-600" />
+                Track This Opportunity
+              </h3>
+              <div className="space-y-3">
+                <textarea
+                  placeholder="Add notes about outreach, contacts, or next steps..."
+                  value={contactNotes}
+                  onChange={(e) => setContactNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  rows="3"
+                />
+                <button
+                  onClick={saveToTracking}
+                  className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {savedToTracking ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Saved to Tracking!
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4" />
+                      Save to My Opportunities
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-600">
+                  Track your outreach efforts and maintain notes for this opportunity. Saved opportunities can be viewed later.
+                </p>
+              </div>
+            </div>
 
             {/* Links and Attachments */}
             <div className="space-y-3">
