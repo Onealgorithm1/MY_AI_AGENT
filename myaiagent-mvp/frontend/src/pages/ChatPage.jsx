@@ -37,7 +37,7 @@ import {
   Menu,
   Building2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ConversationInsights from '../components/ConversationInsights';
 import SearchResults from '../components/SearchResults';
 import SearchingIndicator from '../components/SearchingIndicator';
@@ -58,6 +58,7 @@ const getBaseUrl = () => {
 
 export default function ChatPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthStore();
   const {
     currentConversation,
@@ -590,6 +591,15 @@ export default function ChatPage() {
       loadConversation(firstConv.id);
     }
   }, [conversations, currentConversation]);
+
+  // Handle initial message from navigation state (e.g., from SAM.gov)
+  useEffect(() => {
+    if (location.state?.initialMessage) {
+      setInputMessage(location.state.initialMessage);
+      // Clear the state to prevent reuse on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   // Handle Enter key
   const handleKeyPress = (e) => {
