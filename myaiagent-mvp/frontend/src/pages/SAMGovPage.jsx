@@ -854,6 +854,7 @@ What would you like to know about this opportunity?`;
 
             {/* List View - Opportunity Cards */}
             {viewMode === 'list' && (
+              <>
               <div className="space-y-3 md:space-y-4">
               {paginatedOpps.length === 0 ? (
                 <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -1099,7 +1100,7 @@ What would you like to know about this opportunity?`;
                 </div>
               </div>
             )}
-              </div>
+              </>
             )}
 
             {/* Calendar View - Deadline Calendar */}

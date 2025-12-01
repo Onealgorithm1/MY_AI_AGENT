@@ -18,7 +18,7 @@ import {
   Settings,
   CalendarPlus,
 } from 'lucide-react';
-import { collaboration } from '../services/collaboration';
+import collaboration from '../services/collaboration';
 import { addToGoogleCalendar } from '../utils/integrations';
 
 const ProposalWorkspacePage = () => {
