@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save, List, CalendarDays, Mail, Phone, CalendarPlus } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileText, DollarSign, Users, Clock, Award, MessageSquare, ArrowLeft, Share2, Sparkles, ExternalLink, CheckCircle, BarChart3, Trophy, Bookmark, Star, Trash2, Save, List, CalendarDays, Mail, Phone, CalendarPlus, Code } from 'lucide-react';
 import api, { samGov } from '../services/api';
 import { addToGoogleCalendar, openEmailClient, initiatePhoneCall, formatPhoneNumber } from '../utils/integrations';
 
@@ -1451,6 +1451,7 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
   const [loadingIncumbent, setLoadingIncumbent] = useState(false);
   const [contactNotes, setContactNotes] = useState('');
   const [savedToTracking, setSavedToTracking] = useState(false);
+  const [showAllDetails, setShowAllDetails] = useState(false);
 
   // Load incumbent contractor data
   useEffect(() => {
@@ -1955,6 +1956,158 @@ What would you like to know about this opportunity?`;
                       </a>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* All Details Section - Complete API Data */}
+            <div className="border-t-4 border-gray-300 pt-6 mt-6">
+              <button
+                onClick={() => setShowAllDetails(!showAllDetails)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Code className="w-5 h-5 text-gray-700" />
+                  <h3 className="text-sm font-bold text-gray-900">View All API Details</h3>
+                  <span className="text-xs text-gray-600">(Complete Data Structure)</span>
+                </div>
+                {showAllDetails ? (
+                  <ChevronUp className="w-5 h-5 text-gray-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+
+              {showAllDetails && (
+                <div className="mt-4 space-y-6">
+                  {/* Database Fields */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      Database Fields
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">ID:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.id}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Notice ID:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.notice_id || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Solicitation Number:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.solicitation_number || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Type:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.type || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Posted Date:</span>
+                        <span className="ml-2 text-gray-900">
+                          {opportunity.posted_date ? new Date(opportunity.posted_date).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Response Deadline:</span>
+                        <span className="ml-2 text-gray-900">
+                          {opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Archive Date:</span>
+                        <span className="ml-2 text-gray-900">
+                          {opportunity.archive_date ? new Date(opportunity.archive_date).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">NAICS Code:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.naics_code || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Set-Aside Type:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.set_aside_type || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Contracting Office:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.contracting_office || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Place of Performance:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.place_of_performance || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">First Seen:</span>
+                        <span className="ml-2 text-gray-900">
+                          {opportunity.first_seen_at ? new Date(opportunity.first_seen_at).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Last Seen:</span>
+                        <span className="ml-2 text-gray-900">
+                          {opportunity.last_seen_at ? new Date(opportunity.last_seen_at).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <span className="font-semibold text-gray-700">Seen Count:</span>
+                        <span className="ml-2 text-gray-900">{opportunity.seen_count || 'N/A'}</span>
+                      </div>
+                    </div>
+                    {opportunity.description && (
+                      <div className="mt-3 bg-white p-3 rounded">
+                        <span className="font-semibold text-gray-700 block mb-2">Description:</span>
+                        <p className="text-xs text-gray-900 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                          {opportunity.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Raw Data from SAM.gov API */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <Code className="w-4 h-4 text-purple-600" />
+                      Complete SAM.gov API Response
+                    </h4>
+                    <div className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+                      <pre className="text-xs font-mono whitespace-pre-wrap">
+                        {JSON.stringify(opportunity.raw_data || opportunity, null, 2)}
+                      </pre>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-600">
+                      This is the complete JSON data structure received from the SAM.gov API. All fields displayed above are extracted from this data.
+                    </p>
+                  </div>
+
+                  {/* Key-Value Breakdown */}
+                  {opportunity.raw_data && (
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-green-600" />
+                        Top-Level Fields Breakdown
+                      </h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        {Object.keys(opportunity.raw_data).sort().map((key) => {
+                          const value = opportunity.raw_data[key];
+                          const displayValue = typeof value === 'object' && value !== null
+                            ? `[${Array.isArray(value) ? 'Array' : 'Object'}] - ${Array.isArray(value) ? value.length + ' items' : Object.keys(value).length + ' properties'}`
+                            : String(value);
+
+                          return (
+                            <div key={key} className="bg-white p-2 rounded flex flex-col sm:flex-row sm:items-start gap-1">
+                              <span className="font-mono text-xs font-semibold text-green-700 sm:w-1/3 break-words">
+                                {key}:
+                              </span>
+                              <span className="font-mono text-xs text-gray-900 sm:w-2/3 break-words">
+                                {displayValue.length > 150 ? displayValue.substring(0, 150) + '...' : displayValue}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
