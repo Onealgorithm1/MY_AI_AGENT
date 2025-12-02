@@ -391,15 +391,17 @@ export default function ChatPage() {
               }
               
               if (data.done) {
-                // Clear streaming after a brief delay to allow typewriter to finish
-                setTimeout(() => {
-                  setStreamingMessage('');
-                  setStreamingContent('');
-                }, 100);
-                
                 // Reload conversation to get the actual message with server-issued ID
                 // Pass false to avoid clearing messages (prevents scroll jump)
                 await loadConversation(conversationId, false);
+
+                // Clear streaming after allowing typewriter to finish
+                // Delay based on content length for smooth transition
+                const estimatedTypingTime = Math.min(fullResponse.length * 70, 5000); // Max 5 seconds
+                setTimeout(() => {
+                  setStreamingMessage('');
+                  setStreamingContent('');
+                }, estimatedTypingTime);
                 
                 // Handle UI actions from AI
                 if (data.action) {
@@ -811,7 +813,11 @@ export default function ChatPage() {
         )}
 
         {/* User Menu - ChatGPT Style */}
-        <div className="relative p-4 border-t border-gray-200 dark:border-gray-700">
+        <div
+          className="relative p-4 border-t border-gray-200 dark:border-gray-700"
+          onMouseEnter={() => setShowProfileMenu(true)}
+          onMouseLeave={() => setShowProfileMenu(false)}
+        >
           {/* Dropdown Menu */}
           {showProfileMenu && (
             <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
@@ -886,8 +892,6 @@ export default function ChatPage() {
           {/* Profile Button */}
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            onMouseEnter={() => setShowProfileMenu(true)}
-            onMouseLeave={() => setShowProfileMenu(false)}
             className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
           >
             {user?.profileImage ? (
