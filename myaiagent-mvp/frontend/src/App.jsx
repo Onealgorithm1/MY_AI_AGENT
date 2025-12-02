@@ -8,6 +8,7 @@ import SignupPage from './pages/SignupPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import LandingPage from './pages/LandingPage';
 
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
@@ -78,16 +79,23 @@ function App() {
     <ErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+          {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/google/success" element={<GoogleCallbackPage />} />
           <Route path="/auth/google/error" element={<GoogleCallbackPage />} />
+
+          {/* Landing Page for non-authenticated users */}
           <Route
             path="/"
             element={
-              <PrivateRoute>
-                <ChatPage />
-              </PrivateRoute>
+              isAuthenticated ? (
+                <PrivateRoute>
+                  <ChatPage />
+                </PrivateRoute>
+              ) : (
+                <LandingPage />
+              )
             }
           />
           <Route
