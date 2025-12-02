@@ -1844,9 +1844,12 @@ What would you like to know about this opportunity?`;
                 )}
               </div>
             )}
-          </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          {/* Place of Performance */}
+            {/* Place of Performance */}
           {placeOfPerformance && (
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
