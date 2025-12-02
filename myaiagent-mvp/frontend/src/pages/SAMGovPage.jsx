@@ -1447,6 +1447,7 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
   const classificationCode = opportunity.raw_data?.classificationCode;
   const placeOfPerformance = opportunity.raw_data?.placeOfPerformance;
   const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
   const [incumbentData, setIncumbentData] = useState(null);
   const [loadingIncumbent, setLoadingIncumbent] = useState(false);
   const [contactNotes, setContactNotes] = useState('');
@@ -1499,51 +1500,62 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
     setTimeout(() => setSavedToTracking(false), 3000);
   };
 
-  const sendToGeminiAnalysis = async () => {
+  const performAIMarketAnalysis = async () => {
     setAnalyzingWithAI(true);
+    setAiAnalysis(null);
     try {
-      // Prepare comprehensive opportunity data for AI analysis
-      const analysisContext = `
-GOVERNMENT CONTRACT OPPORTUNITY ANALYSIS REQUEST
+      // Prepare factual market analysis prompt
+      const analysisPrompt = `Analyze this federal contract opportunity and provide ONLY factual market intelligence. Be concise and data-driven.
 
+OPPORTUNITY DATA:
 Title: ${opportunity.title}
-Solicitation Number: ${opportunity.solicitation_number}
-Notice ID: ${opportunity.notice_id || 'N/A'}
+Solicitation: ${opportunity.solicitation_number}
+Agency: ${agencyHierarchy.join(' → ')}
+Type: ${opportunity.type}
+Set-Aside: ${opportunity.set_aside_type || 'None (Full & Open Competition)'}
+NAICS: ${opportunity.naics_code || 'N/A'}
+PSC: ${classificationCode?.code || 'N/A'}
+Posted: ${new Date(opportunity.posted_date).toLocaleDateString()}
+Deadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'Not specified'}
+Estimated Value: ${contractValue || 'Not disclosed'}
+${awardInfo ? `\nIncumbent: ${awardInfo.awardee?.name || 'Unknown'}
+Incumbent Contract Value: $${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M
+Award Date: ${new Date(awardInfo.date).toLocaleDateString()}` : ''}
 
-Agency Information:
-${agencyHierarchy.map((level, idx) => `  Level ${idx + 1}: ${level.trim()}`).join('\n')}
+Description: ${opportunity.description || 'Not provided'}
 
-Contract Details:
-- Type: ${opportunity.type}
-- Set-Aside: ${opportunity.set_aside_type || 'None'}
-- NAICS Code: ${opportunity.naics_code || 'N/A'}
-- PSC Code: ${classificationCode?.code || 'N/A'}
-- Posted Date: ${new Date(opportunity.posted_date).toLocaleDateString()}
-- Response Deadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'N/A'}
-${contractValue ? `- Estimated Value: ${contractValue}` : ''}
+Provide a factual market analysis covering:
+1. MARKET POSITION: Key facts about this opportunity's market segment
+2. COMPETITION ASSESSMENT: Incumbent advantage, set-aside impact, expected competition level
+3. WIN FACTORS: Specific technical/past performance requirements that matter
+4. STRATEGIC INSIGHTS: Factual observations about timing, agency patterns, contract type
 
-Description:
-${opportunity.description || 'No description available'}
+Keep it factual, concise, and actionable. No fluff or generic advice.`;
 
-Please provide:
-1. Opportunity summary and key requirements
-2. Competitive analysis and win probability assessment
-3. Recommended approach and capture strategy
-4. Risk factors and mitigation strategies
-5. Past performance requirements analysis
-6. Teaming recommendations
-      `;
-
-      navigate('/chat', {
-        state: {
-          initialMessage: analysisContext,
-          autoSend: true
-        }
+      // Create a temporary conversation for analysis
+      const convResponse = await api.post('/conversations', {
+        title: `Market Analysis: ${opportunity.solicitation_number}`,
+        model: 'gemini-2.5-flash'
       });
-      onClose();
+
+      const conversationId = convResponse.data.conversation.id;
+
+      // Call the backend API which will use Gemini
+      const response = await api.post('/messages', {
+        conversationId,
+        content: analysisPrompt,
+        model: 'gemini-2.5-flash',
+        stream: false
+      });
+
+      if (response.data?.message?.content) {
+        setAiAnalysis(response.data.message.content);
+      } else {
+        throw new Error('No analysis generated');
+      }
     } catch (error) {
-      console.error('Failed to initiate AI analysis:', error);
-      alert('Failed to initiate AI analysis. Please try again.');
+      console.error('Failed to perform AI analysis:', error);
+      setAiAnalysis('⚠️ Analysis failed. Please try again or check your connection.');
     } finally {
       setAnalyzingWithAI(false);
     }
@@ -1577,12 +1589,21 @@ Please provide:
           {/* Action Buttons - Moved to top for better visibility */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <button
-              onClick={sendToGeminiAnalysis}
+              onClick={performAIMarketAnalysis}
               disabled={analyzingWithAI}
-              className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs md:text-sm font-medium rounded-lg transition-all shadow-md disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xs md:text-sm font-medium rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Sparkles className="w-4 h-4" />
-              {analyzingWithAI ? 'Analyzing...' : 'AI Analysis'}
+              {analyzingWithAI ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  AI Market Analysis
+                </>
+              )}
             </button>
 
             <button
@@ -1654,6 +1675,39 @@ What would you like to know about this opportunity?`;
               </button>
             )}
           </div>
+
+          {/* AI Market Analysis Results */}
+          {aiAnalysis && (
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg p-4 shadow-lg">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">AI Market Intelligence Analysis</h3>
+                  <p className="text-xs text-gray-600">Powered by Gemini 2.5 Flash • Factual insights only</p>
+                </div>
+                <button
+                  onClick={() => setAiAnalysis(null)}
+                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Close analysis"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="prose prose-sm max-w-none">
+                  <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                    {aiAnalysis}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                <BarChart3 className="w-3 h-3" />
+                <span>This analysis is based on publicly available SAM.gov data and market patterns</span>
+              </div>
+            </div>
+          )}
 
           {/* Type and Status */}
           <div className="flex flex-wrap gap-2">
