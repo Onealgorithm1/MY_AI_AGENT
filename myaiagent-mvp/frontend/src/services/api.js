@@ -1,7 +1,44 @@
 import axios from 'axios';
 
-// Use relative URL in production (empty string), or localhost for dev
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3000' : '');
+// Determine API base URL based on current hostname
+const getApiBaseUrl = () => {
+  // In production (deployed), always use relative path
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If on production domain, use relative path
+    if (hostname === 'werkules.com' || hostname.includes('werkules')) {
+      console.log('🎯 Detected werkules.com - using /api');
+      return '/api';
+    }
+  }
+
+  // Development: check environment variable first
+  if (import.meta.env.VITE_API_URL) {
+    console.log('🔧 Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Development fallback
+  console.log('🔧 Using fallback: http://localhost:3000/api');
+  return 'http://localhost:3000/api';
+};
+
+// Get base URL or force /api for production
+let API_BASE_URL = getApiBaseUrl();
+
+// FAILSAFE: If somehow empty or undefined, force /api for production
+if (!API_BASE_URL || API_BASE_URL === '') {
+  console.warn('⚠️ API_BASE_URL was empty, forcing /api');
+  API_BASE_URL = '/api';
+}
+
+// Debug logging
+console.log('🔧 API Configuration:', {
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+  apiBaseURL: API_BASE_URL,
+  mode: import.meta.env.MODE,
+  viteApiUrl: import.meta.env.VITE_API_URL
+});
 
 // CSRF token storage
 let csrfToken = null;

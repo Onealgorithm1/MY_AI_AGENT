@@ -17,37 +17,40 @@ const useTypewriter = (text, options = {}) => {
   const getBaseDelay = (speedSetting) => {
     const wpmToMs = (wpm) => (60 * 1000) / (wpm * 5); // Average 5 chars per word
     const speeds = {
-      snappy: wpmToMs(250),      // ~48ms per char
-      thoughtful: wpmToMs(150),  // ~80ms per char
-      professional: wpmToMs(180), // ~67ms per char
-      natural: 45,                 // VUI optimized: 45ms per char (mid-range 30-60ms)
+      snappy: wpmToMs(180),      // ~67ms per char - slower for better visibility
+      thoughtful: wpmToMs(120),  // ~100ms per char - more thoughtful
+      professional: wpmToMs(150), // ~80ms per char
+      natural: 55,                 // VUI optimized: 55ms per char (slightly slower)
     };
     return speeds[speedSetting] || speeds.snappy;
   };
 
   const getCharDelay = (char, nextChars = '') => {
     const baseDelay = getBaseDelay(speed);
-    
+
+    // Add natural variance (±15ms) to make it feel more human
+    const variance = Math.random() * 30 - 15; // Random between -15 and +15
+
     // Add variance based on punctuation and word length
     if (['.', ',', '!', '?'].includes(char)) {
-      return baseDelay + 50;
+      return baseDelay + 80 + variance; // Longer pause after punctuation
     }
-    
+
     // Paragraph break detection (double newline)
     if (char === '\n' && nextChars[0] === '\n') {
-      return baseDelay + 120;
+      return baseDelay + 150 + variance; // Even longer pause for paragraphs
     }
-    
+
     // Longer words get slight pause
     const wordBoundary = [' ', '\n', '\t'];
     if (wordBoundary.includes(char)) {
       const previousWord = displayedText.split(/[\s\n\t]/).pop() || '';
       if (previousWord.length > 9) {
-        return baseDelay + 30;
+        return baseDelay + 40 + variance; // Pause after long words
       }
     }
-    
-    return baseDelay;
+
+    return baseDelay + variance; // Base delay with natural variance
   };
 
   // Reset when text changes

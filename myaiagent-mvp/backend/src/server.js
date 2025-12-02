@@ -53,6 +53,12 @@ import emailRoutes from './routes/emails.js';
 import samGovRoutes from './routes/samGov.js';
 import opportunitiesRoutes from './routes/opportunities.js';
 import urlContentRoutes from './routes/urlContent.js';
+import fpdsRoutes from './routes/fpds.js';
+import evmRoutes from './routes/evm.js';
+import collaborationRoutes from './routes/collaboration.js';
+import marketAnalyticsRoutes from './routes/marketAnalytics.js';
+import intelligenceRoutes from './routes/intelligence.js';
+import companyDashboardRoutes from './routes/companyDashboard.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -290,6 +296,12 @@ app.use('/api/emails', emailRoutes);
 app.use('/api/sam-gov', samGovRoutes);
 app.use('/api/opportunities', opportunitiesRoutes);
 app.use('/api/url-content', urlContentRoutes);
+app.use('/api/fpds', fpdsRoutes);
+app.use('/api/evm', evmRoutes);
+app.use('/api/collaboration', collaborationRoutes);
+app.use('/api/market-analytics', marketAnalyticsRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
+app.use('/api/company', companyDashboardRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
