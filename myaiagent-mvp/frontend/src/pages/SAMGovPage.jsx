@@ -1826,24 +1826,26 @@ What would you like to know about this opportunity?`;
             )}
           </div>
 
+                  {/* NAICS and PSC Codes */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {opportunity.naics_code && (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                <p className="text-xs text-gray-600 mb-1">NAICS Code</p>
-                <p className="text-lg font-bold text-gray-900">{opportunity.naics_code}</p>
-                {opportunity.raw_data?.naicsCode && (
-                  <p className="text-xs text-gray-600 mt-1">{opportunity.raw_data.naicsCode}</p>
-                )}
-              </div>
-            )}
-            {classificationCode && (
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
-                <p className="text-xs text-gray-600 mb-1">PSC Code</p>
-                <p className="text-lg font-bold text-gray-900">{classificationCode.code}</p>
-                {classificationCode.description && (
-                  <p className="text-xs text-gray-600 mt-1">{classificationCode.description}</p>
-                )}
-              </div>
-            )}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <p className="text-xs text-gray-600 mb-1">NAICS Code</p>
+                        <p className="text-lg font-bold text-gray-900">{opportunity.naics_code}</p>
+                        {opportunity.raw_data?.naicsCode && (
+                          <p className="text-xs text-gray-600 mt-1">{opportunity.raw_data.naicsCode}</p>
+                        )}
+                      </div>
+                    )}
+                    {classificationCode && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                        <p className="text-xs text-gray-600 mb-1">PSC Code</p>
+                        <p className="text-lg font-bold text-gray-900">{classificationCode.code}</p>
+                        {classificationCode.description && (
+                          <p className="text-xs text-gray-600 mt-1">{classificationCode.description}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
