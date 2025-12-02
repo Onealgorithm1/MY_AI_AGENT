@@ -57,6 +57,7 @@ import fpdsRoutes from './routes/fpds.js';
 import evmRoutes from './routes/evm.js';
 import collaborationRoutes from './routes/collaboration.js';
 import marketAnalyticsRoutes from './routes/marketAnalytics.js';
+import intelligenceRoutes from './routes/intelligence.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -298,6 +299,7 @@ app.use('/api/fpds', fpdsRoutes);
 app.use('/api/evm', evmRoutes);
 app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/market-analytics', marketAnalyticsRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
