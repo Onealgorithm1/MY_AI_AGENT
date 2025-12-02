@@ -1778,21 +1778,24 @@ What would you like to know about this opportunity?`;
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Description */}
-          {opportunity.description && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600" />
-                Description
-              </h3>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{opportunity.description}</p>
-            </div>
-          )}
-
-          {/* Key Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Classification Section - Accordion */}
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSection('classification')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <h3 className="text-base font-bold text-gray-900">Classification</h3>
+                {expandedSections.classification ? (
+                  <ChevronUp className="w-5 h-5 text-gray-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+              {expandedSections.classification && (
+                <div className="p-4 bg-white space-y-3">
+                  {/* Classification data will go here */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
@@ -1823,9 +1826,7 @@ What would you like to know about this opportunity?`;
             )}
           </div>
 
-          {/* Classification Codes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {opportunity.naics_code && (
+                    {opportunity.naics_code && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                 <p className="text-xs text-gray-600 mb-1">NAICS Code</p>
                 <p className="text-lg font-bold text-gray-900">{opportunity.naics_code}</p>
