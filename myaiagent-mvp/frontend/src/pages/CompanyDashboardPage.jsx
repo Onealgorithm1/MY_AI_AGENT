@@ -23,7 +23,7 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../services/api';
 
 const CompanyDashboardPage = () => {
   const navigate = useNavigate();
