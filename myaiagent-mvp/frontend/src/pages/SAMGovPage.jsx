@@ -1454,6 +1454,20 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
   const [savedToTracking, setSavedToTracking] = useState(false);
   const [showAllDetails, setShowAllDetails] = useState(false);
 
+  // Accordion sections state - SAM.gov style
+  const [expandedSections, setExpandedSections] = useState({
+    solicitation: true,  // Open by default
+    classification: false,
+    description: true,   // Open by default
+    contact: false,
+    attachments: false,
+    apiData: false
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   // Load incumbent contractor data
   useEffect(() => {
     const loadIncumbentData = async () => {
@@ -1587,7 +1601,7 @@ Keep it factual, concise, and actionable. No fluff or generic advice.`;
 
         <div className="p-3 md:p-6 space-y-4 md:space-y-6">
           {/* Action Buttons - Moved to top for better visibility */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             <button
               onClick={performAIMarketAnalysis}
               disabled={analyzingWithAI}
@@ -1640,6 +1654,19 @@ What would you like to know about this opportunity?`;
               <BarChart3 className="w-4 h-4" />
               Market Analytics
             </button>
+
+            {/* Go to SAM.gov Button - Prominent like SAM.gov site */}
+            {opportunity.raw_data?.uiLink && (
+              <a
+                href={opportunity.raw_data.uiLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white text-xs md:text-sm font-bold rounded-lg transition-all shadow-lg ring-2 ring-blue-300"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Go to SAM.gov
+              </a>
+            )}
 
             {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && opportunity.raw_data.pointOfContact[0].email && (
               <button
@@ -1709,8 +1736,25 @@ What would you like to know about this opportunity?`;
             </div>
           )}
 
-          {/* Type and Status */}
-          <div className="flex flex-wrap gap-2">
+          {/* SAM.gov Style Accordion Sections */}
+          <div className="space-y-2">
+            {/* Solicitation Details Section */}
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSection('solicitation')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <h3 className="text-base font-bold text-gray-900">Solicitation Details</h3>
+                {expandedSections.solicitation ? (
+                  <ChevronUp className="w-5 h-5 text-gray-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+              {expandedSections.solicitation && (
+                <div className="p-4 bg-white space-y-4">
+                  {/* Type and Status */}
+                  <div className="flex flex-wrap gap-2">
             <span className={`px-3 py-1 text-sm font-medium rounded ${
               opportunity.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
               opportunity.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
