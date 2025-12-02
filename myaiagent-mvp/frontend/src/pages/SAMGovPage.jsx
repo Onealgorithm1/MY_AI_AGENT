@@ -2319,6 +2319,7 @@ What would you like to know about this opportunity?`;
                 </div>
               )}
             </div>
+          </div>
 
             {/* All Details Section - Complete API Data */}
             <div className="border-t-4 border-gray-300 pt-6 mt-6">
