@@ -491,7 +491,7 @@ What would you like to know about this opportunity?`;
               ${isMobileFilterOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}
           >
-            <div className="h-full lg:h-auto bg-white border-r lg:border lg:border-gray-200 lg:rounded-lg overflow-y-auto lg:sticky lg:top-20">
+            <div className="h-full lg:h-auto lg:max-h-[calc(100vh-6rem)] bg-white border-r lg:border lg:border-gray-200 lg:rounded-lg overflow-y-auto lg:sticky lg:top-20">
               {/* Mobile Header */}
               <div className="lg:hidden bg-blue-700 text-white px-4 py-4 sticky top-0 z-10">
                 <div className="flex items-center justify-between mb-3">
@@ -1768,25 +1768,277 @@ What would you like to know about this opportunity?`;
           )}
 
           <div className="space-y-4">
-            {/* Agency Hierarchy */}
+            {/* Agency Hierarchy - Enhanced with Department → Sub-tier → Office Mapping */}
             {agencyHierarchy.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Agency Hierarchy
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  Federal Agency Hierarchy
+                  <span className="text-xs text-gray-500 font-normal">(Department → Sub-tier → Office)</span>
                 </h3>
-                <div className="bg-blue-50 p-3 rounded">
-                  <ol className="text-sm text-gray-700 space-y-1">
-                    {agencyHierarchy.map((level, idx) => (
-                      <li key={idx} className="flex items-start">
-                        <span className="text-blue-600 font-medium mr-2">{idx + 1}.</span>
-                        <span>{level.trim()}</span>
-                      </li>
-                    ))}
-                  </ol>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                  {/* Hierarchical Flow Visualization */}
+                  <div className="space-y-3">
+                    {agencyHierarchy.map((level, idx) => {
+                      const levelLabels = ['Department', 'Sub-tier Agency', 'Office/Division', 'Sub-Office', 'Unit'];
+                      const levelLabel = levelLabels[idx] || `Level ${idx + 1}`;
+
+                      return (
+                        <div key={idx} className="relative">
+                          {/* Level Card */}
+                          <div className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${
+                            idx === 0 ? 'border-blue-600' :
+                            idx === 1 ? 'border-indigo-500' :
+                            idx === 2 ? 'border-purple-500' :
+                            'border-gray-400'
+                          }`}>
+                            <div className="flex items-start gap-3">
+                              {/* Level Indicator */}
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                idx === 0 ? 'bg-blue-600' :
+                                idx === 1 ? 'bg-indigo-500' :
+                                idx === 2 ? 'bg-purple-500' :
+                                'bg-gray-400'
+                              }`}>
+                                {idx + 1}
+                              </div>
+
+                              {/* Level Content */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                  {levelLabel}
+                                </p>
+                                <p className="text-sm font-medium text-gray-900 leading-snug">
+                                  {level.trim()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Connector Arrow */}
+                          {idx < agencyHierarchy.length - 1 && (
+                            <div className="flex justify-center py-1">
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Full Path Display */}
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Full Organizational Path:</p>
+                    <p className="text-xs text-gray-700 font-mono bg-white p-2 rounded border border-blue-100">
+                      {agencyHierarchy.join(' → ')}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
+
+            {/* Past Performance History */}
+            {awardInfo && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-600" />
+                  Past Performance & Award History
+                </h3>
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Award Amount */}
+                    {awardInfo.amount && (
+                      <div className="bg-white rounded-lg p-3 border border-amber-200">
+                        <p className="text-xs text-gray-500 mb-1">Award Amount</p>
+                        <p className="text-lg font-bold text-amber-700">
+                          ${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          ${parseFloat(awardInfo.amount).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Award Date */}
+                    {awardInfo.date && (
+                      <div className="bg-white rounded-lg p-3 border border-amber-200">
+                        <p className="text-xs text-gray-500 mb-1">Award Date</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {new Date(awardInfo.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24))} days ago
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Awardee */}
+                    {awardInfo.awardee && (
+                      <div className="bg-white rounded-lg p-3 border border-amber-200 md:col-span-2">
+                        <p className="text-xs text-gray-500 mb-1">Awardee / Incumbent Contractor</p>
+                        <p className="text-sm font-semibold text-gray-900">{awardInfo.awardee.name || 'N/A'}</p>
+                        {awardInfo.awardee.location && (
+                          <p className="text-xs text-gray-600 mt-1">📍 {awardInfo.awardee.location.city}, {awardInfo.awardee.location.state}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contract Modifications */}
+                  {opportunity.raw_data?.modifications && opportunity.raw_data.modifications.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-amber-200">
+                      <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        Contract Modifications ({opportunity.raw_data.modifications.length})
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {opportunity.raw_data.modifications.map((mod, idx) => (
+                          <div key={idx} className="bg-white rounded p-2 text-xs border border-amber-100">
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="font-semibold text-gray-900">Mod #{mod.number || idx + 1}</span>
+                              {mod.amount && (
+                                <span className="text-amber-700 font-bold">${parseFloat(mod.amount).toLocaleString()}</span>
+                              )}
+                            </div>
+                            {mod.date && (
+                              <p className="text-gray-600">Date: {new Date(mod.date).toLocaleDateString()}</p>
+                            )}
+                            {mod.description && (
+                              <p className="text-gray-700 mt-1 line-clamp-2">{mod.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Competitive Intelligence Dashboard */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                Competitive Intelligence
+              </h3>
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Market Position */}
+                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="w-4 h-4 text-indigo-600" />
+                      <p className="text-xs font-semibold text-gray-700">Market Position</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600">Set-Aside:</span>
+                        <span className="font-semibold text-gray-900">
+                          {opportunity.set_aside_type || 'Open Competition'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`font-semibold ${opportunity.raw_data?.active ? 'text-green-600' : 'text-red-600'}`}>
+                          {opportunity.raw_data?.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Competition Level */}
+                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-indigo-600" />
+                      <p className="text-xs font-semibold text-gray-700">Competition Level</p>
+                    </div>
+                    <div className="text-center py-2">
+                      <p className="text-2xl font-bold text-indigo-600">
+                        {opportunity.set_aside_type ? 'Restricted' : 'Open'}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {opportunity.set_aside_type
+                          ? 'Set-aside limits competition'
+                          : 'Full and open competition'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Win Probability Indicator */}
+                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Award className="w-4 h-4 text-indigo-600" />
+                      <p className="text-xs font-semibold text-gray-700">Win Factors</p>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${awardInfo ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-gray-700">
+                          {awardInfo ? 'Incumbent present' : 'No incumbent data'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${opportunity.set_aside_type ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-gray-700">
+                          {opportunity.set_aside_type ? 'Set-aside advantage' : 'Open competition'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${opportunity.response_deadline ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                        <span className="text-gray-700">
+                          {opportunity.response_deadline
+                            ? `${Math.floor((new Date(opportunity.response_deadline) - new Date()) / (1000 * 60 * 60 * 24))} days to respond`
+                            : 'No deadline set'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Incumbent vs New Bidder Analysis */}
+                {awardInfo?.awardee && (
+                  <div className="mt-4 pt-4 border-t border-indigo-200">
+                    <p className="text-xs font-semibold text-gray-700 mb-3">Incumbent Contractor Analysis</p>
+                    <div className="bg-white rounded-lg p-3 border border-indigo-100">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{awardInfo.awardee.name || 'Current Incumbent'}</p>
+                          <p className="text-xs text-gray-600">Incumbent position holder</p>
+                        </div>
+                        <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
+                          Incumbent
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                        {awardInfo.amount && (
+                          <div>
+                            <p className="text-gray-500">Contract Value</p>
+                            <p className="font-semibold text-gray-900">${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M</p>
+                          </div>
+                        )}
+                        {awardInfo.date && (
+                          <div>
+                            <p className="text-gray-500">Time as Incumbent</p>
+                            <p className="font-semibold text-gray-900">
+                              {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24 * 365))} years
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                        <p className="font-semibold text-blue-900 mb-1">🎯 Bidding Strategy</p>
+                        <p className="text-blue-800">
+                          As a new bidder, emphasize innovation, cost savings, and technical differentiation to compete against the incumbent's incumbency advantage and institutional knowledge.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Contracting Officer Contact */}
             {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && (
@@ -2062,22 +2314,6 @@ What would you like to know about this opportunity?`;
                         </p>
                       </div>
                     )}
-                  </div>
-
-                  {/* Raw Data from SAM.gov API */}
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
-                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                      <Code className="w-4 h-4 text-purple-600" />
-                      Complete SAM.gov API Response
-                    </h4>
-                    <div className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
-                      <pre className="text-xs font-mono whitespace-pre-wrap">
-                        {JSON.stringify(opportunity.raw_data || opportunity, null, 2)}
-                      </pre>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-600">
-                      This is the complete JSON data structure received from the SAM.gov API. All fields displayed above are extracted from this data.
-                    </p>
                   </div>
 
                   {/* Key-Value Breakdown */}
