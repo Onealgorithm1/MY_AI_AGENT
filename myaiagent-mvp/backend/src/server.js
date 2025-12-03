@@ -325,7 +325,7 @@ if (process.env.NODE_ENV === 'production') {
   // Root endpoint in development
   app.get('/', (req, res) => {
     res.json({
-      name: 'My AI Agent API',
+      name: 'werkules API',
       version: '1.0.0',
       status: 'running',
       endpoints: {
@@ -410,7 +410,7 @@ process.on('SIGINT', () => {
 // Start server
 server.listen(PORT, () => {
   console.log('\n' + '='.repeat(50));
-  console.log('🚀 My AI Agent - Backend Server');
+  console.log('🚀 werkules - Backend Server');
   console.log('='.repeat(50));
   console.log(`\n📡 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);

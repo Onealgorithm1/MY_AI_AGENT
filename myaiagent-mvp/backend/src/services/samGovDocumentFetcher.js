@@ -24,7 +24,7 @@ async function fetchDocument(url) {
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
       headers: {
-        'User-Agent': 'MyAIAgent/1.0',
+        'User-Agent': 'werkules/1.0',
         'Accept': '*/*',
       },
       timeout: 60000, // 60 second timeout

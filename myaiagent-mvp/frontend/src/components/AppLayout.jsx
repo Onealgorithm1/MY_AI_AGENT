@@ -38,7 +38,7 @@ const AppLayout = ({ children }) => {
               <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="hidden lg:block ml-3 text-lg font-semibold text-gray-900 dark:text-white">
-              MyAIAgent
+              werkules
             </span>
           </div>
         </div>
