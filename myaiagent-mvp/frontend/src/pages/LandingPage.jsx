@@ -90,11 +90,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6">
-              All your federal contracting
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                powered by AI
-              </span>
+              Federal contracting <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">powered by AI</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
               Simple, intelligent, yet powerful. Win more federal contracts with AI-powered opportunity matching, market intelligence, and automated proposal assistance.
