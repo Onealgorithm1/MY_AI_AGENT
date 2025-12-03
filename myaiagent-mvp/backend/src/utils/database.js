@@ -17,7 +17,7 @@ const pool = new Pool({
   keepAliveInitialDelayMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-  application_name: 'myaiagent-backend',
+  application_name: 'werkules-backend',
 });
 
 // Test connection

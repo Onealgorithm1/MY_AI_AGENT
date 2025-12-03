@@ -1,6 +1,6 @@
 export const uiSchema = {
   application: {
-    name: "My AI Agent",
+    name: "werkules",
     version: "1.1.0",
     description: "AI chat application with voice, memory, and multi-model support"
   },

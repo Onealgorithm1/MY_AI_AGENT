@@ -1,7 +1,7 @@
 {
-  "name": "myaiagent-backend",
+  "name": "werkules-backend",
   "version": "1.0.0",
-  "description": "My AI Agent - Backend API with Real-time Voice",
+  "description": "werkules - Backend API with Real-time Voice",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
