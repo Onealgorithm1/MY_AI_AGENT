@@ -35,7 +35,7 @@ const AppLayout = ({ children }) => {
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-center lg:justify-start">
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">M</span>
+              <span className="text-white font-bold text-xl">W</span>
             </div>
             <span className="hidden lg:block ml-3 text-lg font-semibold text-gray-900 dark:text-white">
               werkules
