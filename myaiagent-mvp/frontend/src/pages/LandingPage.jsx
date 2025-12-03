@@ -61,7 +61,7 @@ const LandingPage = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-8 h-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">MyAI Agent</span>
+              <span className="text-xl font-bold text-gray-900">werkules</span>
             </div>
             <div className="hidden md:flex items-center gap-6">
               <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
@@ -312,7 +312,7 @@ const LandingPage = () => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <MessageSquare className="w-6 h-6" />
-                <span className="font-bold text-lg">MyAI Agent</span>
+                <span className="font-bold text-lg">werkules</span>
               </div>
               <p className="text-gray-400 text-sm">
                 AI-powered federal contracting intelligence platform that helps you discover, analyze, and win more contracts.
@@ -346,7 +346,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm text-gray-400">
-            <p>© 2025 MyAI Agent. All rights reserved.</p>
+            <p>© 2025 werkules. All rights reserved.</p>
           </div>
         </div>
       </footer>
