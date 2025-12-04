@@ -89,6 +89,11 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Attachment menu state
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const plusButtonRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('en-US-Wavenet-F');
