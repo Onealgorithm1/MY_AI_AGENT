@@ -91,7 +91,7 @@ router.post('/signup', async (req, res) => {
     const cookieOptions = {
       httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
       secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF defense (lax for dev compatibility)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' allows cross-origin (Builder.io)
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: '/', // Available for all routes
     };
@@ -163,7 +163,7 @@ router.post('/login', async (req, res) => {
     const cookieOptions = {
       httpOnly: true, // Prevents client-side JavaScript access (XSS defense)
       secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF defense (lax for dev compatibility)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' allows cross-origin (Builder.io)
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: '/', // Available for all routes
     };
@@ -281,7 +281,8 @@ router.post('/logout', authenticate, async (req, res) => {
   res.clearCookie('jwt', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
   });
   
   res.json({ 
