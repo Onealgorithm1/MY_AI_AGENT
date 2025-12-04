@@ -19,11 +19,11 @@ jobs:
           node-version: '20'
 
       - name: Install Backend Dependencies
-        working-directory: MY_AI_AGENT/myaiagent-mvp/backend
+        working-directory: MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend
         run: npm install
 
       - name: Build Frontend
-        working-directory: MY_AI_AGENT/myaiagent-mvp/frontend
+        working-directory: MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/frontend
         run: |
           npm install
           npm run build
@@ -34,7 +34,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "MY_AI_AGENT/myaiagent-mvp/frontend/dist/*"
+          source: "MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/frontend/dist/*"
           target: "${{ secrets.EC2_PATH }}/frontend"
 
       - name: Copy backend to EC2
@@ -43,7 +43,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "MY_AI_AGENT/myaiagent-mvp/backend/*"
+          source: "MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend/*"
           target: "${{ secrets.EC2_PATH }}/backend"
 
       - name: Restart PM2 on EC2
