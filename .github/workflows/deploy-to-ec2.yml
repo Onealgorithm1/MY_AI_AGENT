@@ -46,11 +46,33 @@ jobs:
           echo "✅ Deployment package created"
 
       - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          # Write SSH key with proper formatting
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          # Write SSH key using environment variable (proper way for multi-line secrets)
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
+          # Verify key format and line count
+          echo "🔍 Checking SSH key format..."
+          echo "First line:"
+          head -n 1 ~/.ssh/deploy_key
+          echo "Last line:"
+          tail -n 1 ~/.ssh/deploy_key
+          echo "Total lines: $(wc -l < ~/.ssh/deploy_key)"
+          echo "Key file size: $(wc -c < ~/.ssh/deploy_key) bytes"
+
+          # Verify it's a valid RSA key
+          if head -n 1 ~/.ssh/deploy_key | grep -q "BEGIN.*PRIVATE KEY"; then
+            echo "✅ Key header looks valid"
+          else
+            echo "❌ Key header is invalid or missing!"
+            echo "Debug: First 50 chars of key file:"
+            head -c 50 ~/.ssh/deploy_key
+            exit 1
+          fi
+
           # Add SSH options to skip strict host checking and use the key
           cat > ~/.ssh/config <<EOF
           Host ec2-deploy
@@ -61,10 +83,8 @@ jobs:
             UserKnownHostsFile=/dev/null
           EOF
           chmod 600 ~/.ssh/config
-          # Verify key format
-          echo "Checking SSH key format..."
-          head -n 1 ~/.ssh/deploy_key
-          tail -n 1 ~/.ssh/deploy_key
+
+          echo "✅ SSH configuration completed"
 
       - name: Deploy to EC2
         env:
