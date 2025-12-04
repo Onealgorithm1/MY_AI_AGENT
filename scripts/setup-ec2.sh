@@ -14,16 +14,19 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-DEPLOY_PATH="/var/www/werkules"
-LOG_DIR="/var/log/werkules"
+DEPLOY_PATH="${DEPLOY_PATH:-/home/$USER/MY_AI_AGENT/myaiagent-mvp}"
+WEB_DIR="/var/www/myaiagent"
+LOG_DIR="/var/log/myaiagent"
 DEPLOY_USER=$(whoami)
 
 echo -e "${YELLOW}This script will:${NC}"
 echo "  1. Install Node.js 22 via nvm"
 echo "  2. Install PM2 process manager"
 echo "  3. Create deployment directories"
-echo "  4. Setup logging directories"
-echo "  5. Create PM2 ecosystem config"
+echo "  4. Create web directory for frontend"
+echo "  5. Setup logging directories"
+echo "  6. Create PM2 ecosystem config"
+echo "  7. Setup PostgreSQL (optional)"
 echo ""
 read -p "Continue? (y/n) " -n 1 -r
 echo
@@ -98,10 +101,17 @@ print_status "PM2 startup configured"
 # 3. Create deployment directory
 echo ""
 echo "📂 Creating deployment directory..."
-sudo mkdir -p $DEPLOY_PATH
-sudo chown -R $DEPLOY_USER:$DEPLOY_USER $DEPLOY_PATH
+mkdir -p $DEPLOY_PATH
 chmod -R 755 $DEPLOY_PATH
 print_status "Deployment directory created: $DEPLOY_PATH"
+
+# 3b. Create web directory for frontend
+echo ""
+echo "📂 Creating web directory for frontend..."
+sudo mkdir -p $WEB_DIR
+sudo chown -R $DEPLOY_USER:$DEPLOY_USER $WEB_DIR
+chmod -R 755 $WEB_DIR
+print_status "Web directory created: $WEB_DIR"
 
 # 4. Create logging directory
 echo ""
@@ -113,21 +123,21 @@ print_status "Logging directory created: $LOG_DIR"
 # 5. Create PM2 ecosystem config
 echo ""
 echo "📝 Creating PM2 ecosystem config..."
-cat > $DEPLOY_PATH/ecosystem.config.js << 'EOF'
+cat > $DEPLOY_PATH/ecosystem.config.js << EOF
 module.exports = {
   apps: [
     {
-      name: 'werkules-backend',
+      name: 'myaiagent-backend',
       script: './backend/server.js',
-      cwd: '/var/www/werkules',
+      cwd: '${DEPLOY_PATH}',
       instances: 1,
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
         PORT: 3000
       },
-      error_file: '/var/log/werkules/backend-error.log',
-      out_file: '/var/log/werkules/backend-out.log',
+      error_file: '${LOG_DIR}/backend-error.log',
+      out_file: '${LOG_DIR}/backend-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       max_memory_restart: '1G',
       autorestart: true,
@@ -210,14 +220,14 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
     # Create Nginx config
     echo "Creating Nginx configuration..."
-    sudo tee /etc/nginx/sites-available/werkules > /dev/null << 'NGINXEOF'
+    sudo tee /etc/nginx/sites-available/myaiagent > /dev/null << 'NGINXEOF'
 server {
     listen 80;
     server_name werkules.com www.werkules.com;
 
     # Frontend - serve static files
     location / {
-        root /var/www/werkules/frontend/dist;
+        root /var/www/myaiagent;
         try_files $uri $uri/ /index.html;
 
         # Cache static assets
@@ -289,7 +299,7 @@ server {
 NGINXEOF
 
     # Enable site
-    sudo ln -sf /etc/nginx/sites-available/werkules /etc/nginx/sites-enabled/
+    sudo ln -sf /etc/nginx/sites-available/myaiagent /etc/nginx/sites-enabled/
     sudo rm -f /etc/nginx/sites-enabled/default
 
     # Test Nginx config
@@ -326,9 +336,10 @@ echo ""
 echo "  4. Push to main branch to trigger automatic deployment"
 echo ""
 echo "Useful commands:"
-echo "  - View logs: pm2 logs werkules-backend"
-echo "  - Restart app: pm2 restart werkules-backend"
+echo "  - View logs: pm2 logs myaiagent-backend"
+echo "  - Restart app: pm2 restart myaiagent-backend"
 echo "  - Check status: pm2 status"
 echo "  - Monitor: pm2 monit"
+echo "  - Run migrations: cd $DEPLOY_PATH/backend && node run-new-migrations.js"
 echo ""
 print_status "Setup script completed successfully!"

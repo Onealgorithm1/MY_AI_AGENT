@@ -78,34 +78,59 @@ jobs:
               --exclude='.env' \
               --exclude='uploads' \
               --exclude='*.db' \
+              --exclude='*.sqlite3' \
+              --exclude='attached_assets' \
               ~/myaiagent-mvp/ ${DEPLOY_PATH}/
 
             echo "🔧 Installing backend dependencies..."
             cd ${DEPLOY_PATH}/backend
-            npm ci --production
+            npm install
 
-            echo "🔧 Installing frontend dependencies (if serving frontend from EC2)..."
-            cd ${DEPLOY_PATH}/frontend
-            npm ci --production
-
-            echo "🔄 Restarting application services..."
-            # Restart backend service (adjust based on your process manager)
-            if command -v pm2 &> /dev/null; then
-              pm2 restart werkules-backend || pm2 start npm --name "werkules-backend" -- start
-              pm2 save
-            elif systemctl is-active --quiet werkules-backend; then
-              sudo systemctl restart werkules-backend
+            echo "🗄️  Running database migrations..."
+            if [ -f "run-new-migrations.js" ]; then
+              node run-new-migrations.js
+              echo "✅ Database migrations completed"
             else
-              echo "⚠️  No process manager detected. Please restart manually."
+              echo "⚠️  No migration script found, skipping migrations"
             fi
 
-            # Restart frontend service if needed
+            echo "🔧 Building frontend..."
+            cd ${DEPLOY_PATH}/frontend
+            npm install
+            npm run build
+            echo "✅ Frontend built successfully"
+
+            echo "📂 Copying frontend to web directory..."
+            if [ -d "/var/www/myaiagent" ]; then
+              sudo cp -r dist/* /var/www/myaiagent/
+              echo "✅ Frontend copied to /var/www/myaiagent/"
+            else
+              echo "⚠️  /var/www/myaiagent directory not found, skipping frontend copy"
+            fi
+
+            echo "🔄 Restarting application services..."
+            # Restart backend service using PM2
             if command -v pm2 &> /dev/null; then
-              pm2 restart werkules-frontend || true
+              if pm2 list | grep -q "myaiagent-backend"; then
+                pm2 restart myaiagent-backend
+                echo "✅ Restarted myaiagent-backend"
+              else
+                echo "⚠️  myaiagent-backend not found in PM2, attempting to start..."
+                cd ${DEPLOY_PATH}/backend
+                pm2 start server.js --name myaiagent-backend
+              fi
+              pm2 save
+              pm2 status
+            elif systemctl is-active --quiet myaiagent-backend; then
+              sudo systemctl restart myaiagent-backend
+              echo "✅ Restarted myaiagent-backend service"
+            else
+              echo "⚠️  PM2 or systemd service not found. Please restart manually."
             fi
 
             echo "✅ Deployment completed successfully!"
             echo "🌐 Application should be running at https://werkules.com"
+            echo "📋 Check logs with: pm2 logs myaiagent-backend --lines 50"
           ENDSSH
 
           echo "✅ EC2 deployment finished"
