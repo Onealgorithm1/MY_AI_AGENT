@@ -43,6 +43,8 @@ import SearchResults from '../components/SearchResults';
 import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
+import BrandAvatar from '../components/BrandAvatar';
+import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import useTypewriter from '../hooks/useTypewriter';
@@ -55,6 +57,8 @@ const getBaseUrl = () => {
   // Remove /api suffix if present to get base URL
   return apiUrl.replace(/\/api$/, '');
 };
+
+const WERKULES_ICON = 'https://cdn.builder.io/api/v1/image/assets%2Fb90cab62d3d34e0087abec352888a96d%2Fd7b39c4fafc7492992b689ba79a91a75?format=webp&width=800';
 
 export default function ChatPage() {
   const navigate = useNavigate();
@@ -84,6 +88,11 @@ export default function ChatPage() {
   const [showSAMGovPanel, setShowSAMGovPanel] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Attachment menu state
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const plusButtonRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -656,7 +665,7 @@ export default function ChatPage() {
   const performManualSearch = async (query) => {
     setIsManualSearching(true);
     setManualSearchResults(null);
-    
+
     try {
       const results = await webSearchApi.search(query, 5);
       setManualSearchResults(results);
@@ -667,6 +676,29 @@ export default function ChatPage() {
     } finally {
       setIsManualSearching(false);
     }
+  };
+
+  // Deep search triggered from attachment menu
+  const handleDeepSearchFromMenu = async () => {
+    const searchQuery = inputMessage.trim();
+    if (!searchQuery) {
+      const userQuery = prompt('Enter your search query:');
+      if (!userQuery) return;
+      performManualSearch(userQuery);
+    } else {
+      performManualSearch(searchQuery);
+      setInputMessage('');
+    }
+  };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const handleFilesSelected = (e) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+    console.log('Selected files:', files);
+    toast.success(`Selected ${files.length} file(s)`);
+    e.target.value = null;
   };
 
   return (
@@ -702,7 +734,7 @@ export default function ChatPage() {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors touch-manipulation min-h-[44px] min-w-[44px]"
           >
             <Building2 className="w-5 h-5 md:w-4 md:h-4" />
-            <span className="text-sm font-medium">SAM.gov</span>
+            <p className="text-sm font-medium m-0">sam.gov</p>
           </button>
         </div>
 
@@ -850,7 +882,7 @@ export default function ChatPage() {
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>SAM.gov</span>
+                  <p className="m-0">sam.gov</p>
                 </button>
                 <button
                   onClick={() => {
@@ -912,14 +944,7 @@ export default function ChatPage() {
             <div className={`w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ${user?.profileImage ? 'hidden' : ''}`}>
               <User className="w-4 h-4 text-white dark:text-gray-900" />
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.fullName}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user?.email}
-              </p>
-            </div>
+            <div className="flex-1 min-w-0 text-left" />
             <MoreVertical className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0" />
           </button>
         </div>
@@ -1063,9 +1088,7 @@ export default function ChatPage() {
                   }`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
-                    </div>
+                    <BrandAvatar src={WERKULES_ICON} alt="Werkules" size="w-8 h-8" className="flex-shrink-0" />
                   )}
 
                   {message.role === 'user' ? (
@@ -1102,9 +1125,7 @@ export default function ChatPage() {
 
             {streamingMessage && (
               <div className="flex gap-4 justify-start">
-                <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
-                </div>
+                <BrandAvatar src={WERKULES_ICON} alt="Werkules" size="w-8 h-8" className="flex-shrink-0" />
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
                   <div className="whitespace-pre-wrap">
                     {streamingContent ? typewriterText : streamingMessage}
@@ -1158,6 +1179,26 @@ export default function ChatPage() {
         <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-end gap-1 md:gap-2">
+              <button
+                ref={plusButtonRef}
+                onClick={() => setAttachMenuOpen(!attachMenuOpen)}
+                aria-expanded={attachMenuOpen}
+                aria-haspopup="menu"
+                className="p-2.5 md:p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation min-h-[44px] min-w-[44px] items-center justify-center"
+                title="Add"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+
+              <div className="relative">
+                <AttachmentMenu
+                  open={attachMenuOpen}
+                  onClose={() => setAttachMenuOpen(false)}
+                  onAttachFiles={openFilePicker}
+                  onDeepSearch={handleDeepSearchFromMenu}
+                />
+              </div>
+
               <button className="p-2.5 md:p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center">
                 <Paperclip className="w-5 h-5" />
               </button>
