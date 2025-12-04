@@ -28,7 +28,7 @@ jobs:
           npm install
           npm run build
 
-      - name: Copy build artifacts to EC2
+      - name: Copy Frontend Build to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -37,7 +37,7 @@ jobs:
           source: "MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/frontend/dist/*"
           target: "${{ secrets.EC2_PATH }}/frontend"
 
-      - name: Copy backend to EC2
+      - name: Copy Backend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
