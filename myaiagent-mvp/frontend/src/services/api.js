@@ -5,10 +5,17 @@ const getApiBaseUrl = () => {
   // In production (deployed), always use relative path
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+
     // If on production domain, use relative path
     if (hostname === 'werkules.com' || hostname.includes('werkules')) {
       console.log('🎯 Detected werkules.com - using /api');
       return '/api';
+    }
+
+    // If on Builder.io preview domain (fly.dev), use production API
+    if (hostname.includes('fly.dev') || hostname.includes('builder.io')) {
+      console.log('🎯 Detected Builder.io preview - using production API');
+      return 'https://werkules.com/api';
     }
   }
 
@@ -18,7 +25,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Development fallback
+  // Development fallback (only for true localhost development)
   console.log('🔧 Using fallback: http://localhost:3000/api');
   return 'http://localhost:3000/api';
 };
