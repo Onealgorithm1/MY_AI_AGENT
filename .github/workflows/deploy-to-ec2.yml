@@ -4,173 +4,62 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for proper git operations
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: myaiagent-mvp/frontend/package-lock.json
+          node-version: '20'
 
-      - name: Install frontend dependencies
-        working-directory: ./myaiagent-mvp/frontend
-        run: npm ci
+      - name: Install Backend Dependencies
+        working-directory: MY_AI_AGENT/myaiagent-mvp/backend
+        run: npm install
 
-      - name: Build frontend for production
-        working-directory: ./myaiagent-mvp/frontend
-        run: npm run build
-        env:
-          VITE_API_URL: /api
-          VITE_ENABLE_ENHANCED_STT: true
-
-      - name: Create deployment package
+      - name: Build Frontend
+        working-directory: MY_AI_AGENT/myaiagent-mvp/frontend
         run: |
-          echo "Creating deployment archive..."
-          tar -czf deployment.tar.gz \
-            --exclude='node_modules' \
-            --exclude='.git' \
-            --exclude='.env' \
-            --exclude='*.log' \
-            myaiagent-mvp/
-          echo "✅ Deployment package created"
+          npm install
+          npm run build
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          # Write SSH key with proper formatting
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          # Add SSH options to skip strict host checking and use the key
-          cat > ~/.ssh/config <<EOF
-          Host ec2-deploy
-            HostName ${{ secrets.EC2_HOST }}
-            User ${{ secrets.EC2_USER }}
-            IdentityFile ~/.ssh/deploy_key
-            StrictHostKeyChecking no
-            UserKnownHostsFile=/dev/null
-          EOF
-          chmod 600 ~/.ssh/config
-          # Verify key format
-          echo "Checking SSH key format..."
-          head -n 1 ~/.ssh/deploy_key
-          tail -n 1 ~/.ssh/deploy_key
+      - name: Copy build artifacts to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "MY_AI_AGENT/myaiagent-mvp/frontend/dist/*"
+          target: "${{ secrets.EC2_PATH }}/frontend"
 
-      - name: Deploy to EC2
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
-        run: |
-          echo "🚀 Starting deployment to EC2..."
+      - name: Copy backend to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "MY_AI_AGENT/myaiagent-mvp/backend/*"
+          target: "${{ secrets.EC2_PATH }}/backend"
 
-          # Test SSH connection
-          echo "Testing SSH connection..."
-          ssh ec2-deploy 'echo "✅ SSH connection successful!"'
-
-          # Upload deployment package
-          scp deployment.tar.gz ec2-deploy:~/
-
-          # Execute deployment commands on EC2
-          ssh ec2-deploy << 'ENDSSH'
-            set -e
-
-            echo "📦 Extracting deployment package..."
-            cd ~
-            tar -xzf deployment.tar.gz
-            rm deployment.tar.gz
-
-            echo "📂 Syncing files to deployment directory..."
-            sudo rsync -av --delete \
-              --exclude='node_modules' \
-              --exclude='.env' \
-              --exclude='uploads' \
-              --exclude='*.db' \
-              --exclude='*.sqlite3' \
-              --exclude='attached_assets' \
-              ~/MY_AI_AGENT/myaiagent-mvp/ ${DEPLOY_PATH}/
-
-            echo "🔧 Installing backend dependencies..."
-            cd ${DEPLOY_PATH}/backend
+      - name: Restart PM2 on EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd ${{ secrets.EC2_PATH }}/backend
             npm install
+            
+            pm2 delete myaiagent-backend || true
+            pm2 start src/server.js --name myaiagent-backend
 
-            echo "🗄️  Running database migrations..."
-            if [ -f "run-new-migrations.js" ]; then
-              node run-new-migrations.js
-              echo "✅ Database migrations completed"
-            else
-              echo "⚠️  No migration script found, skipping migrations"
-            fi
+            sudo rm -rf /var/www/myaiagent/*
+            sudo cp -r ../frontend/dist/* /var/www/myaiagent/
 
-            echo "🔧 Building frontend..."
-            cd ${DEPLOY_PATH}/frontend
-            npm install
-            npm run build
-            echo "✅ Frontend built successfully"
-
-            echo "📂 Copying frontend to web directory..."
-            if [ -d "/var/www/myaiagent" ]; then
-              sudo cp -r dist/* /var/www/myaiagent/
-              echo "✅ Frontend copied to /var/www/myaiagent/"
-            else
-              echo "⚠️  /var/www/myaiagent directory not found, skipping frontend copy"
-            fi
-
-            echo "🔄 Restarting application services..."
-            # Restart backend service using PM2
-            if command -v pm2 &> /dev/null; then
-              if pm2 list | grep -q "myaiagent-backend"; then
-                pm2 restart myaiagent-backend
-                echo "✅ Restarted myaiagent-backend"
-              else
-                echo "⚠️  myaiagent-backend not found in PM2, attempting to start..."
-                cd ${DEPLOY_PATH}/backend
-                pm2 start server.js --name myaiagent-backend
-              fi
-              pm2 save
-              pm2 status
-            elif systemctl is-active --quiet myaiagent-backend; then
-              sudo systemctl restart myaiagent-backend
-              echo "✅ Restarted myaiagent-backend service"
-            else
-              echo "⚠️  PM2 or systemd service not found. Please restart manually."
-            fi
-
-            echo "✅ Deployment completed successfully!"
-            echo "🌐 Application should be running at https://werkules.com"
-            echo "📋 Check logs with: pm2 logs myaiagent-backend --lines 50"
-          ENDSSH
-
-          echo "✅ EC2 deployment finished"
-
-      - name: Cleanup
-        if: always()
-        run: |
-          rm -f ~/.ssh/deploy_key
-          rm -f deployment.tar.gz
-
-      - name: Deployment notification
-        if: success()
-        run: |
-          echo "✅ Deployment to EC2 completed successfully!"
-          echo "🌐 Application: https://werkules.com"
-          echo "📅 Deployed at: $(date)"
-          echo "📝 Commit: ${{ github.sha }}"
-
-      - name: Deployment failed notification
-        if: failure()
-        run: |
-          echo "❌ Deployment to EC2 failed!"
-          echo "📝 Commit: ${{ github.sha }}"
-          echo "👤 Author: ${{ github.actor }}"
-          echo "Please check the logs above for details."
+            sudo systemctl restart nginx
