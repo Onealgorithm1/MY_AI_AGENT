@@ -44,6 +44,7 @@ import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
 import BrandAvatar from '../components/BrandAvatar';
+import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import useTypewriter from '../hooks/useTypewriter';
