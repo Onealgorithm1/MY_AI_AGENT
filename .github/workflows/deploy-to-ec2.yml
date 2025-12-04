@@ -48,9 +48,23 @@ jobs:
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
+          # Write SSH key with proper formatting
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          # Add SSH options to skip strict host checking and use the key
+          cat > ~/.ssh/config <<EOF
+          Host ec2-deploy
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+          EOF
+          chmod 600 ~/.ssh/config
+          # Verify key format
+          echo "Checking SSH key format..."
+          head -n 1 ~/.ssh/deploy_key
+          tail -n 1 ~/.ssh/deploy_key
 
       - name: Deploy to EC2
         env:
@@ -60,11 +74,15 @@ jobs:
         run: |
           echo "🚀 Starting deployment to EC2..."
 
+          # Test SSH connection
+          echo "Testing SSH connection..."
+          ssh ec2-deploy 'echo "✅ SSH connection successful!"'
+
           # Upload deployment package
-          scp -i ~/.ssh/deploy_key deployment.tar.gz ${EC2_USER}@${EC2_HOST}:~/
+          scp deployment.tar.gz ec2-deploy:~/
 
           # Execute deployment commands on EC2
-          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+          ssh ec2-deploy << 'ENDSSH'
             set -e
 
             echo "📦 Extracting deployment package..."
