@@ -702,7 +702,7 @@ export default function ChatPage() {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors touch-manipulation min-h-[44px] min-w-[44px]"
           >
             <Building2 className="w-5 h-5 md:w-4 md:h-4" />
-            <span className="text-sm font-medium">SAM.gov</span>
+            <p className="text-sm font-medium m-0">sam.gov</p>
           </button>
         </div>
 
@@ -850,7 +850,7 @@ export default function ChatPage() {
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>SAM.gov</span>
+                  <p className="m-0">sam.gov</p>
                 </button>
                 <button
                   onClick={() => {
