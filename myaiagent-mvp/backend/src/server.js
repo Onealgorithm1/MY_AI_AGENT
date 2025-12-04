@@ -125,41 +125,66 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS - Only needed in development when frontend and backend are on different ports
-if (process.env.NODE_ENV !== 'production') {
-  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+// CORS - Configure for both development and production
+const allowedOrigins = [
+  'https://werkules.com',
+  'https://www.werkules.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
 
-  // Add Replit development domain if available
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-  }
-
-  const corsOptions = {
-    origin: (origin, callback) => {
-      // Allow requests with no origin (same-origin requests, mobile apps, curl, Postman)
-      if (!origin) {
-        callback(null, true);
-      } 
-      // Allow requests from explicitly allowed origins
-      else if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } 
-      // Reject all other origins in development
-      else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  };
-  app.use(cors(corsOptions));
-} else {
-  // In production, frontend and backend are served from same origin on Replit Autoscale
-  // CORS is not needed and should be disabled for security
-  app.use(cors({
-    origin: false,
-    credentials: true,
-  }));
+// Add custom CORS origins from environment
+if (process.env.CORS_ORIGINS) {
+  allowedOrigins.push(...process.env.CORS_ORIGINS.split(','));
 }
+
+// Add Replit development domain if available
+if (process.env.REPLIT_DEV_DOMAIN) {
+  allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (same-origin requests, mobile apps, curl, Postman)
+    if (!origin) {
+      console.log('✅ CORS: Allowing request with no origin (same-origin)');
+      return callback(null, true);
+    }
+
+    // Allow explicitly whitelisted origins
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS: Allowing whitelisted origin:', origin);
+      return callback(null, true);
+    }
+
+    // Allow Builder.io preview domains
+    if (origin.includes('.fly.dev') ||
+        origin.includes('.builder.io') ||
+        origin.includes('.projects.builder.codes') ||
+        origin.includes('.projects.builder.my')) {
+      console.log('✅ CORS: Allowing Builder.io preview domain:', origin);
+      return callback(null, true);
+    }
+
+    // In development, be more lenient
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('⚠️  CORS: Allowing origin in development mode:', origin);
+      return callback(null, true);
+    }
+
+    // Reject all other origins in production
+    console.log('❌ CORS: Rejecting origin:', origin);
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['set-cookie'],
+  maxAge: 86400 // 24 hours - cache preflight requests
+};
+
+app.use(cors(corsOptions));
 
 // Cookie parsing (REQUIRED for JWT cookies and CSRF)
 app.use(cookieParser());
