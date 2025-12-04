@@ -665,7 +665,7 @@ export default function ChatPage() {
   const performManualSearch = async (query) => {
     setIsManualSearching(true);
     setManualSearchResults(null);
-    
+
     try {
       const results = await webSearchApi.search(query, 5);
       setManualSearchResults(results);
@@ -676,6 +676,29 @@ export default function ChatPage() {
     } finally {
       setIsManualSearching(false);
     }
+  };
+
+  // Deep search triggered from attachment menu
+  const handleDeepSearchFromMenu = async () => {
+    const searchQuery = inputMessage.trim();
+    if (!searchQuery) {
+      const userQuery = prompt('Enter your search query:');
+      if (!userQuery) return;
+      performManualSearch(userQuery);
+    } else {
+      performManualSearch(searchQuery);
+      setInputMessage('');
+    }
+  };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const handleFilesSelected = (e) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+    console.log('Selected files:', files);
+    toast.success(`Selected ${files.length} file(s)`);
+    e.target.value = null;
   };
 
   return (
