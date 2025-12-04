@@ -1,0 +1,133 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper git operations
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: myaiagent-mvp/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./myaiagent-mvp/frontend
+        run: npm ci
+
+      - name: Build frontend for production
+        working-directory: ./myaiagent-mvp/frontend
+        run: npm run build
+        env:
+          VITE_API_URL: /api
+          VITE_ENABLE_ENHANCED_STT: true
+
+      - name: Create deployment package
+        run: |
+          echo "Creating deployment archive..."
+          tar -czf deployment.tar.gz \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.env' \
+            --exclude='*.log' \
+            myaiagent-mvp/
+          echo "✅ Deployment package created"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+        run: |
+          echo "🚀 Starting deployment to EC2..."
+
+          # Upload deployment package
+          scp -i ~/.ssh/deploy_key deployment.tar.gz ${EC2_USER}@${EC2_HOST}:~/
+
+          # Execute deployment commands on EC2
+          ssh -i ~/.ssh/deploy_key ${EC2_USER}@${EC2_HOST} << 'ENDSSH'
+            set -e
+
+            echo "📦 Extracting deployment package..."
+            cd ~
+            tar -xzf deployment.tar.gz
+            rm deployment.tar.gz
+
+            echo "📂 Syncing files to deployment directory..."
+            sudo rsync -av --delete \
+              --exclude='node_modules' \
+              --exclude='.env' \
+              --exclude='uploads' \
+              --exclude='*.db' \
+              ~/myaiagent-mvp/ ${DEPLOY_PATH}/
+
+            echo "🔧 Installing backend dependencies..."
+            cd ${DEPLOY_PATH}/backend
+            npm ci --production
+
+            echo "🔧 Installing frontend dependencies (if serving frontend from EC2)..."
+            cd ${DEPLOY_PATH}/frontend
+            npm ci --production
+
+            echo "🔄 Restarting application services..."
+            # Restart backend service (adjust based on your process manager)
+            if command -v pm2 &> /dev/null; then
+              pm2 restart werkules-backend || pm2 start npm --name "werkules-backend" -- start
+              pm2 save
+            elif systemctl is-active --quiet werkules-backend; then
+              sudo systemctl restart werkules-backend
+            else
+              echo "⚠️  No process manager detected. Please restart manually."
+            fi
+
+            # Restart frontend service if needed
+            if command -v pm2 &> /dev/null; then
+              pm2 restart werkules-frontend || true
+            fi
+
+            echo "✅ Deployment completed successfully!"
+            echo "🌐 Application should be running at https://werkules.com"
+          ENDSSH
+
+          echo "✅ EC2 deployment finished"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+          rm -f deployment.tar.gz
+
+      - name: Deployment notification
+        if: success()
+        run: |
+          echo "✅ Deployment to EC2 completed successfully!"
+          echo "🌐 Application: https://werkules.com"
+          echo "📅 Deployed at: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+
+      - name: Deployment failed notification
+        if: failure()
+        run: |
+          echo "❌ Deployment to EC2 failed!"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+          echo "Please check the logs above for details."
