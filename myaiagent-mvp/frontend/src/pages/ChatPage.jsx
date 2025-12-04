@@ -1179,6 +1179,26 @@ export default function ChatPage() {
         <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-end gap-1 md:gap-2">
+              <button
+                ref={plusButtonRef}
+                onClick={() => setAttachMenuOpen(!attachMenuOpen)}
+                aria-expanded={attachMenuOpen}
+                aria-haspopup="menu"
+                className="p-2.5 md:p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation min-h-[44px] min-w-[44px] items-center justify-center"
+                title="Add"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+
+              <div className="relative">
+                <AttachmentMenu
+                  open={attachMenuOpen}
+                  onClose={() => setAttachMenuOpen(false)}
+                  onAttachFiles={openFilePicker}
+                  onDeepSearch={handleDeepSearchFromMenu}
+                />
+              </div>
+
               <button className="p-2.5 md:p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 touch-manipulation hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center">
                 <Paperclip className="w-5 h-5" />
               </button>
