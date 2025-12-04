@@ -912,14 +912,7 @@ export default function ChatPage() {
             <div className={`w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ${user?.profileImage ? 'hidden' : ''}`}>
               <User className="w-4 h-4 text-white dark:text-gray-900" />
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.fullName}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user?.email}
-              </p>
-            </div>
+            <div className="flex-1 min-w-0 text-left" />
             <MoreVertical className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0" />
           </button>
         </div>
