@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:builderio": "vite --mode builderio",
     "build": "vite build",
+    "build:builderio": "vite build --mode builderio",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
