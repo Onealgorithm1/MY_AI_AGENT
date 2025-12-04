@@ -10,56 +10,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # Install backend dependencies
       - name: Install Backend Dependencies
-        working-directory: MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend
+        working-directory: myaiagent-mvp/backend
         run: npm install
 
+      # Build frontend
       - name: Build Frontend
-        working-directory: MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/frontend
+        working-directory: myaiagent-mvp/frontend
         run: |
           npm install
           npm run build
 
-      - name: Copy Frontend Build to EC2
+      # Upload frontend build folder to EC2
+      - name: Copy Frontend Dist to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/frontend/dist/*"
+          source: "myaiagent-mvp/frontend/dist/*"
           target: "${{ secrets.EC2_PATH }}/frontend"
 
+      # Upload backend files to EC2
       - name: Copy Backend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend/*"
+          source: "myaiagent-mvp/backend/*"
           target: "${{ secrets.EC2_PATH }}/backend"
 
-      - name: Restart PM2 on EC2
+      # Restart backend and deploy build on EC2
+      - name: Restart PM2 and Deploy Frontend on EC2
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          script: |
-            cd ${{ secrets.EC2_PATH }}/backend
-            npm install
-            
-            pm2 delete myaiagent-backend || true
-            pm2 start src/server.js --name myaiagent-backend
-
-            sudo rm -rf /var/www/myaiagent/*
-            sudo cp -r ../frontend/dist/* /var/www/myaiagent/
-
-            sudo systemctl restart nginx
