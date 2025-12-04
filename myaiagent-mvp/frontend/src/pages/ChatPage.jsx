@@ -43,6 +43,7 @@ import SearchResults from '../components/SearchResults';
 import SearchingIndicator from '../components/SearchingIndicator';
 import VoiceSelector from '../components/VoiceSelector';
 import MessageWithAudio from '../components/MessageWithAudio';
+import BrandAvatar from '../components/BrandAvatar';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import useTypewriter from '../hooks/useTypewriter';
@@ -55,6 +56,8 @@ const getBaseUrl = () => {
   // Remove /api suffix if present to get base URL
   return apiUrl.replace(/\/api$/, '');
 };
+
+const WERKULES_ICON = 'https://cdn.builder.io/api/v1/image/assets%2Fb90cab62d3d34e0087abec352888a96d%2Fd7b39c4fafc7492992b689ba79a91a75?format=webp&width=800';
 
 export default function ChatPage() {
   const navigate = useNavigate();
@@ -1056,9 +1059,7 @@ export default function ChatPage() {
                   }`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
-                    </div>
+                    <BrandAvatar src={WERKULES_ICON} alt="Werkules" size="w-8 h-8" className="flex-shrink-0" />
                   )}
 
                   {message.role === 'user' ? (
@@ -1095,9 +1096,7 @@ export default function ChatPage() {
 
             {streamingMessage && (
               <div className="flex gap-4 justify-start">
-                <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-5 h-5 text-white dark:text-gray-900" />
-                </div>
+                <BrandAvatar src={WERKULES_ICON} alt="Werkules" size="w-8 h-8" className="flex-shrink-0" />
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
                   <div className="whitespace-pre-wrap">
                     {streamingContent ? typewriterText : streamingMessage}
