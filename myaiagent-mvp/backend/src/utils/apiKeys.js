@@ -61,7 +61,8 @@ export async function getApiKey(provider, keyType = 'project') {
       'openai': 'OpenAI',
       'elevenlabs': 'ElevenLabs',
       'anthropic': 'Anthropic',
-      'google': 'Google',
+      'google': 'Google APIs',
+      'gemini': 'Google APIs',  // Gemini uses Google API key
       'stripe': 'Stripe',
       'samgov': 'SAM.gov'
     };
