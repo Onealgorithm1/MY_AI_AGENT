@@ -88,8 +88,8 @@ echo "HMAC_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toStr
 # Generate CSRF_SECRET
 echo "CSRF_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")"
 
-# Generate ENCRYPTION_KEY
-echo "ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")"
+# Generate ENCRYPTION_KEY (must be 64 hex characters - 32 bytes in hex)
+echo "ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
 ```
 
 Copy these values into your `.env` file.
@@ -196,7 +196,7 @@ EOF
 echo "JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" >> .env
 echo "HMAC_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" >> .env
 echo "CSRF_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" >> .env
-echo "ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" >> .env
+echo "ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> .env
 
 # Restart backend
 pm2 restart myaiagent-backend || pm2 start npm --name "myaiagent-backend" -- start

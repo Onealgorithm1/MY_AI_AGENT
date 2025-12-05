@@ -84,7 +84,8 @@ if [ "$NEEDS_SECRETS" = true ]; then
     JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
     HMAC_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
     CSRF_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
-    ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
+    # ENCRYPTION_KEY must be 64 hex characters (32 bytes in hex format)
+    ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 
     # Update or add secrets to .env
     update_or_add_env() {
