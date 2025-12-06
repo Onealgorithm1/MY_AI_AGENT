@@ -19,8 +19,8 @@ echo ""
 
 cd /home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend
 
-# Create comprehensive test script
-cat > /tmp/test-gemini-complete.js << 'EOFJS'
+# Create comprehensive test script in the backend directory (where node_modules exists)
+cat > test-gemini-complete.js << 'EOFJS'
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getApiKey } from './src/utils/apiKeys.js';
 
@@ -203,13 +203,13 @@ EOFJS
 echo "Running Gemini API test..."
 echo ""
 
-# Run the test
-node /tmp/test-gemini-complete.js
+# Run the test from the backend directory
+node test-gemini-complete.js
 
 # Save exit code
 TEST_RESULT=$?
 
 # Cleanup
-rm -f /tmp/test-gemini-complete.js
+rm -f test-gemini-complete.js
 
 exit $TEST_RESULT
