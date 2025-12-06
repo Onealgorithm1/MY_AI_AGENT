@@ -62,9 +62,25 @@ export const getExclusions = async (params) => {
   return api.post('/exclusions', params);
 };
 
+/**
+ * Get cached opportunities from database
+ * @param {Object} params - Query parameters
+ * @param {number} params.limit - Number of results (default: 1000)
+ * @param {number} params.offset - Pagination offset (default: 0)
+ * @param {string} params.keyword - Optional keyword filter
+ * @param {string} params.type - Optional type filter
+ * @param {string} params.status - Optional status filter
+ * @returns {Promise} API response with cached opportunities
+ */
+export const getCachedOpportunities = async (params) => {
+  const response = await api.get('/cached-opportunities', { params });
+  return response.data;
+};
+
 export default {
   searchEntities,
   getEntityByUEI,
   searchOpportunities,
   getExclusions,
+  getCachedOpportunities,
 };
