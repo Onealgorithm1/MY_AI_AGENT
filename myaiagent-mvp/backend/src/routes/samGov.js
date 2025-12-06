@@ -100,21 +100,6 @@ router.post('/exclusions', async (req, res) => {
 });
 
 /**
- * GET /api/sam-gov/cached-opportunities
- * Get all cached opportunities
- */
-router.get('/cached-opportunities', async (req, res) => {
-  try {
-    const { limit = 50, offset = 0 } = req.query;
-    const result = await samGovCache.getAllCachedOpportunities(parseInt(limit), parseInt(offset));
-    res.json({ success: true, ...result });
-  } catch (error) {
-    console.error('Get cached opportunities error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
  * GET /api/sam-gov/cache/:noticeId
  * Get cached opportunity by notice ID
  */
@@ -153,17 +138,18 @@ router.get('/search-history', async (req, res) => {
 /**
  * GET /api/sam-gov/cached-opportunities
  * Get all cached opportunities with optional filters
+ * Note: Shows ALL cached opportunities regardless of who created them
  */
 router.get('/cached-opportunities', async (req, res) => {
   try {
-    const { limit = 20, offset = 0, keyword, type, status } = req.query;
+    const { limit = 1000, offset = 0, keyword, type, status } = req.query;
     const result = await samGovCache.getCachedOpportunities({
       limit: parseInt(limit),
       offset: parseInt(offset),
       keyword,
       type,
       status,
-      userId: req.user.id
+      // Don't filter by userId - show all opportunities to all authenticated users
     });
 
     res.json(result);
