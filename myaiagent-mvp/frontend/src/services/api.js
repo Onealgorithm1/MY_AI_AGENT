@@ -12,13 +12,13 @@ const getApiBaseUrl = () => {
       return '/api';
     }
 
-    // If on Builder.io preview domain, use proxied API (relative path)
+    // If on Builder.io preview domain, use werkules.com backend with full HTTPS URL
     if (hostname.includes('fly.dev') ||
         hostname.includes('builder.io') ||
         hostname.includes('projects.builder.codes') ||
         hostname.includes('projects.builder.my')) {
-      console.log('🎯 Detected Builder.io preview - using proxied /api');
-      return '/api';
+      console.log('🎯 Detected Builder.io preview - using werkules.com backend');
+      return 'https://werkules.com/api';
     }
   }
 
