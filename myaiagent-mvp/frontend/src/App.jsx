@@ -46,6 +46,20 @@ function PrivateRoute({ children }) {
   );
 }
 
+function PrivateRouteWithoutLayout({ children }) {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {children}
+    </Suspense>
+  );
+}
+
 function AdminRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
@@ -104,9 +118,9 @@ function App() {
             path="/"
             element={
               isAuthenticated ? (
-                <PrivateRoute>
+                <PrivateRouteWithoutLayout>
                   <ChatPage />
-                </PrivateRoute>
+                </PrivateRouteWithoutLayout>
               ) : (
                 <LandingPage />
               )
@@ -115,9 +129,9 @@ function App() {
           <Route
             path="/chat"
             element={
-              <PrivateRoute>
+              <PrivateRouteWithoutLayout>
                 <ChatPage />
-              </PrivateRoute>
+              </PrivateRouteWithoutLayout>
             }
           />
           <Route
