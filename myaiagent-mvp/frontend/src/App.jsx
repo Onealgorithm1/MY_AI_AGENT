@@ -33,17 +33,30 @@ function LoadingFallback() {
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
 }
 
 function AdminRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-  
+
   if (!isAuthenticated) return <Navigate to="/login" />;
   if (!isAdmin) return <Navigate to="/" />;
-  
-  return children;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
 }
 
 function App() {
