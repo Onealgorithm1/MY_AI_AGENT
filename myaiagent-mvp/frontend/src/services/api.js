@@ -64,17 +64,36 @@ const api = axios.create({
 });
 
 // Function to fetch and set CSRF token
-export const fetchCsrfToken = async () => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
-      withCredentials: true,
-    });
-    csrfToken = response.data.csrfToken;
-    return csrfToken;
-  } catch (error) {
-    console.error('Failed to fetch CSRF token:', error);
-    return null;
+export const fetchCsrfToken = async (retries = 3) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`🔄 Fetching CSRF token (attempt ${attempt}/${retries}) from ${API_BASE_URL}/csrf-token`);
+      const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
+        withCredentials: true,
+      });
+      csrfToken = response.data.csrfToken;
+      console.log('✅ CSRF token fetched successfully:', csrfToken.substring(0, 10) + '...');
+      return csrfToken;
+    } catch (error) {
+      console.error(`❌ CSRF token fetch failed (attempt ${attempt}/${retries}):`, {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+      });
+
+      // If this is the last attempt, don't retry
+      if (attempt === retries) {
+        console.error('❌ CSRF token fetch failed after all retries');
+        return null;
+      }
+
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+    }
   }
+  return null;
 };
 
 // Function to get current CSRF token (for use in fetch() requests)
