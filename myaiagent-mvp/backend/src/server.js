@@ -209,9 +209,9 @@ const {
   getSecret: () => csrfSecret,
   cookieName: 'csrf-token',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    secure: true, // Always true for HTTPS (werkules.com is HTTPS)
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' allows cross-origin (Builder.io)
+    sameSite: 'none', // Required for cross-origin (Builder.io preview domains)
     path: '/',
   },
   size: 64,
