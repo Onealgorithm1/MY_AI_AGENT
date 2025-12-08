@@ -18,6 +18,7 @@ const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
 const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage'));
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
+const CompanyProfilePage = lazy(() => import('./pages/CompanyProfilePage'));
 const AppLayout = lazy(() => import('./components/AppLayout'));
 
 function LoadingFallback() {
@@ -41,6 +42,20 @@ function PrivateRoute({ children }) {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
+}
+
+function PrivateRouteWithoutLayout({ children }) {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {children}
     </Suspense>
   );
 }
@@ -103,9 +118,9 @@ function App() {
             path="/"
             element={
               isAuthenticated ? (
-                <PrivateRoute>
+                <PrivateRouteWithoutLayout>
                   <ChatPage />
-                </PrivateRoute>
+                </PrivateRouteWithoutLayout>
               ) : (
                 <LandingPage />
               )
@@ -114,9 +129,9 @@ function App() {
           <Route
             path="/chat"
             element={
-              <PrivateRoute>
+              <PrivateRouteWithoutLayout>
                 <ChatPage />
-              </PrivateRoute>
+              </PrivateRouteWithoutLayout>
             }
           />
           <Route
@@ -164,6 +179,14 @@ function App() {
             element={
               <PrivateRoute>
                 <CompanyDashboardPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/company-profile"
+            element={
+              <PrivateRoute>
+                <CompanyProfilePage />
               </PrivateRoute>
             }
           />
