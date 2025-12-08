@@ -60,10 +60,23 @@ const CompanyProfilePage = () => {
     try {
       setAnalyzing(true);
       const response = await api.post('/company/ai-eligibility-analysis');
-      setRecommendations(response.data.recommendations || []);
-      setEligibility(response.data.analysis);
+
+      // Handle the response structure from the API
+      if (response.data.success) {
+        const analysis = response.data.analysis;
+        setRecommendations(analysis.priorityActions || response.data.recommendations || []);
+
+        // Update eligibility with the new analysis data
+        setEligibility({
+          ...response.data.readiness,
+          score: response.data.readiness?.percentage || eligibility?.score,
+          level: response.data.readiness?.level || eligibility?.level,
+          recommendation: response.data.readiness?.recommendation || eligibility?.recommendation
+        });
+      }
     } catch (error) {
       console.error('AI analysis failed:', error);
+      alert('Failed to run AI analysis. Please try again.');
     } finally {
       setAnalyzing(false);
     }
@@ -353,50 +366,71 @@ const CompanyProfilePage = () => {
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
                 <Star className="w-5 h-5 mr-2 text-yellow-600" />
-                Top Matches
+                Top Matched Opportunities
               </h2>
-              <div className="space-y-3">
-                {matchedOpportunities.slice(0, 5).map((match, index) => (
-                  <div
-                    key={index}
-                    className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                        {match.opportunity_title || match.title}
-                      </h3>
-                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs font-medium rounded flex-shrink-0">
-                        {match.match_score || 0}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      {match.naics_match && (
-                        <span className="flex items-center">
-                          <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
-                          NAICS
-                        </span>
-                      )}
-                      {match.set_aside_match && (
-                        <span className="flex items-center">
-                          <Shield className="w-3 h-3 mr-1 text-blue-600" />
-                          Set-Aside
-                        </span>
-                      )}
-                      {match.capability_match && (
-                        <span className="flex items-center">
-                          <Cpu className="w-3 h-3 mr-1 text-purple-600" />
-                          Skills
-                        </span>
-                      )}
-                    </div>
+              {matchedOpportunities && matchedOpportunities.length > 0 ? (
+                <>
+                  <div className="space-y-3">
+                    {matchedOpportunities.slice(0, 5).map((match, index) => {
+                      // Handle different possible property names from API
+                      const title = match.opportunity_title || match.title || match.raw_data?.title || 'Untitled Opportunity';
+                      const matchScore = match.matchScore?.total || match.match_score || 0;
+
+                      return (
+                        <div
+                          key={match.id || index}
+                          className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between mb-1">
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {title}
+                            </h3>
+                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs font-medium rounded flex-shrink-0">
+                              {matchScore}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                            {(match.matchScore?.naics || match.naics_match) > 0 && (
+                              <span className="flex items-center">
+                                <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
+                                NAICS
+                              </span>
+                            )}
+                            {(match.matchScore?.setAside || match.set_aside_match) > 0 && (
+                              <span className="flex items-center">
+                                <Shield className="w-3 h-3 mr-1 text-blue-600" />
+                                Set-Aside
+                              </span>
+                            )}
+                            {(match.matchScore?.keywords || match.capability_match) > 0 && (
+                              <span className="flex items-center">
+                                <Cpu className="w-3 h-3 mr-1 text-purple-600" />
+                                Skills
+                              </span>
+                            )}
+                          </div>
+                          {match.naics_code && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              NAICS: {match.naics_code}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-              {matchedOpportunities.length > 5 && (
-                <button className="mt-3 w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center">
-                  View all {matchedOpportunities.length} matches
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </button>
+                  {matchedOpportunities.length > 5 && (
+                    <button className="mt-3 w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center">
+                      View all {matchedOpportunities.length} matches
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Star className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>No matched opportunities found.</p>
+                  <p className="text-sm mt-1">Run AI Analysis to find opportunities matching your capabilities.</p>
+                </div>
               )}
             </div>
 
