@@ -82,9 +82,21 @@ export const getCsrfToken = () => csrfToken;
 
 // Request interceptor - add CSRF token to state-changing requests
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Add CSRF token to POST, PUT, PATCH, DELETE requests
     if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      // If token is missing, try to fetch it (failsafe)
+      if (!csrfToken) {
+        console.warn('⚠️ CSRF token missing, attempting to fetch...');
+        try {
+          await fetchCsrfToken();
+          console.log('✅ CSRF token fetched successfully');
+        } catch (error) {
+          console.error('❌ Failed to fetch CSRF token:', error);
+        }
+      }
+
+      // Now add the token if we have it
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;
         console.log('✅ CSRF token added to request:', config.method, config.url);
