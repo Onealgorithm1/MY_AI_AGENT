@@ -14,16 +14,17 @@ NC='\033[0m' # No Color
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BACKEND_DIR="$SCRIPT_DIR/myaiagent-mvp/backend"
 
 echo -e "${BLUE}Step 1: Making refresh script executable...${NC}"
-chmod +x "$SCRIPT_DIR/refresh-samgov-opportunities.js"
+chmod +x "$BACKEND_DIR/refresh-samgov-opportunities.js"
 echo -e "${GREEN}✅ Script is executable${NC}"
 echo ""
 
 echo -e "${BLUE}Step 2: Testing refresh script...${NC}"
 echo "Running a test refresh to ensure everything works..."
 echo ""
-cd "$SCRIPT_DIR"
+cd "$BACKEND_DIR"
 node refresh-samgov-opportunities.js
 if [ $? -ne 0 ]; then
   echo -e "${RED}❌ Test refresh failed! Please fix errors before setting up cron.${NC}"
@@ -36,7 +37,7 @@ echo -e "${BLUE}Step 3: Setting up cron job...${NC}"
 echo ""
 
 # Create cron job entry
-CRON_JOB="0 * * * * cd $SCRIPT_DIR && /usr/bin/node refresh-samgov-opportunities.js >> $SCRIPT_DIR/logs/samgov-refresh.log 2>&1"
+CRON_JOB="0 * * * * cd $BACKEND_DIR && /usr/bin/node refresh-samgov-opportunities.js >> $SCRIPT_DIR/logs/samgov-refresh.log 2>&1"
 
 # Create logs directory
 mkdir -p "$SCRIPT_DIR/logs"
@@ -65,12 +66,12 @@ echo -e "${GREEN}✨ Setup Complete!${NC}"
 echo "========================================="
 echo ""
 echo "📋 Summary:"
-echo "  - Refresh script: $SCRIPT_DIR/refresh-samgov-opportunities.js"
+echo "  - Refresh script: $BACKEND_DIR/refresh-samgov-opportunities.js"
 echo "  - Cron schedule: Every hour (at minute 0)"
 echo "  - Log file: $SCRIPT_DIR/logs/samgov-refresh.log"
 echo ""
 echo "🧪 Manual Testing:"
-echo "  Run manually: node $SCRIPT_DIR/refresh-samgov-opportunities.js"
+echo "  Run manually: cd $BACKEND_DIR && node refresh-samgov-opportunities.js"
 echo "  View logs: tail -f $SCRIPT_DIR/logs/samgov-refresh.log"
 echo "  View cron jobs: crontab -l"
 echo ""
