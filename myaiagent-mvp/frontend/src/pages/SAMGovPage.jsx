@@ -21,7 +21,7 @@ const SAMGovPage = () => {
     setAsideType: '',
     naicsCode: '',
     noticeType: '',
-    status: 'active',
+    status: '', // Show all opportunities by default (active and inactive)
     dateFrom: '',
     dateTo: '',
     agency: '',
@@ -205,7 +205,7 @@ const SAMGovPage = () => {
       setAsideType: '',
       naicsCode: '',
       noticeType: '',
-      status: 'active',
+      status: '', // Show all opportunities by default
       dateFrom: '',
       dateTo: '',
       agency: '',
