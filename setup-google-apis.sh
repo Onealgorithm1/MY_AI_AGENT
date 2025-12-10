@@ -41,13 +41,31 @@ echo ""
 # ====================================================
 echo -e "${BLUE}🔍 Detecting environment...${NC}"
 
-BACKEND_DIR="/home/user/MY_AI_AGENT/myaiagent-mvp/backend"
+# Auto-detect backend directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR=""
 
-if [ ! -d "$BACKEND_DIR" ]; then
-  echo -e "${RED}❌ Backend directory not found at: $BACKEND_DIR${NC}"
-  echo -e "${YELLOW}Please update BACKEND_DIR in this script${NC}"
+# Try multiple possible locations
+if [ -d "$SCRIPT_DIR/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="$SCRIPT_DIR/myaiagent-mvp/backend"
+elif [ -d "/home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="/home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend"
+elif [ -d "/home/user/MY_AI_AGENT/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="/home/user/MY_AI_AGENT/myaiagent-mvp/backend"
+fi
+
+if [ -z "$BACKEND_DIR" ] || [ ! -d "$BACKEND_DIR" ]; then
+  echo -e "${RED}❌ Backend directory not found${NC}"
+  echo -e "${YELLOW}Searched in:${NC}"
+  echo -e "   - $SCRIPT_DIR/myaiagent-mvp/backend"
+  echo -e "   - /home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend"
+  echo -e "   - /home/user/MY_AI_AGENT/myaiagent-mvp/backend"
+  echo ""
+  echo -e "${YELLOW}Please run this script from the MY_AI_AGENT root directory${NC}"
   exit 1
 fi
+
+echo -e "${GREEN}✓ Found backend at: $BACKEND_DIR${NC}"
 
 # Check if we're on Replit
 if [ -n "$REPL_ID" ]; then

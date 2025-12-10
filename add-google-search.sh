@@ -28,7 +28,24 @@ echo ""
 # ==========================================
 echo -e "${BLUE}STEP 1: Adding Google Search credentials to database...${NC}"
 
-cd /home/user/MY_AI_AGENT/myaiagent-mvp/backend
+# Auto-detect backend directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR=""
+
+if [ -d "$SCRIPT_DIR/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="$SCRIPT_DIR/myaiagent-mvp/backend"
+elif [ -d "/home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="/home/ubuntu/MY_AI_AGENT/MY_AI_AGENT/myaiagent-mvp/backend"
+elif [ -d "/home/user/MY_AI_AGENT/myaiagent-mvp/backend" ]; then
+  BACKEND_DIR="/home/user/MY_AI_AGENT/myaiagent-mvp/backend"
+fi
+
+if [ -z "$BACKEND_DIR" ] || [ ! -d "$BACKEND_DIR" ]; then
+  echo -e "${RED}❌ Backend directory not found${NC}"
+  exit 1
+fi
+
+cd "$BACKEND_DIR"
 
 cat > add-google-search-temp.js << 'EOFJS'
 import { encryptSecret } from './src/services/secrets.js';
