@@ -31,7 +31,7 @@ export function useTelemetry(pageName) {
       }
       
       // Final fallback for non-browser contexts
-      return 'ws://localhost:3000/ws/telemetry';
+      return 'wss://werkules.com/ws/telemetry';
     };
     
     const wsUrl = getWebSocketUrl();

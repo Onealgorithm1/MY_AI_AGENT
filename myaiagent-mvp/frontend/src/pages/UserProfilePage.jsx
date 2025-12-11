@@ -27,7 +27,7 @@ import GoogleConnection from '../components/GoogleConnection';
 
 // Helper function to get base URL for serving uploaded files
 const getBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
   // Remove /api suffix if present to get base URL
   return apiUrl.replace(/\/api$/, '');
 };

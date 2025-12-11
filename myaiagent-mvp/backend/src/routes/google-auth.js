@@ -8,9 +8,9 @@ import tokenManager from '../services/tokenManager.js';
 const router = express.Router();
 
 // Get frontend URL (works in both dev and prod)
-const FRONTEND_URL = process.env.REPLIT_DEV_DOMAIN 
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-  : (process.env.FRONTEND_URL || 'http://localhost:5000');
+const FRONTEND_URL = process.env.REPLIT_DEV_DOMAIN
+  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+  : (process.env.FRONTEND_URL || 'https://werkules.com');
 
 // Start Google OAuth flow (for signup/login)
 router.get('/google/login', async (req, res) => {

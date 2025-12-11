@@ -21,28 +21,28 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5000,
       allowedHosts: true,
-      // Only use proxy for local development (not for builderio mode)
-      proxy: mode === 'development' ? {
+      // Proxy to werkules.com backend (EC2)
+      proxy: {
         '/api': {
-          target: 'http://localhost:3000',
+          target: 'https://werkules.com',
           changeOrigin: true,
         },
         '/stt-stream': {
-          target: 'http://localhost:3000',
+          target: 'https://werkules.com',
           ws: true,
           changeOrigin: true,
         },
         '/voice': {
-          target: 'http://localhost:3000',
+          target: 'https://werkules.com',
           ws: true,
           changeOrigin: true,
         },
         '/ws': {
-          target: 'http://localhost:3000',
+          target: 'https://werkules.com',
           ws: true,
           changeOrigin: true,
         },
-      } : undefined,
+      },
     },
     build: {
       outDir: 'dist',
