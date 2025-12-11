@@ -82,7 +82,7 @@ echo ""
 echo -e "${BLUE}========== 2. Fixing Database Issues ==========${NC}"
 echo ""
 
-cat > /tmp/fix-database.js << 'DBFIX'
+cat > fix-database.js << 'DBFIX'
 import { encryptSecret } from './src/services/secrets.js';
 import { query } from './src/utils/database.js';
 
@@ -179,8 +179,8 @@ async function fixDatabase() {
 fixDatabase();
 DBFIX
 
-node /tmp/fix-database.js
-rm /tmp/fix-database.js
+node fix-database.js
+rm fix-database.js
 
 echo ""
 
