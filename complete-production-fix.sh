@@ -83,6 +83,9 @@ echo -e "${BLUE}========== 2. Fixing Database Issues ==========${NC}"
 echo ""
 
 cat > fix-database.js << 'DBFIX'
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { encryptSecret } from './src/services/secrets.js';
 import { query } from './src/utils/database.js';
 
