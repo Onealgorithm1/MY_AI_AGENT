@@ -36,7 +36,7 @@ const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY;
 const SAM_GOV_API_BASE = 'https://api.sam.gov/opportunities/v2/search';
 
 /**
- * Fetch opportunities from SAM.gov API
+ * Fetch opportunities from SAM.gov API with pagination
  */
 async function fetchOpportunitiesFromAPI() {
   console.log('[SAM.gov Refresh] Fetching opportunities from API...');
@@ -50,29 +50,53 @@ async function fetchOpportunitiesFromAPI() {
   const fromDate = new Date();
   fromDate.setDate(fromDate.getDate() - 30);
 
-  const params = new URLSearchParams({
-    api_key: SAM_GOV_API_KEY,
-    postedFrom: fromDate.toISOString().split('T')[0],
-    postedTo: toDate.toISOString().split('T')[0],
-    limit: '100', // Fetch up to 100 opportunities per run
-    offset: '0'
-  });
+  const allOpportunities = [];
+  const limit = 1000; // Maximum per request
+  let offset = 0;
+  let hasMore = true;
 
   try {
-    const response = await fetch(`${SAM_GOV_API_BASE}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      }
-    });
+    while (hasMore) {
+      const params = new URLSearchParams({
+        api_key: SAM_GOV_API_KEY,
+        postedFrom: fromDate.toISOString().split('T')[0],
+        postedTo: toDate.toISOString().split('T')[0],
+        limit: limit.toString(),
+        offset: offset.toString()
+      });
 
-    if (!response.ok) {
-      throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`);
+      console.log(`[SAM.gov Refresh] Fetching page at offset ${offset}...`);
+
+      const response = await fetch(`${SAM_GOV_API_BASE}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const opportunities = data.opportunitiesData || [];
+
+      console.log(`[SAM.gov Refresh] Found ${opportunities.length} opportunities in this page`);
+
+      allOpportunities.push(...opportunities);
+
+      // Check if there are more pages
+      if (opportunities.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+        // Add small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
-    const data = await response.json();
-    console.log(`[SAM.gov Refresh] Found ${data.opportunitiesData?.length || 0} opportunities`);
-    return data.opportunitiesData || [];
+    console.log(`[SAM.gov Refresh] Total opportunities fetched: ${allOpportunities.length}`);
+    return allOpportunities;
   } catch (error) {
     console.error('[SAM.gov Refresh] Error fetching from API:', error);
     throw error;
