@@ -8,7 +8,7 @@ class TelemetryService {
     this.eventQueue = [];
     this.eventCount = 0;
     this.lastResetTime = Date.now();
-    this.apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    this.apiUrl = import.meta.env.VITE_API_URL || '/api';
     this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.telemetryEnabled = true;
   }

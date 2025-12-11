@@ -13,11 +13,12 @@ const getApiBaseUrl = () => {
     }
 
     // If on Builder.io preview domain, use proxied API (relative path)
+    // The Vite dev server will proxy /api to https://werkules.com
     if (hostname.includes('fly.dev') ||
         hostname.includes('builder.io') ||
         hostname.includes('projects.builder.codes') ||
         hostname.includes('projects.builder.my')) {
-      console.log('🎯 Detected Builder.io preview - using proxied /api');
+      console.log('🎯 Detected Builder.io preview - using proxied /api (backend: werkules.com)');
       return '/api';
     }
   }
@@ -28,9 +29,9 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Development fallback (only for true localhost development)
-  console.log('🔧 Using fallback: http://localhost:3000/api');
-  return 'http://localhost:3000/api';
+  // Development fallback - use relative path (proxied through Vite to werkules.com)
+  console.log('🔧 Using relative /api path (proxied to werkules.com)');
+  return '/api';
 };
 
 // Get base URL or force /api for production
