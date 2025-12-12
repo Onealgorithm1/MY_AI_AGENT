@@ -8,9 +8,9 @@ let geminiClient = null;
 
 async function getGeminiClient() {
   if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY || await getApiKey('gemini');
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || await getApiKey('gemini');
     if (!apiKey) {
-      throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY to your secrets.');
+      throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
     }
     geminiClient = new GoogleGenerativeAI(apiKey);
   }
