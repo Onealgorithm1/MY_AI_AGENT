@@ -69,10 +69,12 @@ export async function getApiKey(provider, keyType = 'project') {
     
     const serviceName = serviceNameMap[provider.toLowerCase()];
     if (!serviceName) {
-      console.error(`Unknown provider: ${provider}`);
+      console.error(`❌ Unknown provider: ${provider}`);
       return null;
     }
-    
+
+    console.log(`🔑 getApiKey: Looking for ${provider} (service: ${serviceName})`);
+
     // Try to get key in this order:
     // 1. Default key of matching type (if specified)
     // 2. Any default key
