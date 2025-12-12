@@ -498,8 +498,21 @@ router.post('/:id/test', async (req, res) => {
     const secret = result.rows[0];
     const decryptedValue = decryptSecret(secret.key_value);
 
+    console.log(`🧪 Testing secret:`, {
+      id: secret.id,
+      keyName: secret.key_name,
+      serviceName: secret.service_name,
+      keyType: secret.key_type
+    });
+
     // Test based on service
-    let testResult = { success: false, message: 'Test not implemented' };
+    let testResult = {
+      success: false,
+      message: 'Test not implemented',
+      serviceName: secret.service_name,
+      keyName: secret.key_name,
+      hint: `No test handler for service: ${secret.service_name}`
+    };
 
     if (secret.service_name === 'OpenAI') {
       // Test OpenAI key
