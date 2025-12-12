@@ -125,6 +125,7 @@ export async function getApiKey(provider, keyType = 'project') {
         'elevenlabs': 'ELEVENLABS_API_KEY',
         'anthropic': 'ANTHROPIC_API_KEY',
         'google': 'GOOGLE_API_KEY',
+        'gemini': 'GOOGLE_API_KEY',
         'stripe': 'STRIPE_SECRET_KEY'
       };
       
