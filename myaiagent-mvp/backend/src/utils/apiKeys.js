@@ -122,6 +122,8 @@ export async function getApiKey(provider, keyType = 'project') {
     
     // If no key found in database, fall back to environment variable
     if (result.rows.length === 0) {
+      console.log(`⚠️  No database key found for ${serviceName}, checking environment variables`);
+
       const envKeyMap = {
         'openai': 'OPENAI_API_KEY',
         'elevenlabs': 'ELEVENLABS_API_KEY',
@@ -130,20 +132,28 @@ export async function getApiKey(provider, keyType = 'project') {
         'gemini': 'GOOGLE_API_KEY',
         'stripe': 'STRIPE_SECRET_KEY'
       };
-      
+
       const envKey = envKeyMap[provider.toLowerCase()];
       if (envKey && process.env[envKey]) {
-        console.log(`Using ${provider} API key from environment variable`);
+        console.log(`✅ Using ${provider} API key from environment variable: ${envKey}`);
         return process.env[envKey];
       }
-      
+
+      console.error(`❌ No ${provider} API key found in database or environment`);
       return null;
     }
-    
+
+    console.log(`✅ Found ${provider} key in database`);
     const encryptedValue = result.rows[0].key_value;
-    return decrypt(encryptedValue);
+    const decrypted = decrypt(encryptedValue);
+    if (!decrypted) {
+      console.error(`❌ Failed to decrypt ${provider} API key`);
+    } else {
+      console.log(`✅ Successfully decrypted ${provider} API key`);
+    }
+    return decrypted;
   } catch (error) {
-    console.error(`Error fetching ${provider} API key:`, error);
+    console.error(`❌ Error fetching ${provider} API key:`, error.message);
     return null;
   }
 }
