@@ -126,10 +126,14 @@ export default function AdminPage() {
       if (response.data.success) {
         toast.success(`✓ ${response.data.message}`);
       } else {
-        toast.error(`✗ Test failed: ${response.data.message}${response.data.hint ? ` (${response.data.hint})` : ''}`);
+        const errorDetails = `${response.data.message}${response.data.hint ? `\n\n${response.data.hint}` : ''}\n\nService: ${response.data.serviceName}\nKey Name: ${response.data.keyName}`;
+        toast.error(errorDetails);
       }
     } catch (error) {
-      toast.error('Failed to test API key');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to test API key';
+      const errorHint = error.response?.data?.hint || '';
+      const fullError = `${errorMsg}${errorHint ? `\n\n${errorHint}` : ''}`;
+      toast.error(fullError);
     }
   };
 
