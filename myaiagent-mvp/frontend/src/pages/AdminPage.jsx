@@ -467,7 +467,7 @@ export default function AdminPage() {
                     >
                       <option value="">-- Choose a service --</option>
                       {definitions.map((def) => (
-                        <option key={def.service_name} value={def.service_name}>
+                        <option key={def.keyName} value={def.service_name}>
                           {def.service_name}
                         </option>
                       ))}
