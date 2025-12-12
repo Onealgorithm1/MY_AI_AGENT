@@ -767,9 +767,15 @@ router.post('/:id/test', async (req, res) => {
           hint: 'Credentials must be valid JSON from Google Cloud Console'
         };
       }
-    } else if (secret.service_name === 'Google Custom' || secret.key_name?.includes('GEMINI')) {
+    } else if (
+      secret.service_name === 'Google Custom' ||
+      secret.key_name?.includes('GEMINI') ||
+      secret.key_name === 'GEMINI_API_KEY'
+    ) {
       // Test Google Gemini API key
       const axios = (await import('axios')).default;
+      console.log(`🧪 Testing Gemini key with value starting: ${decryptedValue.substring(0, 10)}...`);
+
       try {
         const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
           contents: [{
@@ -784,17 +790,24 @@ router.post('/:id/test', async (req, res) => {
           timeout: 10000
         });
 
+        console.log(`✅ Gemini API key test successful`);
         testResult = {
           success: true,
           message: 'Google Gemini API key is valid',
           hint: 'Key can access Gemini models for chat and content generation'
         };
       } catch (error) {
+        console.error(`❌ Gemini API key test failed:`, {
+          status: error.response?.status,
+          message: error.response?.data?.error?.message || error.message,
+          keyLength: decryptedValue.length
+        });
+
         const errorMessage = error.response?.data?.error?.message || error.message || 'Invalid API key';
         testResult = {
           success: false,
           message: errorMessage,
-          hint: 'Ensure the API key is valid and Generative Language API is enabled in Google Cloud Console'
+          hint: 'Ensure the API key is valid, not disabled by Google, and Generative Language API is enabled in Google Cloud Console'
         };
       }
     }
