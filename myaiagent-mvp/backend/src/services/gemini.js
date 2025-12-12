@@ -5,15 +5,24 @@ import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;
+let lastApiKey = null;
 
 async function getGeminiClient() {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || await getApiKey('gemini');
-    if (!apiKey) {
-      throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
-    }
+  // Always check for a fresh API key to support runtime updates
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || await getApiKey('gemini');
+
+  if (!apiKey) {
+    console.error('❌ Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
+    throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
+  }
+
+  // Reinitialize if key changed or client not yet initialized
+  if (!geminiClient || lastApiKey !== apiKey) {
+    console.log('🔄 Initializing Gemini client with API key');
+    lastApiKey = apiKey;
     geminiClient = new GoogleGenerativeAI(apiKey);
   }
+
   return geminiClient;
 }
 
