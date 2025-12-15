@@ -404,10 +404,36 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       console.log('📡 Starting streaming response to client...');
 
-      // Use Vertex AI with grounding if needed, otherwise use standard Gemini
-      const completion = useVertexAI
-        ? await createVertexChatCompletion(messages, vertexModel, true, true)
-        : await createChatCompletion(messages, selectedModel, true, functionsToPass);
+      // Use Vertex AI with grounding if needed, otherwise use standard model with fallback
+      let completion;
+      let currentProvider = 'gemini';
+      let currentModel = selectedModel;
+      let retryAttempts = 0;
+      const maxRetries = 2;
+
+      while (retryAttempts < maxRetries) {
+        try {
+          if (useVertexAI) {
+            completion = await createVertexChatCompletion(messages, vertexModel, true, true);
+          } else {
+            completion = await callAPIByProvider(currentProvider, messages, currentModel, true, functionsToPass);
+          }
+          break; // Success, exit retry loop
+        } catch (error) {
+          if (error.code === 'FALLBACK_REQUIRED' && retryAttempts < maxRetries - 1) {
+            // Handle fallback
+            currentProvider = error.provider;
+            currentModel = error.model;
+            logFallbackAttempt('gemini', currentProvider, error.message, error.originalError);
+            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel})`);
+            retryAttempts++;
+            continue; // Retry the API call
+          } else {
+            // Re-throw non-fallback errors or if max retries reached
+            throw error;
+          }
+        }
+      }
 
       completion.on('data', (chunk) => {
         chunkCount++;
