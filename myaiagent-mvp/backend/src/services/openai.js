@@ -48,7 +48,7 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
       statusText: error.response?.statusText,
       message: error.message
     };
-    
+
     // If response data exists and is an object, try to extract error message
     if (error.response?.data) {
       if (typeof error.response.data === 'string') {
@@ -59,9 +59,9 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
         errorDetails.data = error.response.data;
       }
     }
-    
+
     console.error('🔴 OpenAI API Error Details:', JSON.stringify(errorDetails, null, 2));
-    
+
     // Log request details for debugging
     console.error('📤 Request Info:', {
       model,
@@ -70,8 +70,46 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
       functionNames: functions?.map(f => f.name) || [],
       hasStream: stream
     });
-    
-    throw new Error(error.response?.data?.error?.message || error.message || 'Failed to get AI response');
+
+    // Create error object with status for fallback detection
+    const apiError = new Error(error.response?.data?.error?.message || error.message || 'Failed to get AI response');
+    apiError.status = error.response?.status || 0;
+
+    // Determine fallback strategy for ANY error
+    const fallbackStrategy = await determineFallbackStrategy(apiError, 'openai');
+
+    // If fallback is available, throw FALLBACK_REQUIRED error
+    if (fallbackStrategy.shouldRetry && fallbackStrategy.provider) {
+      logFallbackAttempt('openai', fallbackStrategy.provider, fallbackStrategy.reason, apiError);
+
+      // Create a fallback error with provider info so caller can handle it
+      const fallbackError = new Error(fallbackStrategy.reason);
+      fallbackError.code = 'FALLBACK_REQUIRED';
+      fallbackError.provider = fallbackStrategy.provider;
+      fallbackError.model = fallbackStrategy.model;
+      fallbackError.retryAfter = fallbackStrategy.retryAfter;
+      fallbackError.originalError = apiError;
+      throw fallbackError;
+    }
+
+    // For rate limit errors with no fallback available, return detailed error
+    if (isRateLimitError(apiError) && fallbackStrategy.retryAfter) {
+      const rateLimitError = new Error(`OpenAI API quota exceeded. ${fallbackStrategy.reason}. Retry in ${fallbackStrategy.retryAfter}s`);
+      rateLimitError.code = 'RATE_LIMIT';
+      rateLimitError.retryAfter = fallbackStrategy.retryAfter;
+      rateLimitError.originalError = apiError;
+      throw rateLimitError;
+    }
+
+    // For auth errors, return specific error
+    if (isAuthError(apiError)) {
+      const authError = new Error(`OpenAI API authentication failed. Please check your API key configuration.`);
+      authError.code = 'AUTH_ERROR';
+      authError.originalError = apiError;
+      throw authError;
+    }
+
+    throw apiError;
   }
 }
 
