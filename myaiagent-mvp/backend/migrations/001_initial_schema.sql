@@ -92,13 +92,13 @@ CREATE INDEX idx_api_secrets_active ON api_secrets(is_active);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS memory_facts (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
   fact_text TEXT NOT NULL,
   fact_type VARCHAR(100),
   relevance_score NUMERIC DEFAULT 0.5,
   approved BOOLEAN DEFAULT FALSE,
-  approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
   source_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP
