@@ -14,6 +14,7 @@ const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
+const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
 const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
 const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage'));
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
@@ -147,6 +148,14 @@ function App() {
             element={
               <PrivateRoute>
                 <PreferencesPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ai-agents"
+            element={
+              <PrivateRoute>
+                <AIAgentsPage />
               </PrivateRoute>
             }
           />
