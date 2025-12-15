@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, Zap, Plus } from 'lucide-react';
-import { fetchJSON } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
   const navigate = useNavigate();
@@ -17,8 +17,8 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
   const loadAgents = async () => {
     try {
       setLoading(true);
-      const response = await fetchJSON('/api/ai-agents/my-agents');
-      setAgents(response.agents || []);
+      const response = await api.get('/ai-agents/my-agents');
+      setAgents(response.data.agents || []);
 
       // Select the first agent or default if none selected
       if (!selectedAgentId && response.agents?.length > 0) {
