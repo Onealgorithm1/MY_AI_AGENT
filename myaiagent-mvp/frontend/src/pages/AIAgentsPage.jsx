@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, ExternalLink, Zap } from 'lucide-react';
 import AIAgentsList from '../components/AIAgentsList';
 import ConnectAIAgentModal from '../components/ConnectAIAgentModal';
-import { fetchJSON } from '../services/api';
+import api from '../services/api';
 
 export default function AIAgentsPage() {
   const navigate = useNavigate();
@@ -26,12 +26,12 @@ export default function AIAgentsPage() {
       setError(null);
 
       const [agentsRes, providersRes] = await Promise.all([
-        fetchJSON('/api/ai-agents/my-agents'),
-        fetchJSON('/api/ai-agents/providers'),
+        api.get('/ai-agents/my-agents'),
+        api.get('/ai-agents/providers'),
       ]);
 
-      setAgents(agentsRes.agents || []);
-      setProviders(providersRes.providers || []);
+      setAgents(agentsRes.data.agents || []);
+      setProviders(providersRes.data.providers || []);
     } catch (err) {
       setError(err.message || 'Failed to load AI agents');
     } finally {
@@ -41,12 +41,9 @@ export default function AIAgentsPage() {
 
   const handleConnectAgent = async (formData) => {
     try {
-      const response = await fetchJSON('/api/ai-agents/my-agents', {
-        method: 'POST',
-        body: JSON.stringify(formData),
-      });
+      const response = await api.post('/ai-agents/my-agents', formData);
 
-      setAgents([...agents, response.agent]);
+      setAgents([...agents, response.data.agent]);
       setShowConnectModal(false);
       setSelectedProvider(null);
     } catch (err) {
@@ -58,9 +55,7 @@ export default function AIAgentsPage() {
     if (!window.confirm('Are you sure you want to delete this agent?')) return;
 
     try {
-      await fetchJSON(`/api/ai-agents/my-agents/${agentId}`, {
-        method: 'DELETE',
-      });
+      await api.delete(`/ai-agents/my-agents/${agentId}`);
 
       setAgents(agents.filter(a => a.id !== agentId));
     } catch (err) {
@@ -70,9 +65,8 @@ export default function AIAgentsPage() {
 
   const handleSetDefault = async (agentId) => {
     try {
-      const response = await fetchJSON(
-        `/api/ai-agents/my-agents/${agentId}/set-default`,
-        { method: 'POST' }
+      const response = await api.post(
+        `/ai-agents/my-agents/${agentId}/set-default`
       );
 
       setAgents(agents.map(a => ({
@@ -88,9 +82,8 @@ export default function AIAgentsPage() {
     try {
       setTestingAgent(agentId);
 
-      const response = await fetchJSON(
-        `/api/ai-agents/my-agents/${agentId}/test`,
-        { method: 'POST' }
+      const response = await api.post(
+        `/ai-agents/my-agents/${agentId}/test`
       );
 
       setAgents(agents.map(a =>
