@@ -157,6 +157,7 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
     if (isRateLimitError(error)) {
       const rateLimitError = new Error(`Gemini API rate limited: ${error.message}`);
       rateLimitError.code = 'RATE_LIMIT';
+      rateLimitError.status = error.status || 429;
       rateLimitError.originalError = error;
       throw rateLimitError;
     }
@@ -165,6 +166,7 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
     if (isAuthError(error)) {
       const authError = new Error(`Gemini API authentication failed. Please check your API key configuration.`);
       authError.code = 'AUTH_ERROR';
+      authError.status = error.status || 401;
       authError.originalError = error;
       throw authError;
     }
