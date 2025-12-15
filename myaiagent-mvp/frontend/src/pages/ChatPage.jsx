@@ -48,6 +48,7 @@ import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import AIAgentSelector from '../components/AIAgentSelector';
+import ModelUsageDisplay from '../components/ModelUsageDisplay';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
