@@ -325,16 +325,7 @@ export default function AIAgentsPage() {
                     {testingAgent === agent.id ? 'Testing...' : 'Test'}
                   </button>
 
-                  {provider && provider.docsUrl && (
-                    <a
-                      href={provider.docsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
+                  {/* Documentation link removed - not applicable for connected agents */}
 
                   <button
                     onClick={() => handleDeleteAgent(agent.id)}
