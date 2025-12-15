@@ -437,50 +437,57 @@ process.on('SIGINT', () => {
   });
 });
 
-// Initialize AI Agent tables on startup
-async function initializeDatabaseTablesOnStartup() {
+// Initialize database migrations on startup
+async function initializeDatabaseMigrationsOnStartup() {
   try {
-    console.log('\n🔍 Checking AI Agent tables...');
+    console.log('\n🔍 Running database migrations...');
     // Import here to avoid circular dependency
     const { query } = await import('./utils/database.js');
 
-    try {
-      // Test if tables exist
-      await query('SELECT 1 FROM ai_agent_providers LIMIT 1');
-      console.log('✅ AI Agent tables already exist');
-    } catch (error) {
-      if (error.message?.includes('does not exist') || error.code === '42P01') {
-        console.warn('⚠️  Creating AI Agent tables...');
+    const migrationsDir = path.join(__dirname, '../migrations');
 
-        const migrationPath = path.join(__dirname, '../migrations/020_add_user_ai_agents.sql');
+    if (!fs.existsSync(migrationsDir)) {
+      console.warn('⚠️  Migrations directory not found');
+      return;
+    }
 
-        if (fs.existsSync(migrationPath)) {
-          const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-          const statements = migrationSQL
-            .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
 
-          for (const statement of statements) {
-            try {
-              await query(statement);
-            } catch (stmtError) {
-              if (stmtError.message?.includes('already exists') || stmtError.code === '42P07' || stmtError.code === '42710') {
-                // Skip existing objects
-              } else {
-                throw stmtError;
-              }
-            }
-          }
-          console.log('✅ AI Agent tables created successfully');
+    if (files.length === 0) {
+      console.warn('⚠️  No migration files found');
+      return;
+    }
+
+    let successful = 0;
+    let skipped = 0;
+
+    for (const file of files) {
+      try {
+        const filePath = path.join(migrationsDir, file);
+        const sql = fs.readFileSync(filePath, 'utf8');
+
+        // Execute the entire SQL file as one transaction
+        await query(sql);
+        successful++;
+      } catch (error) {
+        // Skip if tables/objects already exist
+        if (error.code === '42P07' || error.code === '42710' ||
+            error.message?.includes('already exists') ||
+            error.message?.includes('duplicate key')) {
+          skipped++;
         } else {
-          console.warn('⚠️  Migration file not found at', migrationPath);
+          console.warn(`⚠️  Migration issue with ${file}:`, error.message);
+          // Don't fail startup, continue with next migration
         }
       }
     }
+
+    console.log(`✅ Database migrations completed (${successful} executed, ${skipped} skipped)`);
   } catch (error) {
-    console.warn('⚠️  AI Agent initialization warning:', error.message);
-    // Don't fail startup if this fails
+    console.warn('⚠️  Database migration warning:', error.message);
+    // Don't fail startup if migrations fail
   }
 }
 
