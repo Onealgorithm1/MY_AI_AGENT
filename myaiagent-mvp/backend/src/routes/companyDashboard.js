@@ -378,9 +378,18 @@ Format your response as JSON with this structure:
     });
   } catch (error) {
     console.error('AI eligibility analysis error:', error);
+
+    // Provide specific error messages for common issues
+    let errorMessage = error.message || 'Failed to run AI analysis';
+    if (errorMessage.includes('API key')) {
+      errorMessage = 'Gemini API key is not configured. Please add GOOGLE_API_KEY to your environment variables.';
+    } else if (errorMessage.includes('safety')) {
+      errorMessage = 'Response was blocked by Gemini safety filters. Please try again with a different prompt.';
+    }
+
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to run AI analysis'
+      error: errorMessage
     });
   }
 });
