@@ -186,6 +186,7 @@ Expected response:
 
 After deployment, verify:
 
+### Database & Initialization
 - [ ] Backend service starts without migration errors
 - [ ] No "syntax error" messages in logs
 - [ ] No "does not exist" errors for ai_agent_providers
@@ -196,6 +197,21 @@ After deployment, verify:
 - [ ] `/api/ai-agents/available-providers` returns provider list
 - [ ] Frontend loads AI Agents page without "Database initialization failed" error
 - [ ] Connect AI Agents button appears in chat header
+
+### API Fallback Mechanism ⭐ NEW
+- [ ] Send a normal chat message - receives response from Gemini
+- [ ] In logs: Can see "Using Gemini API" or similar
+- [ ] Logs show "Starting streaming response to client"
+- [ ] Response completes successfully
+- [ ] No "Send message error" in logs for normal requests
+
+**Testing Rate Limit Fallback (Optional - requires hitting rate limit):**
+- [ ] Send 20+ rapid requests to trigger Gemini rate limit
+- [ ] In logs: See "⚠️ GEMINI RATE LIMIT DETECTED"
+- [ ] In logs: See "🔄 Retrying with fallback provider: openai"
+- [ ] Request still completes (from OpenAI instead of Gemini)
+- [ ] User receives response without error
+- [ ] No "Send message error" in logs (graceful fallback)
 
 ## Rollback Plan
 
