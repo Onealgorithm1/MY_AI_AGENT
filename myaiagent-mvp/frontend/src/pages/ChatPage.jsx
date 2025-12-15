@@ -82,6 +82,7 @@ export default function ChatPage() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
+  const initialLoadDoneRef = useRef(false); // Prevent loop in useEffect
   const [editingConvId, setEditingConvId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -325,7 +326,7 @@ export default function ChatPage() {
   }, []);
 
 
-  // Send message
+  // Send message with timeout prevention
   const sendMessage = async () => {
     if (!inputMessage.trim() || isSending) return;
 
@@ -343,6 +344,10 @@ export default function ChatPage() {
     setInputMessage('');
     setIsSending(true);
     setIsThinking(true); // VUI: Show "Thinking" state
+
+    // Create AbortController for request timeout (60 seconds max)
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 60000);
     setStreamingMessage('●●●');
     setStreamingContent('');
 
@@ -365,6 +370,7 @@ export default function ChatPage() {
           'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
         },
         credentials: 'include', // SECURITY: Send cookies (JWT)
+        signal: abortController.signal, // SECURITY: Timeout protection
         body: JSON.stringify({
           conversationId,
           content: userMessage.content,
@@ -443,11 +449,19 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Send message error:', error);
-      toast.error('Failed to send message');
+
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        toast.error('Request timeout - please try again');
+      } else {
+        toast.error(error.message || 'Failed to send message');
+      }
+
       setStreamingMessage('');
       setStreamingContent('');
       setIsThinking(false); // VUI: Clear thinking state on error
     } finally {
+      clearTimeout(timeoutId);
       setIsSending(false);
     }
   };
@@ -614,9 +628,10 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  // Auto-load first conversation on page load
+  // Auto-load first conversation on page load (prevent loop with ref)
   useEffect(() => {
-    if (conversations.length > 0 && !currentConversation) {
+    if (conversations.length > 0 && !currentConversation && !initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
       const firstConv = conversations[0];
       loadConversation(firstConv.id);
     }

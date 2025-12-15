@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
 import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
-import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError } from './apiFallback.js';
+import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError, isAuthError } from './apiFallback.js';
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;
@@ -153,31 +153,38 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
       functionNames: functions?.map(f => f.name) || []
     });
 
-    // Check if this is a rate limit error
-    if (isRateLimitError(error)) {
-      console.warn('⚠️ GEMINI RATE LIMIT DETECTED - Fallback mechanism should be triggered');
+    // Determine fallback strategy for ANY error
+    const fallbackStrategy = await determineFallbackStrategy(error, 'gemini');
 
-      // Determine fallback strategy
-      const fallbackStrategy = await determineFallbackStrategy(error, 'gemini');
+    // If fallback is available, throw FALLBACK_REQUIRED error
+    if (fallbackStrategy.shouldRetry && fallbackStrategy.provider) {
+      logFallbackAttempt('gemini', fallbackStrategy.provider, fallbackStrategy.reason, error);
 
-      if (fallbackStrategy.shouldRetry && fallbackStrategy.provider) {
-        logFallbackAttempt('gemini', fallbackStrategy.provider, fallbackStrategy.reason, error);
+      // Create a fallback error with provider info so caller can handle it
+      const fallbackError = new Error(fallbackStrategy.reason);
+      fallbackError.code = 'FALLBACK_REQUIRED';
+      fallbackError.provider = fallbackStrategy.provider;
+      fallbackError.model = fallbackStrategy.model;
+      fallbackError.retryAfter = fallbackStrategy.retryAfter;
+      fallbackError.originalError = error;
+      throw fallbackError;
+    }
 
-        // Create a fallback error with provider info so caller can handle it
-        const fallbackError = new Error(fallbackStrategy.reason);
-        fallbackError.code = 'FALLBACK_REQUIRED';
-        fallbackError.provider = fallbackStrategy.provider;
-        fallbackError.model = fallbackStrategy.model;
-        fallbackError.retryAfter = fallbackStrategy.retryAfter;
-        fallbackError.originalError = error;
-        throw fallbackError;
-      } else if (fallbackStrategy.retryAfter) {
-        // Rate limit but no fallback available - return detailed error
-        const rateLimitError = new Error(`Gemini API quota exceeded. ${fallbackStrategy.reason}. Retry in ${fallbackStrategy.retryAfter}s`);
-        rateLimitError.code = 'RATE_LIMIT';
-        rateLimitError.retryAfter = fallbackStrategy.retryAfter;
-        throw rateLimitError;
-      }
+    // For rate limit errors with no fallback available, return detailed error
+    if (isRateLimitError(error) && fallbackStrategy.retryAfter) {
+      const rateLimitError = new Error(`Gemini API quota exceeded. ${fallbackStrategy.reason}. Retry in ${fallbackStrategy.retryAfter}s`);
+      rateLimitError.code = 'RATE_LIMIT';
+      rateLimitError.retryAfter = fallbackStrategy.retryAfter;
+      rateLimitError.originalError = error;
+      throw rateLimitError;
+    }
+
+    // For auth errors, return specific error
+    if (isAuthError(error)) {
+      const authError = new Error(`Gemini API authentication failed. Please check your API key configuration.`);
+      authError.code = 'AUTH_ERROR';
+      authError.originalError = error;
+      throw authError;
     }
 
     throw new Error(error.message || 'Failed to get Gemini response');
