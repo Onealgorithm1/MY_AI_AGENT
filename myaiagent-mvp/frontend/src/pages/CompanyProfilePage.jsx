@@ -244,7 +244,7 @@ const CompanyProfilePage = () => {
                 ))}
               </div>
 
-              {profile?.set_aside_types && (
+              {Array.isArray(profile?.set_aside_types) && profile.set_aside_types.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Eligible Set-Aside Programs:
