@@ -3,22 +3,41 @@ import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkRateLimit } from '../middleware/rateLimit.js';
 import { attachUIContext, generateUIAwarePrompt, buildEnhancedContext } from '../middleware/uiContext.js';
-import { 
-  createChatCompletion, 
+import {
+  createChatCompletion,
   buildMessagesWithMemory,
-  estimateTokens 
+  estimateTokens
 } from '../services/gemini.js'; // ✅ MIGRATED TO GEMINI
+import { createChatCompletion as createOpenAIChatCompletion } from '../services/openai.js';
 import { createVertexChatCompletion, isVertexAIConfigured } from '../services/vertexAI.js';
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
 import { extractMemoryFacts } from '../services/gemini.js';
+import {
+  getFallbackModel,
+  logFallbackAttempt,
+  getNextFallbackProvider
+} from '../services/apiFallback.js';
 
 const router = express.Router();
 
 // In-memory tracker to prevent concurrent memory extraction with timestamps
 const memoryExtractionInProgress = new Map(); // conversationId -> timestamp
 const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+
+// Helper function to call the appropriate API based on provider
+async function callAPIByProvider(provider, messages, model, stream = false, functions = null) {
+  switch (provider?.toLowerCase()) {
+    case 'gemini':
+    case 'google':
+      return await createChatCompletion(messages, model, stream, functions);
+    case 'openai':
+      return await createOpenAIChatCompletion(messages, model, stream, functions);
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
 
 // Cleanup stale entries (older than timeout)
 function cleanupStaleExtractions() {
@@ -385,10 +404,36 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       console.log('📡 Starting streaming response to client...');
 
-      // Use Vertex AI with grounding if needed, otherwise use standard Gemini
-      const completion = useVertexAI
-        ? await createVertexChatCompletion(messages, vertexModel, true, true)
-        : await createChatCompletion(messages, selectedModel, true, functionsToPass);
+      // Use Vertex AI with grounding if needed, otherwise use standard model with fallback
+      let completion;
+      let currentProvider = 'gemini';
+      let currentModel = selectedModel;
+      let retryAttempts = 0;
+      const maxRetries = 2;
+
+      while (retryAttempts < maxRetries) {
+        try {
+          if (useVertexAI) {
+            completion = await createVertexChatCompletion(messages, vertexModel, true, true);
+          } else {
+            completion = await callAPIByProvider(currentProvider, messages, currentModel, true, functionsToPass);
+          }
+          break; // Success, exit retry loop
+        } catch (error) {
+          if (error.code === 'FALLBACK_REQUIRED' && retryAttempts < maxRetries - 1) {
+            // Handle fallback
+            currentProvider = error.provider;
+            currentModel = error.model;
+            logFallbackAttempt('gemini', currentProvider, error.message, error.originalError);
+            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel})`);
+            retryAttempts++;
+            continue; // Retry the API call
+          } else {
+            // Re-throw non-fallback errors or if max retries reached
+            throw error;
+          }
+        }
+      }
 
       completion.on('data', (chunk) => {
         chunkCount++;
@@ -561,9 +606,36 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     } else {
       // Non-streaming response with function calling support
-      const completion = useVertexAI
-        ? await createVertexChatCompletion(messages, vertexModel, false, true)
-        : await createChatCompletion(messages, selectedModel, false, functionsToPass);
+      let completion;
+      let currentProvider = 'gemini';
+      let currentModel = selectedModel;
+      let retryAttempts = 0;
+      const maxRetries = 2;
+
+      while (retryAttempts < maxRetries) {
+        try {
+          if (useVertexAI) {
+            completion = await createVertexChatCompletion(messages, vertexModel, false, true);
+          } else {
+            completion = await callAPIByProvider(currentProvider, messages, currentModel, false, functionsToPass);
+          }
+          break; // Success, exit retry loop
+        } catch (error) {
+          if (error.code === 'FALLBACK_REQUIRED' && retryAttempts < maxRetries - 1) {
+            // Handle fallback
+            currentProvider = error.provider;
+            currentModel = error.model;
+            logFallbackAttempt('gemini', currentProvider, error.message, error.originalError);
+            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel})`);
+            retryAttempts++;
+            continue; // Retry the API call
+          } else {
+            // Re-throw non-fallback errors or if max retries reached
+            throw error;
+          }
+        }
+      }
+
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
 
@@ -700,14 +772,33 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
   } catch (error) {
     console.error('Send message error:', error);
-    
+
+    // Provide specific error messages based on error type
+    let errorMessage = 'Failed to send message';
+    const isRateLimitError = error.code === 'RATE_LIMIT' || error.message?.includes('quota') || error.message?.includes('rate limit');
+    const isFallbackError = error.code === 'FALLBACK_REQUIRED';
+
+    if (isRateLimitError) {
+      errorMessage = `Service temporarily unavailable (rate limit). ${error.message}. Please try again in a moment.`;
+    } else if (isFallbackError) {
+      errorMessage = `All configured AI services failed. Please check your API key configuration.`;
+    } else if (error.message?.includes('API key')) {
+      errorMessage = `API key not configured. Please add your API key in the admin settings.`;
+    }
+
     // Check if headers have already been sent (e.g., during streaming)
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to send message' });
+      res.status(error.status || 500).json({
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     } else {
       // If streaming, send error through SSE and close connection
       try {
-        res.write(`data: ${JSON.stringify({ error: 'AI service error. Please try again.' })}\n\n`);
+        res.write(`data: ${JSON.stringify({
+          error: errorMessage,
+          retryable: isRateLimitError
+        })}\n\n`);
         res.end();
       } catch (writeError) {
         // Connection may already be closed

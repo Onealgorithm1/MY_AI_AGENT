@@ -20,12 +20,12 @@ CREATE TABLE IF NOT EXISTS system_performance_metrics (
 );
 
 -- Indexes optimized for time-series queries
-CREATE INDEX idx_perf_metrics_timestamp ON system_performance_metrics(timestamp DESC);
-CREATE INDEX idx_perf_metrics_name ON system_performance_metrics(metric_name);
-CREATE INDEX idx_perf_metrics_name_timestamp ON system_performance_metrics(metric_name, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_perf_metrics_timestamp ON system_performance_metrics(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_perf_metrics_name ON system_performance_metrics(metric_name);
+CREATE INDEX IF NOT EXISTS idx_perf_metrics_name_timestamp ON system_performance_metrics(metric_name, timestamp DESC);
 
 -- GIN index for JSONB tag queries (e.g., finding all metrics for a specific route)
-CREATE INDEX idx_perf_metrics_tags ON system_performance_metrics USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_perf_metrics_tags ON system_performance_metrics USING GIN (tags);
 
 -- Table: Performance Anomalies (Detected Issues)
 CREATE TABLE IF NOT EXISTS performance_anomalies (
@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS performance_anomalies (
   resolution_notes TEXT
 );
 
-CREATE INDEX idx_anomalies_detected ON performance_anomalies(detected_at DESC);
-CREATE INDEX idx_anomalies_metric ON performance_anomalies(metric_name);
-CREATE INDEX idx_anomalies_severity ON performance_anomalies(severity);
-CREATE INDEX idx_anomalies_status ON performance_anomalies(status);
+CREATE INDEX IF NOT EXISTS idx_anomalies_detected ON performance_anomalies(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_anomalies_metric ON performance_anomalies(metric_name);
+CREATE INDEX IF NOT EXISTS idx_anomalies_severity ON performance_anomalies(severity);
+CREATE INDEX IF NOT EXISTS idx_anomalies_status ON performance_anomalies(status);
 
 -- Table: Performance Baselines (For Anomaly Detection)
 CREATE TABLE IF NOT EXISTS performance_baselines (
@@ -80,8 +80,8 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
   tags JSONB DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX idx_baselines_metric ON performance_baselines(metric_name);
-CREATE INDEX idx_baselines_calculated ON performance_baselines(calculated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_baselines_metric ON performance_baselines(metric_name);
+CREATE INDEX IF NOT EXISTS idx_baselines_calculated ON performance_baselines(calculated_at DESC);
 
 -- Add helpful comments
 COMMENT ON TABLE system_performance_metrics IS 'Time-series storage for all system performance metrics (API latency, error rates, resource usage)';

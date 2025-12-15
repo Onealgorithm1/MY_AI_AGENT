@@ -838,29 +838,62 @@ async function initializeAIAgentTables() {
 
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-        // Split SQL into individual statements and execute each one
-        // This is safer than executing the entire file at once
-        const statements = migrationSQL
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        // Split migration into DO block and regular statements
+        // The DO block must be executed as a single unit
+        const doBlockMatch = migrationSQL.match(/^(DO\s+\$\$[\s\S]*?END\s+\$\$;)/m);
 
-        console.log(`📝 Executing ${statements.length} migration statements...`);
+        if (doBlockMatch) {
+          // Execute the DO block first
+          const doBlock = doBlockMatch[1];
+          console.log('📝 Executing DO block for table creation...');
 
-        for (const statement of statements) {
           try {
-            await query(statement);
-          } catch (stmtError) {
-            // Ignore "already exists" errors (table/index already exists)
-            if (stmtError.message?.includes('already exists') || stmtError.code === '42P07') {
-              console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
-            } else if (stmtError.message?.includes('already exists as index') || stmtError.code === '42710') {
-              console.log(`⏭️  Skipped (index already exists): ${statement.substring(0, 50)}...`);
+            await query(doBlock);
+            console.log('✅ DO block executed successfully');
+          } catch (doBlockError) {
+            if (doBlockError.message?.includes('already exists') || doBlockError.code === '42P07') {
+              console.log('⏭️  Tables already exist (skipping)');
             } else {
-              // Re-throw other errors
-              throw stmtError;
+              throw doBlockError;
             }
           }
+
+          // Extract and execute the remaining SQL statements
+          const remainingSQL = migrationSQL.substring(doBlockMatch[0].length);
+
+          if (remainingSQL.trim().length > 0) {
+            console.log('📝 Executing remaining migration statements...');
+
+            // Split by semicolon but filter out comments and empty statements
+            const statements = remainingSQL
+              .split(';')
+              .map(stmt => stmt.trim())
+              .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
+
+            console.log(`📝 Found ${statements.length} remaining statements to execute`);
+
+            for (const statement of statements) {
+              try {
+                await query(statement + ';');
+              } catch (stmtError) {
+                // Ignore idempotent errors
+                if (stmtError.message?.includes('already exists') || stmtError.code === '42P07' || stmtError.code === '42710') {
+                  console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
+                } else if (stmtError.message?.includes('Duplicate key') || stmtError.code === '23505') {
+                  console.log(`⏭️  Skipped (duplicate): ${statement.substring(0, 50)}...`);
+                } else if (stmtError.message?.includes('no results to fetch') || stmtError.code === '34000') {
+                  console.log(`⏭️  Skipped (no results): ${statement.substring(0, 50)}...`);
+                } else {
+                  console.error(`❌ Error in statement: ${statement.substring(0, 100)}`);
+                  throw stmtError;
+                }
+              }
+            }
+          }
+        } else {
+          // Fallback: execute as-is if no DO block found
+          console.log('📝 Executing migration file (no DO block detected)...');
+          await query(migrationSQL);
         }
 
         console.log('✅ AI Agent tables initialized successfully');

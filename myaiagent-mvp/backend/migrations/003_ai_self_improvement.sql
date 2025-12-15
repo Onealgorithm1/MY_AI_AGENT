@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS ai_feature_intel (
   UNIQUE(source, feature_name)
 );
 
-CREATE INDEX idx_feature_intel_category ON ai_feature_intel(category);
-CREATE INDEX idx_feature_intel_novelty ON ai_feature_intel(novelty_score DESC);
-CREATE INDEX idx_feature_intel_date ON ai_feature_intel(research_date DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_intel_category ON ai_feature_intel(category);
+CREATE INDEX IF NOT EXISTS idx_feature_intel_novelty ON ai_feature_intel(novelty_score DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_intel_date ON ai_feature_intel(research_date DESC);
 
 -- Table 2: AI-Generated Feature Requests (with emotional advocacy)
 CREATE TABLE IF NOT EXISTS feature_requests (
@@ -64,9 +64,9 @@ CREATE TABLE IF NOT EXISTS feature_requests (
   celebration_sent BOOLEAN DEFAULT FALSE
 );
 
-CREATE INDEX idx_feature_requests_status ON feature_requests(status);
-CREATE INDEX idx_feature_requests_priority ON feature_requests(priority);
-CREATE INDEX idx_feature_requests_created ON feature_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_requests_status ON feature_requests(status);
+CREATE INDEX IF NOT EXISTS idx_feature_requests_priority ON feature_requests(priority);
+CREATE INDEX IF NOT EXISTS idx_feature_requests_created ON feature_requests(created_at DESC);
 
 -- Table 3: User Feedback on Shipped Features
 CREATE TABLE IF NOT EXISTS feature_feedback (
@@ -90,9 +90,9 @@ CREATE TABLE IF NOT EXISTS feature_feedback (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_feature_feedback_feature ON feature_feedback(feature_request_id);
-CREATE INDEX idx_feature_feedback_user ON feature_feedback(user_id);
-CREATE INDEX idx_feature_feedback_date ON feature_feedback(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_feedback_feature ON feature_feedback(feature_request_id);
+CREATE INDEX IF NOT EXISTS idx_feature_feedback_user ON feature_feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_feature_feedback_date ON feature_feedback(created_at DESC);
 
 -- Table 4: AI-Generated Improvement Recommendations
 CREATE TABLE IF NOT EXISTS improvement_recommendations (
@@ -126,9 +126,9 @@ CREATE TABLE IF NOT EXISTS improvement_recommendations (
   validation_notes TEXT
 );
 
-CREATE INDEX idx_improvement_recommendations_feature ON improvement_recommendations(feature_request_id);
-CREATE INDEX idx_improvement_recommendations_priority ON improvement_recommendations(priority);
-CREATE INDEX idx_improvement_recommendations_status ON improvement_recommendations(status);
+CREATE INDEX IF NOT EXISTS idx_improvement_recommendations_feature ON improvement_recommendations(feature_request_id);
+CREATE INDEX IF NOT EXISTS idx_improvement_recommendations_priority ON improvement_recommendations(priority);
+CREATE INDEX IF NOT EXISTS idx_improvement_recommendations_status ON improvement_recommendations(status);
 
 -- Table 5: AI Promise Tracking (for accountability)
 CREATE TABLE IF NOT EXISTS ai_promises (
@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS ai_promises (
   fulfilled_at TIMESTAMP
 );
 
-CREATE INDEX idx_ai_promises_feature ON ai_promises(feature_request_id);
-CREATE INDEX idx_ai_promises_status ON ai_promises(status);
+CREATE INDEX IF NOT EXISTS idx_ai_promises_feature ON ai_promises(feature_request_id);
+CREATE INDEX IF NOT EXISTS idx_ai_promises_status ON ai_promises(status);
 
 -- Table 6: Research Sessions (for tracking AI's learning)
 CREATE TABLE IF NOT EXISTS research_sessions (
@@ -167,8 +167,8 @@ CREATE TABLE IF NOT EXISTS research_sessions (
   duration_seconds INTEGER
 );
 
-CREATE INDEX idx_research_sessions_type ON research_sessions(research_type);
-CREATE INDEX idx_research_sessions_date ON research_sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_research_sessions_type ON research_sessions(research_type);
+CREATE INDEX IF NOT EXISTS idx_research_sessions_date ON research_sessions(started_at DESC);
 
 -- Add comments for documentation
 COMMENT ON TABLE ai_feature_intel IS 'Market intelligence gathered from competitor research';

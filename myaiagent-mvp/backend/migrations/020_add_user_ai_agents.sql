@@ -59,22 +59,13 @@ BEGIN
     )';
   END IF;
 
-  -- Create indexes
-  CREATE INDEX IF NOT EXISTS idx_user_agents_user ON user_ai_agents(user_id);
-  CREATE INDEX IF NOT EXISTS idx_user_agents_default ON user_ai_agents(user_id, is_default);
-  CREATE INDEX IF NOT EXISTS idx_user_agents_active ON user_ai_agents(user_id, is_active);
-  CREATE INDEX IF NOT EXISTS idx_user_agents_provider ON user_ai_agents(user_id, provider_name);
+  -- Create indexes (must be wrapped in EXECUTE inside DO block)
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_agents_user ON user_ai_agents(user_id)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_agents_default ON user_ai_agents(user_id, is_default)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_agents_active ON user_ai_agents(user_id, is_active)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_agents_provider ON user_ai_agents(user_id, provider_name)';
 
 END $$;
-
--- Add comments (after table creation to avoid errors)
-COMMENT ON TABLE IF EXISTS user_ai_agents IS 'User-connected AI agents with credentials and configuration';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.provider_name IS 'AI provider (openai, anthropic, google, grok, cohere, etc.)';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.api_key_id IS 'Foreign key to encrypted API key in api_secrets table';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.oauth_token IS 'OAuth token (encrypted) for providers using OAuth flow';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.config IS 'JSON config for model settings like temperature, max_tokens, etc.';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.status IS 'Current status (active, inactive, error, expired)';
-COMMENT ON COLUMN IF EXISTS user_ai_agents.error_message IS 'Error details if status is error (e.g., invalid API key)';
 
 -- ============================================
 -- User Conversation AI Agent Mapping
@@ -89,9 +80,6 @@ CREATE TABLE IF NOT EXISTS conversation_ai_agents (
 
 CREATE INDEX IF NOT EXISTS idx_conversation_agents_conversation ON conversation_ai_agents(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conversation_agents_user_agent ON conversation_ai_agents(user_agent_id);
-
-COMMENT ON TABLE IF EXISTS conversation_ai_agents IS 'Track which AI agent was used for each conversation';
-COMMENT ON COLUMN IF EXISTS conversation_ai_agents.user_agent_id IS 'Reference to user_ai_agents, NULL if agent was deleted';
 
 -- ============================================
 -- AI Agent Provider Configurations
@@ -117,10 +105,6 @@ CREATE TABLE IF NOT EXISTS ai_agent_providers (
 
 CREATE INDEX IF NOT EXISTS idx_provider_name ON ai_agent_providers(provider_name);
 CREATE INDEX IF NOT EXISTS idx_provider_active ON ai_agent_providers(is_active);
-
-COMMENT ON TABLE IF EXISTS ai_agent_providers IS 'Configuration for supported AI providers';
-COMMENT ON COLUMN IF EXISTS ai_agent_providers.supported_models IS 'Array of model objects with id, name, capabilities, etc.';
-COMMENT ON COLUMN IF EXISTS ai_agent_providers.config_schema IS 'JSON schema describing configurable options for this provider';
 
 -- ============================================
 -- Insert Default AI Providers
@@ -293,8 +277,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION get_user_default_agent(INTEGER) IS 'Get the default active AI agent for a user';
-
 CREATE OR REPLACE FUNCTION deactivate_old_default_agents(p_user_id INTEGER, p_except_agent_id INTEGER)
 RETURNS void AS $$
 BEGIN
@@ -305,5 +287,3 @@ BEGIN
     AND id != p_except_agent_id;
 END;
 $$ LANGUAGE plpgsql;
-
-COMMENT ON FUNCTION deactivate_old_default_agents(INTEGER, INTEGER) IS 'Ensure only one default agent per user';
