@@ -1,6 +1,9 @@
 -- Initial Database Schema for My AI Agent
 -- This creates all the foundational tables
 
+-- Extension for UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- ===========================================
 -- Users and Authentication
 -- ===========================================
