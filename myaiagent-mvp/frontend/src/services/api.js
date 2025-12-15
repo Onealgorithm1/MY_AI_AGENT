@@ -444,6 +444,10 @@ export const samGov = {
 
 // AI Agents endpoints
 export const aiAgents = {
+  // Get configured services with available models
+  getConfiguredServices: () =>
+    api.get('/ai-agents/configured-services'),
+
   // Get user's connected AI agents
   getMyAgents: () =>
     api.get('/ai-agents/my-agents'),
