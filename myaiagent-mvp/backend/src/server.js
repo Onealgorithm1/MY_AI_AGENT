@@ -506,8 +506,8 @@ server.listen(PORT, async () => {
   console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing'}`);
   console.log('\n' + '='.repeat(50) + '\n');
 
-  // Initialize AI Agent tables
-  await initializeDatabaseTablesOnStartup();
+  // Initialize database migrations
+  await initializeDatabaseMigrationsOnStartup();
 
   startQueueProcessor();
 });
