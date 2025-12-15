@@ -27,7 +27,7 @@ CREATE INDEX idx_users_role ON users(role);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS conversations (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255),
   description TEXT,
   model VARCHAR(100) DEFAULT 'gemini-2.5-flash',
