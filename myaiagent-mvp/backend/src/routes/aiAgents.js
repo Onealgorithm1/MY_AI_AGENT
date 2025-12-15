@@ -10,10 +10,113 @@ const router = express.Router();
 router.use(authenticate);
 
 // ============================================
+// HELPER: Map API service names to provider names
+// ============================================
+const SERVICE_TO_PROVIDER_MAP = {
+  'OpenAI': 'openai',
+  'Anthropic': 'anthropic',
+  'Google APIs': 'google',
+  'Google Cloud': 'google',
+  'Google OAuth': 'google',
+  'Cohere': 'cohere',
+  'Groq': 'groq',
+  'ElevenLabs': 'elevenlabs',
+  'SAM.gov': 'sam-gov',
+  'Stripe': 'stripe',
+};
+
+// ============================================
 // AI PROVIDERS ROUTES
 // ============================================
 
-// Get all available AI providers
+// Get available AI providers based on configured API keys
+router.get('/available-providers', async (req, res) => {
+  try {
+    // Get all configured API services
+    const secretsResult = await query(
+      `SELECT DISTINCT service_name FROM api_secrets
+       WHERE is_active = TRUE
+       GROUP BY service_name
+       ORDER BY service_name`
+    );
+
+    const configuredServices = new Set(
+      secretsResult.rows.map(row => row.service_name)
+    );
+
+    // Get all available providers
+    const providersResult = await query(
+      `SELECT id, provider_name, display_name, logo_url, docs_url,
+              auth_type, supported_models, config_schema, is_active
+       FROM ai_agent_providers
+       WHERE is_active = TRUE
+       ORDER BY display_name`
+    );
+
+    // Filter providers based on configured API keys
+    const availableProviders = providersResult.rows
+      .filter(provider => {
+        // Check if this provider has a configured API key
+        for (const [serviceName, providerName] of Object.entries(SERVICE_TO_PROVIDER_MAP)) {
+          if (providerName === provider.provider_name && configuredServices.has(serviceName)) {
+            return true;
+          }
+        }
+        return false;
+      })
+      .map(provider => ({
+        id: provider.id,
+        providerName: provider.provider_name,
+        displayName: provider.display_name,
+        logoUrl: provider.logo_url,
+        docsUrl: provider.docs_url,
+        authType: provider.auth_type,
+        supportedModels: provider.supported_models || [],
+        configSchema: provider.config_schema || {},
+        isActive: provider.is_active,
+        hasApiKey: true,
+      }));
+
+    // Get unavailable providers (for UI to suggest connecting)
+    const unavailableProviders = providersResult.rows
+      .filter(provider => {
+        for (const [serviceName, providerName] of Object.entries(SERVICE_TO_PROVIDER_MAP)) {
+          if (providerName === provider.provider_name && configuredServices.has(serviceName)) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map(provider => ({
+        id: provider.id,
+        providerName: provider.provider_name,
+        displayName: provider.display_name,
+        logoUrl: provider.logo_url,
+        docsUrl: provider.docs_url,
+        authType: provider.auth_type,
+        supportedModels: provider.supported_models || [],
+        configSchema: provider.config_schema || {},
+        isActive: provider.is_active,
+        hasApiKey: false,
+      }));
+
+    res.json({
+      available: availableProviders,
+      unavailable: unavailableProviders,
+      configuredServices: Array.from(configuredServices),
+      summary: {
+        availableCount: availableProviders.length,
+        unavailableCount: unavailableProviders.length,
+        totalConfigured: configuredServices.size,
+      },
+    });
+  } catch (error) {
+    console.error('Get available providers error:', error);
+    res.status(500).json({ error: 'Failed to get available providers' });
+  }
+});
+
+// Get all available AI providers (unfiltered)
 router.get('/providers', cacheControl(3600), async (req, res) => {
   try {
     const result = await query(
