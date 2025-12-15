@@ -9,7 +9,9 @@
     "dev": "node --watch src/server.js",
     "setup-db": "node src/scripts/setup-database.js",
     "seed": "node src/scripts/seed-data.js",
-    "migrate": "node src/scripts/run-migrations.js"
+    "migrate": "node src/scripts/run-migrations.js",
+    "test:gemini": "node test-gemini-setup.js",
+    "test:endpoints": "node test-ai-agents-endpoint.js"
   },
   "keywords": [
     "ai",

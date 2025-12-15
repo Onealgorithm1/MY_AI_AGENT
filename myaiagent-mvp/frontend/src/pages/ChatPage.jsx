@@ -47,6 +47,7 @@ import BrandAvatar from '../components/BrandAvatar';
 import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
+import AIAgentSelector from '../components/AIAgentSelector';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
@@ -78,6 +79,7 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState('');
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
   const [editingConvId, setEditingConvId] = useState(null);
@@ -239,13 +241,28 @@ export default function ChatPage() {
 
   const handleVoiceChange = async (voiceId) => {
     setSelectedVoice(voiceId);
-    
+
     try {
       await authApi.updatePreferences({ tts_voice_id: voiceId });
     } catch (error) {
       console.error('Failed to save voice preference:', error);
       toast.error('Failed to save voice preference');
     }
+  };
+
+  // Get the current model to use (from selected agent or fallback)
+  const getCurrentModel = () => {
+    if (selectedAgent) {
+      return selectedAgent.model;
+    }
+    return selectedModel;
+  };
+
+  // Handle agent selection
+  const handleSelectAgent = (agent) => {
+    setSelectedAgent(agent);
+    // Also update the selectedModel for fallback compatibility
+    setSelectedModel(agent.model);
   };
 
   const handleAutoPlayToggle = async (enabled) => {
@@ -351,7 +368,8 @@ export default function ChatPage() {
         body: JSON.stringify({
           conversationId,
           content: userMessage.content,
-          model: selectedModel,
+          model: getCurrentModel(),
+          agentId: selectedAgent?.id,
           stream: true,
         }),
       });
@@ -436,7 +454,7 @@ export default function ChatPage() {
 
   const createNewConversation = async () => {
     try {
-      const response = await conversationsApi.create('New Chat', selectedModel);
+      const response = await conversationsApi.create('New Chat', getCurrentModel());
       queryClient.invalidateQueries(['conversations']);
       return response.data.conversation.id;
     } catch (error) {
@@ -963,16 +981,10 @@ export default function ChatPage() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-2 md:px-3 py-2 md:py-1.5 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 touch-manipulation"
-            >
-              <option value="auto">🤖 Auto (AI picks best model)</option>
-              <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash • Latest & Fast</option>
-              <option value="gemini-2.5-pro">🧠 Gemini 2.5 Pro • Most Powerful</option>
-              <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash • Efficient</option>
-            </select>
+            <AIAgentSelector
+              selectedAgentId={selectedAgent?.id}
+              onSelectAgent={handleSelectAgent}
+            />
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">

@@ -161,18 +161,40 @@ router.get('/google/status', authenticate, async (req, res) => {
       'SELECT google_id, profile_picture FROM users WHERE id = $1',
       [req.user.id]
     );
-    
-    const isConnected = !!user.rows[0].google_id;
-    const tokenInfo = isConnected ? await tokenManager.getTokenInfo(req.user.id) : null;
-    
+
+    // Verify user exists
+    if (!user.rows || user.rows.length === 0) {
+      console.error('User not found in database for id:', req.user.id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = user.rows[0];
+    const isConnected = !!userData.google_id;
+    let tokenInfo = null;
+
+    // Only fetch token info if Google is connected
+    if (isConnected) {
+      try {
+        tokenInfo = await tokenManager.getTokenInfo(req.user.id);
+      } catch (tokenError) {
+        console.warn('Failed to get token info for user:', req.user.id, tokenError.message);
+        // Continue with null tokenInfo rather than failing entirely
+        tokenInfo = null;
+      }
+    }
+
     res.json({
       isConnected,
-      googleId: user.rows[0].google_id,
-      profilePicture: user.rows[0].profile_picture,
+      googleId: userData.google_id,
+      profilePicture: userData.profile_picture,
       tokenInfo,
     });
   } catch (error) {
-    console.error('Google status check error:', error);
+    console.error('Google status check error:', {
+      message: error.message,
+      userId: req.user?.id,
+      stack: error.stack,
+    });
     res.status(500).json({ error: 'Failed to check Google connection status' });
   }
 });

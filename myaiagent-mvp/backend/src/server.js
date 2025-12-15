@@ -60,6 +60,7 @@ import collaborationRoutes from './routes/collaboration.js';
 import marketAnalyticsRoutes from './routes/marketAnalytics.js';
 import intelligenceRoutes from './routes/intelligence.js';
 import companyDashboardRoutes from './routes/companyDashboard.js';
+import aiAgentsRoutes from './routes/aiAgents.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -329,6 +330,7 @@ app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/market-analytics', marketAnalyticsRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/company', companyDashboardRoutes);
+app.use('/api/ai-agents', aiAgentsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

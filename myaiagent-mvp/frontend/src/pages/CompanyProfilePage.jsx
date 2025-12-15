@@ -76,7 +76,24 @@ const CompanyProfilePage = () => {
       }
     } catch (error) {
       console.error('AI analysis failed:', error);
-      alert('Failed to run AI analysis. Please try again.');
+
+      // Provide more informative error messages
+      let errorMessage = 'Failed to run AI analysis. Please try again.';
+
+      if (error.response?.status === 500) {
+        const errorData = error.response?.data;
+        if (errorData?.error) {
+          errorMessage = `AI Analysis Error: ${errorData.error}`;
+        } else {
+          errorMessage = 'Server error while running AI analysis. Please check that the API server is properly configured.';
+        }
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (error.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      }
+
+      alert(errorMessage);
     } finally {
       setAnalyzing(false);
     }
@@ -225,7 +242,7 @@ const CompanyProfilePage = () => {
                 Certifications & Set-Asides
               </h2>
               <div className="space-y-3">
-                {(profile?.certifications || [
+                {(Array.isArray(profile?.certifications) ? profile.certifications : [
                   'ISO 27001 Certified',
                   'CMMI Level 3',
                   'AWS Certified Solutions Architect',
@@ -244,7 +261,7 @@ const CompanyProfilePage = () => {
                 ))}
               </div>
 
-              {profile?.set_aside_types && (
+              {Array.isArray(profile?.set_aside_types) && profile.set_aside_types.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Eligible Set-Aside Programs:

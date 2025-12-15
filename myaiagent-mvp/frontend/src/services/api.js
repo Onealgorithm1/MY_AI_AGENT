@@ -442,6 +442,45 @@ export const samGov = {
   },
 };
 
+// AI Agents endpoints
+export const aiAgents = {
+  // Get user's connected AI agents
+  getMyAgents: () =>
+    api.get('/ai-agents/my-agents'),
+
+  // Get available AI providers (auto-detected based on configured API keys)
+  getAvailableProviders: () =>
+    api.get('/ai-agents/available-providers'),
+
+  // Get all AI providers (unfiltered)
+  getAllProviders: () =>
+    api.get('/ai-agents/providers'),
+
+  // Get specific provider details
+  getProvider: (providerName) =>
+    api.get(`/ai-agents/providers/${providerName}`),
+
+  // Connect a new AI agent
+  connectAgent: (data) =>
+    api.post('/ai-agents/my-agents', data),
+
+  // Update an AI agent
+  updateAgent: (agentId, data) =>
+    api.put(`/ai-agents/my-agents/${agentId}`, data),
+
+  // Delete an AI agent
+  deleteAgent: (agentId) =>
+    api.delete(`/ai-agents/my-agents/${agentId}`),
+
+  // Set an agent as default
+  setDefaultAgent: (agentId) =>
+    api.post(`/ai-agents/my-agents/${agentId}/set-default`),
+
+  // Test an agent's connectivity
+  testAgent: (agentId) =>
+    api.post(`/ai-agents/my-agents/${agentId}/test`),
+};
+
 // Export both default and named export for flexibility
 export { api };
 export default api;

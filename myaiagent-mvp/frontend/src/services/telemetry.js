@@ -11,6 +11,7 @@ class TelemetryService {
     this.apiUrl = import.meta.env.VITE_API_URL || '/api';
     this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.telemetryEnabled = true;
+    this.sendingTelemetry = false; // Prevent recursive error tracking
   }
 
   setTelemetryEnabled(enabled) {
@@ -65,7 +66,13 @@ class TelemetryService {
       return;
     }
 
+    // Prevent recursive error tracking from telemetry failures
+    if (this.sendingTelemetry && eventType === 'console_error') {
+      return;
+    }
+
     try {
+      this.sendingTelemetry = true;
       this.eventCount++;
 
       const telemetryPayload = {
@@ -96,14 +103,29 @@ class TelemetryService {
         headers['X-CSRF-Token'] = csrfToken;
       }
 
-      await fetch(`${this.apiUrl}/telemetry/event`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify(telemetryPayload),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      try {
+        await fetch(`${this.apiUrl}/telemetry/event`, {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify(telemetryPayload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (error) {
-      console.error('Telemetry send failed:', error);
+      // Silently fail telemetry - don't log errors to avoid infinite loops
+      // In development only log if telemetry is misconfigured
+      if (import.meta.env.DEV && error?.name !== 'AbortError') {
+        // Use console.warn instead of console.error to avoid triggering error handler
+        console.warn('Telemetry temporarily unavailable:', error?.message?.substring(0, 50));
+      }
+    } finally {
+      this.sendingTelemetry = false;
     }
   }
 
