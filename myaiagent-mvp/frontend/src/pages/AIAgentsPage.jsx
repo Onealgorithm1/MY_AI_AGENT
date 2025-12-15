@@ -36,10 +36,11 @@ export default function AIAgentsPage() {
       let errorMessage = 'Failed to load AI agents';
 
       if (err.response?.status === 404) {
-        errorMessage = 'AI agents endpoint not found. This may mean the backend is not properly configured. Try refreshing the page or contact support.';
-        console.error('404 Error - AI agents endpoint not registered. Backend may not be deployed or server needs restart.', {
+        errorMessage = 'AI agents endpoint not found. Backend may not be deployed or server needs restart. Please try refreshing the page.';
+        console.error('404 Error - AI agents endpoint not registered.', {
           endpoint: '/api/ai-agents/my-agents',
           status: 404,
+          message: 'Backend route not found. Ensure flyctl deploy was run and server restarted.',
           timestamp: new Date().toISOString(),
         });
       } else if (err.response?.status === 401) {
