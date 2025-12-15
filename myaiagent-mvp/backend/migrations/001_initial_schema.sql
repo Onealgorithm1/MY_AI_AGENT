@@ -133,7 +133,7 @@ CREATE INDEX idx_user_preferences_user ON user_preferences(user_id);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS search_history (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   query TEXT NOT NULL,
   result_count INTEGER,
   clicked_result_index INTEGER,
