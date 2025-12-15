@@ -570,24 +570,6 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
 
-      // === ✅ FALLBACK: Handle empty responses ===
-      if (!responseMessage.function_call && (!responseMessage.content || responseMessage.content.trim() === '')) {
-        console.warn('⚠️ AI returned empty response, using fallback message');
-        const fallbackMessage = "I apologize, but I didn't generate a proper response. Could you please rephrase your question or provide more details?";
-
-        const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true, fallback: true }) : JSON.stringify({ fallback: true });
-        await query(
-          `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING *`,
-          [conversationId, 'assistant', fallbackMessage, selectedModel, tokensUsed, metadata]
-        );
-
-        return res.json({
-          message: fallbackMessage,
-          warning: 'Empty response detected, fallback used',
-        });
-      }
 
       // Check if AI wants to call a function
       if (responseMessage.function_call) {
