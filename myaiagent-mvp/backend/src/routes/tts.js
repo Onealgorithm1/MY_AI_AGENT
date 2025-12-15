@@ -45,9 +45,11 @@ router.use(authenticate);
 
 router.get('/voices', async (req, res) => {
   try {
+    console.log('🎙️ Fetching voices from Google TTS API...');
     const voices = await getVoices();
-    
-    res.json({ 
+
+    console.log(`✅ Successfully retrieved ${voices.length} voices`);
+    res.json({
       voices: voices.map(v => ({
         voice_id: v.voice_id,
         name: v.name,
@@ -57,10 +59,15 @@ router.get('/voices', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching voices:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to fetch voices',
-      code: 'FETCH_VOICES_FAILED'
+    console.error('❌ Error fetching voices:', error.message);
+    const statusCode = error.message.includes('Invalid API key') ? 401 :
+                       error.message.includes('not enabled') ? 403 :
+                       error.message.includes('Rate limit') ? 429 : 500;
+
+    res.status(statusCode).json({
+      error: error.message || 'Failed to fetch voices',
+      code: 'FETCH_VOICES_FAILED',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
