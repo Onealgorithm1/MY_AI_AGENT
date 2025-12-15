@@ -33,7 +33,24 @@ export default function AIAgentsPage() {
       setAgents(agentsRes.data.agents || []);
       setProviders(providersRes.data.providers || []);
     } catch (err) {
-      setError(err.message || 'Failed to load AI agents');
+      let errorMessage = 'Failed to load AI agents';
+
+      if (err.response?.status === 404) {
+        errorMessage = 'AI agents endpoint not found. This may mean the backend is not properly configured. Try refreshing the page or contact support.';
+        console.error('404 Error - AI agents endpoint not registered:', {
+          endpoint: '/api/ai-agents/my-agents',
+          status: 404,
+          timestamp: new Date().toISOString(),
+        });
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (err.response?.status === 500) {
+        errorMessage = `Server error: ${err.response?.data?.error || 'Internal server error'}`;
+      } else {
+        errorMessage = err.response?.data?.error || err.message || 'Failed to load AI agents';
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
