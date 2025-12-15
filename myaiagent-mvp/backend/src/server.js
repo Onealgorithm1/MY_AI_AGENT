@@ -452,7 +452,6 @@ async function initializeDatabaseTablesOnStartup() {
       if (error.message?.includes('does not exist') || error.code === '42P01') {
         console.warn('⚠️  Creating AI Agent tables...');
 
-        const __dirname = path.dirname(fileURLToPath(import.meta.url));
         const migrationPath = path.join(__dirname, '../migrations/020_add_user_ai_agents.sql');
 
         if (fs.existsSync(migrationPath)) {
