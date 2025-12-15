@@ -1,8 +1,14 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../services/secrets.js';
 import { cacheControl } from '../middleware/cache.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
