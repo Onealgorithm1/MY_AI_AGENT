@@ -497,8 +497,9 @@ async function initializeDatabaseMigrationsOnStartup() {
 
     console.log(`✅ Database migrations completed (${successful} executed, ${skipped} skipped)`);
   } catch (error) {
-    console.warn('⚠️  Database migration warning:', error.message);
-    // Don't fail startup if migrations fail
+    console.error('❌ Database migrations FAILED - server cannot start:', error.message);
+    // Re-throw to prevent server startup with inconsistent database
+    throw error;
   }
 }
 
