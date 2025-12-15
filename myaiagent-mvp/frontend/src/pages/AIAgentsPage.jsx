@@ -27,20 +27,31 @@ export default function AIAgentsPage() {
 
       const [agentsRes, providersRes] = await Promise.all([
         api.get('/ai-agents/my-agents'),
-        api.get('/ai-agents/providers'),
+        api.get('/ai-agents/available-providers'), // Auto-detect based on API keys
       ]);
 
       setAgents(agentsRes.data.agents || []);
-      setProviders(providersRes.data.providers || []);
+
+      // Use only available providers (those with configured API keys)
+      setProviders(providersRes.data.available || []);
+
+      // Log summary for debugging
+      if (providersRes.data.summary) {
+        console.log('🔍 AI Providers Summary:', {
+          available: providersRes.data.summary.availableCount,
+          unavailable: providersRes.data.summary.unavailableCount,
+          configuredServices: providersRes.data.summary.totalConfigured,
+        });
+      }
     } catch (err) {
       let errorMessage = 'Failed to load AI agents';
 
       if (err.response?.status === 404) {
-        errorMessage = 'AI agents endpoint not found. Backend may not be deployed or server needs restart. Please try refreshing the page.';
+        errorMessage = 'AI agents endpoint not found. Ensure backend is deployed and running. Try refreshing the page.';
         console.error('404 Error - AI agents endpoint not registered.', {
-          endpoint: '/api/ai-agents/my-agents',
+          endpoint: '/api/ai-agents',
           status: 404,
-          message: 'Backend route not found. Ensure flyctl deploy was run and server restarted.',
+          message: 'Run: flyctl deploy --no-cache && flyctl restart',
           timestamp: new Date().toISOString(),
         });
       } else if (err.response?.status === 401) {
@@ -52,6 +63,7 @@ export default function AIAgentsPage() {
       }
 
       setError(errorMessage);
+      console.error('Error loading AI agents:', { status: err.response?.status, message: errorMessage });
     } finally {
       setLoading(false);
     }
