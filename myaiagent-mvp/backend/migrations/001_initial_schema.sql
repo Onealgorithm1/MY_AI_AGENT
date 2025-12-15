@@ -43,9 +43,9 @@ CREATE TABLE IF NOT EXISTS conversations (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_conversations_user ON conversations(user_id);
-CREATE INDEX idx_conversations_created ON conversations(created_at DESC);
-CREATE INDEX idx_conversations_archived ON conversations(is_archived);
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(is_archived);
 
 -- ===========================================
 -- Messages
@@ -63,9 +63,9 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_messages_conversation ON messages(conversation_id);
-CREATE INDEX idx_messages_user ON messages(user_id);
-CREATE INDEX idx_messages_created ON messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
 
 -- ===========================================
 -- API Secrets Management
@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS api_secrets (
   last_used_at TIMESTAMP
 );
 
-CREATE INDEX idx_api_secrets_name ON api_secrets(key_name);
-CREATE INDEX idx_api_secrets_active ON api_secrets(is_active);
+CREATE INDEX IF NOT EXISTS idx_api_secrets_name ON api_secrets(key_name);
+CREATE INDEX IF NOT EXISTS idx_api_secrets_active ON api_secrets(is_active);
 
 -- ===========================================
 -- Memory and Learning System
@@ -107,9 +107,9 @@ CREATE TABLE IF NOT EXISTS memory_facts (
   expires_at TIMESTAMP
 );
 
-CREATE INDEX idx_memory_user ON memory_facts(user_id);
-CREATE INDEX idx_memory_approved ON memory_facts(approved);
-CREATE INDEX idx_memory_type ON memory_facts(fact_type);
+CREATE INDEX IF NOT EXISTS idx_memory_user ON memory_facts(user_id);
+CREATE INDEX IF NOT EXISTS idx_memory_approved ON memory_facts(approved);
+CREATE INDEX IF NOT EXISTS idx_memory_type ON memory_facts(fact_type);
 
 -- ===========================================
 -- User Preferences
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_user_preferences_user ON user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
 
 -- ===========================================
 -- Search History
@@ -144,8 +144,8 @@ CREATE TABLE IF NOT EXISTS search_history (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_search_history_user ON search_history(user_id);
-CREATE INDEX idx_search_history_created ON search_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_search_history_user ON search_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_search_history_created ON search_history(created_at DESC);
 
 -- ===========================================
 -- Admin and System Management
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS system_config (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_system_config_key ON system_config(config_key);
+CREATE INDEX IF NOT EXISTS idx_system_config_key ON system_config(config_key);
 
 -- ===========================================
 -- Activity Logging
@@ -178,9 +178,9 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_activity_logs_user ON activity_logs(user_id);
-CREATE INDEX idx_activity_logs_action ON activity_logs(action);
-CREATE INDEX idx_activity_logs_created ON activity_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);
 
 -- ===========================================
 -- Comments
@@ -194,5 +194,5 @@ CREATE TABLE IF NOT EXISTS comments (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_comments_message ON comments(message_id);
-CREATE INDEX idx_comments_user ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_comments_message ON comments(message_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id);
