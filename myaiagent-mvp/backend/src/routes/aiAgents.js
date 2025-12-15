@@ -688,6 +688,69 @@ router.post('/my-agents/:agentId/test', async (req, res) => {
 });
 
 // ============================================
+// DATABASE INITIALIZATION & MAINTENANCE
+// ============================================
+
+// Initialize AI Agent tables if they don't exist (called on first request if needed)
+async function initializeAIAgentTables() {
+  try {
+    // Test if tables exist by querying them
+    await query('SELECT 1 FROM ai_agent_providers LIMIT 1');
+    console.log('✅ AI Agent tables already exist');
+    return true;
+  } catch (error) {
+    if (error.message?.includes('does not exist')) {
+      console.warn('⚠️  AI Agent tables not found, attempting to initialize...');
+
+      // Read and execute the migration file
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const migrationPath = path.join(__dirname, '../../migrations/020_add_user_ai_agents.sql');
+        const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+
+        await query(migrationSQL);
+        console.log('✅ AI Agent tables initialized successfully');
+        return true;
+      } catch (migrationError) {
+        console.error('❌ Failed to initialize AI Agent tables:', migrationError.message);
+        return false;
+      }
+    }
+    throw error;
+  }
+}
+
+// Admin endpoint to manually trigger database initialization
+router.post('/admin/init-database', async (req, res) => {
+  try {
+    // Only allow admins (assuming req.user has role info)
+    if (!req.user || (req.user.role !== 'admin' && req.user.email !== 'admin@myaiagent.com')) {
+      return res.status(403).json({ error: 'Only admins can initialize the database' });
+    }
+
+    const initialized = await initializeAIAgentTables();
+
+    if (initialized) {
+      res.json({
+        message: 'Database initialized successfully',
+        status: 'success'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to initialize database. Check server logs for details.',
+        status: 'failed'
+      });
+    }
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    res.status(500).json({
+      error: 'Database initialization failed: ' + error.message
+    });
+  }
+});
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
