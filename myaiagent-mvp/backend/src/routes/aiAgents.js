@@ -1,8 +1,14 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../services/secrets.js';
 import { cacheControl } from '../middleware/cache.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -29,9 +35,120 @@ const SERVICE_TO_PROVIDER_MAP = {
 // AI PROVIDERS ROUTES
 // ============================================
 
+// Get configured services with available models
+// This is a simple endpoint that shows what services have API keys configured
+// and lists the models available for each service
+router.get('/configured-services', async (req, res) => {
+  try {
+    // Get all active API secrets grouped by service
+    const secretsResult = await query(
+      `SELECT DISTINCT service_name FROM api_secrets
+       WHERE is_active = TRUE
+       ORDER BY service_name`
+    );
+
+    const configuredServices = secretsResult.rows.map(row => row.service_name);
+
+    // Map service names to providers and models
+    const MODEL_INFO = {
+      'openai': {
+        displayName: 'OpenAI',
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/OpenAI_Logo.svg/1200px-OpenAI_Logo.svg.png',
+        models: [
+          { id: 'gpt-4o', name: 'GPT-4o', maxTokens: 128000 },
+          { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', maxTokens: 128000 },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini', maxTokens: 128000 },
+          { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', maxTokens: 4096 }
+        ]
+      },
+      'anthropic': {
+        displayName: 'Anthropic (Claude)',
+        logo: 'https://www.anthropic.com/_next/image?url=%2Fimages%2Flogo.svg&w=256&q=75',
+        models: [
+          { id: 'claude-3-opus-20250219', name: 'Claude 3 Opus', maxTokens: 200000 },
+          { id: 'claude-3-sonnet-20250229', name: 'Claude 3 Sonnet', maxTokens: 200000 },
+          { id: 'claude-3-haiku-20250307', name: 'Claude 3 Haiku', maxTokens: 200000 }
+        ]
+      },
+      'google': {
+        displayName: 'Google (Gemini)',
+        logo: 'https://www.gstatic.com/images/branding/product/1x/gemini_2024_color_3x_web_32dp.png',
+        models: [
+          { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', maxTokens: 1000000 },
+          { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', maxTokens: 1000000 },
+          { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', maxTokens: 1000000 },
+          { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', maxTokens: 1000000 }
+        ]
+      },
+      'cohere': {
+        displayName: 'Cohere',
+        logo: 'https://cohere.com/assets/cohere-mark.svg',
+        models: [
+          { id: 'command-r-plus', name: 'Command R Plus', maxTokens: 4096 },
+          { id: 'command-r', name: 'Command R', maxTokens: 4096 },
+          { id: 'command', name: 'Command', maxTokens: 4096 }
+        ]
+      },
+      'groq': {
+        displayName: 'Groq',
+        logo: 'https://www.groq.com/favicon.ico',
+        models: [
+          { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', maxTokens: 32768 },
+          { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', maxTokens: 8000 },
+          { id: 'gemma2-9b-it', name: 'Gemma 2 9B', maxTokens: 8192 }
+        ]
+      }
+    };
+
+    // Build the response with only configured services
+    const services = configuredServices
+      .map(serviceName => {
+        // Find the provider key for this service
+        const providerKey = Object.entries(SERVICE_TO_PROVIDER_MAP)
+          .find(([key, value]) => key === serviceName)?.[1];
+
+        if (!providerKey || !MODEL_INFO[providerKey]) {
+          return null;
+        }
+
+        const info = MODEL_INFO[providerKey];
+        return {
+          serviceName: serviceName,
+          provider: providerKey,
+          displayName: info.displayName,
+          logo: info.logo,
+          models: info.models
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    res.json({
+      services,
+      total: services.length,
+      message: services.length === 0
+        ? 'No API keys configured. Add API keys in Admin Settings to access AI models.'
+        : `${services.length} service(s) configured with ${services.reduce((sum, s) => sum + s.models.length, 0)} available models`
+    });
+  } catch (error) {
+    console.error('❌ Get configured services error:', error.message);
+    res.status(500).json({
+      error: error.message || 'Failed to get configured services'
+    });
+  }
+});
+
 // Get available AI providers based on configured API keys
 router.get('/available-providers', async (req, res) => {
   try {
+    // Ensure AI Agent tables exist
+    const tablesInitialized = await initializeAIAgentTables();
+    if (!tablesInitialized) {
+      return res.status(500).json({
+        error: 'Database initialization failed. Contact your administrator.'
+      });
+    }
+
     // Get all configured API services
     const secretsResult = await query(
       `SELECT DISTINCT service_name FROM api_secrets
@@ -111,8 +228,18 @@ router.get('/available-providers', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get available providers error:', error);
-    res.status(500).json({ error: 'Failed to get available providers' });
+    console.error('❌ Get available providers error:', error.message);
+
+    // Check if this is a table missing error
+    if (error.message?.includes('does not exist')) {
+      return res.status(500).json({
+        error: 'Database tables not initialized. Please run migrations: npm run migrate'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to get available providers'
+    });
   }
 });
 
@@ -195,12 +322,20 @@ router.get('/providers/:providerName', cacheControl(3600), async (req, res) => {
 // Get all AI agents for current user
 router.get('/my-agents', async (req, res) => {
   try {
+    // Ensure AI Agent tables exist
+    const tablesInitialized = await initializeAIAgentTables();
+    if (!tablesInitialized) {
+      return res.status(500).json({
+        error: 'Database initialization failed. Contact your administrator.'
+      });
+    }
+
     const userId = req.user.id;
 
     const result = await query(
-      `SELECT uaa.id, uaa.provider_name, uaa.agent_name, uaa.model, 
+      `SELECT uaa.id, uaa.provider_name, uaa.agent_name, uaa.model,
               uaa.auth_type, uaa.config, uaa.is_active, uaa.is_default,
-              uaa.status, uaa.error_message, uaa.last_tested_at, 
+              uaa.status, uaa.error_message, uaa.last_tested_at,
               uaa.last_used_at, uaa.created_at, uaa.updated_at,
               aap.display_name, aap.logo_url
        FROM user_ai_agents uaa
@@ -231,8 +366,18 @@ router.get('/my-agents', async (req, res) => {
 
     res.json({ agents });
   } catch (error) {
-    console.error('Get user AI agents error:', error);
-    res.status(500).json({ error: 'Failed to get AI agents' });
+    console.error('❌ Get user AI agents error:', error.message);
+
+    // Check if this is a table missing error
+    if (error.message?.includes('does not exist')) {
+      return res.status(500).json({
+        error: 'Database tables not initialized. Please run migrations: npm run migrate'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to get AI agents'
+    });
   }
 });
 
@@ -664,6 +809,102 @@ router.post('/my-agents/:agentId/test', async (req, res) => {
   } catch (error) {
     console.error('Test AI agent error:', error);
     res.status(500).json({ error: 'Failed to test AI agent' });
+  }
+});
+
+// ============================================
+// DATABASE INITIALIZATION & MAINTENANCE
+// ============================================
+
+// Initialize AI Agent tables if they don't exist (called on first request if needed)
+async function initializeAIAgentTables() {
+  try {
+    // Test if tables exist by querying them
+    await query('SELECT 1 FROM ai_agent_providers LIMIT 1');
+    console.log('✅ AI Agent tables already exist');
+    return true;
+  } catch (error) {
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      console.warn('⚠️  AI Agent tables not found, attempting to initialize...');
+
+      // Read and execute the migration file
+      try {
+        const migrationPath = path.join(__dirname, '../../migrations/020_add_user_ai_agents.sql');
+
+        if (!fs.existsSync(migrationPath)) {
+          console.error('❌ Migration file not found at:', migrationPath);
+          return false;
+        }
+
+        const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+
+        // Split SQL into individual statements and execute each one
+        // This is safer than executing the entire file at once
+        const statements = migrationSQL
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+        console.log(`📝 Executing ${statements.length} migration statements...`);
+
+        for (const statement of statements) {
+          try {
+            await query(statement);
+          } catch (stmtError) {
+            // Ignore "already exists" errors (table/index already exists)
+            if (stmtError.message?.includes('already exists') || stmtError.code === '42P07') {
+              console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
+            } else if (stmtError.message?.includes('already exists as index') || stmtError.code === '42710') {
+              console.log(`⏭️  Skipped (index already exists): ${statement.substring(0, 50)}...`);
+            } else {
+              // Re-throw other errors
+              throw stmtError;
+            }
+          }
+        }
+
+        console.log('✅ AI Agent tables initialized successfully');
+        return true;
+      } catch (migrationError) {
+        console.error('❌ Failed to initialize AI Agent tables:', migrationError.message);
+        console.error('   Error code:', migrationError.code);
+        console.error('   Full error:', migrationError);
+        return false;
+      }
+    }
+
+    // Don't throw, just log and return false for other errors
+    console.error('❌ Unexpected error checking AI Agent tables:', error.message);
+    return false;
+  }
+}
+
+// Admin endpoint to manually trigger database initialization
+router.post('/admin/init-database', async (req, res) => {
+  try {
+    // Only allow admins (assuming req.user has role info)
+    if (!req.user || (req.user.role !== 'admin' && req.user.email !== 'admin@myaiagent.com')) {
+      return res.status(403).json({ error: 'Only admins can initialize the database' });
+    }
+
+    const initialized = await initializeAIAgentTables();
+
+    if (initialized) {
+      res.json({
+        message: 'Database initialized successfully',
+        status: 'success'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to initialize database. Check server logs for details.',
+        status: 'failed'
+      });
+    }
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    res.status(500).json({
+      error: 'Database initialization failed: ' + error.message
+    });
   }
 });
 

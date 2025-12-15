@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // Load environment variables
@@ -436,8 +437,55 @@ process.on('SIGINT', () => {
   });
 });
 
+// Initialize AI Agent tables on startup
+async function initializeDatabaseTablesOnStartup() {
+  try {
+    console.log('\n🔍 Checking AI Agent tables...');
+    // Import here to avoid circular dependency
+    const { query } = await import('./utils/database.js');
+
+    try {
+      // Test if tables exist
+      await query('SELECT 1 FROM ai_agent_providers LIMIT 1');
+      console.log('✅ AI Agent tables already exist');
+    } catch (error) {
+      if (error.message?.includes('does not exist') || error.code === '42P01') {
+        console.warn('⚠️  Creating AI Agent tables...');
+
+        const migrationPath = path.join(__dirname, '../migrations/020_add_user_ai_agents.sql');
+
+        if (fs.existsSync(migrationPath)) {
+          const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+          const statements = migrationSQL
+            .split(';')
+            .map(stmt => stmt.trim())
+            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+          for (const statement of statements) {
+            try {
+              await query(statement);
+            } catch (stmtError) {
+              if (stmtError.message?.includes('already exists') || stmtError.code === '42P07' || stmtError.code === '42710') {
+                // Skip existing objects
+              } else {
+                throw stmtError;
+              }
+            }
+          }
+          console.log('✅ AI Agent tables created successfully');
+        } else {
+          console.warn('⚠️  Migration file not found at', migrationPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️  AI Agent initialization warning:', error.message);
+    // Don't fail startup if this fails
+  }
+}
+
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log('\n' + '='.repeat(50));
   console.log('🚀 werkules - Backend Server');
   console.log('='.repeat(50));
@@ -450,7 +498,10 @@ server.listen(PORT, () => {
   console.log(`\n🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? '✅ Configured' : '❌ Missing'}`);
   console.log('\n' + '='.repeat(50) + '\n');
-  
+
+  // Initialize AI Agent tables
+  await initializeDatabaseTablesOnStartup();
+
   startQueueProcessor();
 });
 
