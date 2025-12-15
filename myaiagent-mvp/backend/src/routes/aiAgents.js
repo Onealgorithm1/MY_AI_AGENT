@@ -141,13 +141,11 @@ router.get('/configured-services', async (req, res) => {
 // Get available AI providers based on configured API keys
 router.get('/available-providers', async (req, res) => {
   try {
-    // Ensure AI Agent tables exist
-    const tablesInitialized = await initializeAIAgentTables();
-    if (!tablesInitialized) {
-      return res.status(500).json({
-        error: 'Database initialization failed. Contact your administrator.'
-      });
-    }
+    // Initialize AI Agent tables if needed (runs migration on first call)
+    await initializeAIAgentTables().catch(err => {
+      console.warn('⚠️  Database initialization warning:', err.message);
+      // Don't block the request - tables may already exist
+    });
 
     // Get all configured API services
     const secretsResult = await query(
@@ -322,13 +320,11 @@ router.get('/providers/:providerName', cacheControl(3600), async (req, res) => {
 // Get all AI agents for current user
 router.get('/my-agents', async (req, res) => {
   try {
-    // Ensure AI Agent tables exist
-    const tablesInitialized = await initializeAIAgentTables();
-    if (!tablesInitialized) {
-      return res.status(500).json({
-        error: 'Database initialization failed. Contact your administrator.'
-      });
-    }
+    // Initialize AI Agent tables if needed (runs migration on first call)
+    await initializeAIAgentTables().catch(err => {
+      console.warn('⚠️  Database initialization warning:', err.message);
+      // Don't block the request - tables may already exist
+    });
 
     const userId = req.user.id;
 

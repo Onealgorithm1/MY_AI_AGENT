@@ -14,11 +14,7 @@ import { selectBestModel, explainModelSelection } from '../services/modelSelecto
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
 import { extractMemoryFacts } from '../services/gemini.js';
-import {
-  getFallbackModel,
-  logFallbackAttempt,
-  getNextFallbackProvider
-} from '../services/apiFallback.js';
+// Fallback service removed - using direct API calls only
 
 const router = express.Router();
 
@@ -404,37 +400,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       console.log('📡 Starting streaming response to client...');
 
-      // Use Vertex AI with grounding if needed, otherwise use standard model with fallback
+      // Use Vertex AI with grounding if needed, otherwise use standard model
       let completion;
-      let currentProvider = 'gemini';
-      let currentModel = selectedModel;
-      let failedProviders = [];
-      let lastError = null;
 
-      while (true) {
-        try {
-          if (useVertexAI) {
-            completion = await createVertexChatCompletion(messages, vertexModel, true, true);
-          } else {
-            completion = await callAPIByProvider(currentProvider, messages, currentModel, true, functionsToPass);
-          }
-          break; // Success, exit retry loop
-        } catch (error) {
-          lastError = error;
-          if (error.code === 'FALLBACK_REQUIRED' && error.provider) {
-            // Handle fallback
-            const previousProvider = currentProvider;
-            failedProviders.push(currentProvider);
-            currentProvider = error.provider;
-            currentModel = error.model;
-            logFallbackAttempt(previousProvider, error.provider, error.message, error.originalError);
-            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel}). Failed providers: [${failedProviders.join(', ')}]`);
-            continue; // Retry the API call with new provider
-          } else {
-            // Re-throw non-fallback errors
-            throw error;
-          }
-        }
+      if (useVertexAI) {
+        completion = await createVertexChatCompletion(messages, vertexModel, true, true);
+      } else {
+        completion = await callAPIByProvider('gemini', messages, selectedModel, true, functionsToPass);
       }
 
       completion.on('data', (chunk) => {
@@ -609,35 +581,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     } else {
       // Non-streaming response with function calling support
       let completion;
-      let currentProvider = 'gemini';
-      let currentModel = selectedModel;
-      let failedProviders = [];
-      let lastError = null;
 
-      while (true) {
-        try {
-          if (useVertexAI) {
-            completion = await createVertexChatCompletion(messages, vertexModel, false, true);
-          } else {
-            completion = await callAPIByProvider(currentProvider, messages, currentModel, false, functionsToPass);
-          }
-          break; // Success, exit retry loop
-        } catch (error) {
-          lastError = error;
-          if (error.code === 'FALLBACK_REQUIRED' && error.provider) {
-            // Handle fallback
-            const previousProvider = currentProvider;
-            failedProviders.push(currentProvider);
-            currentProvider = error.provider;
-            currentModel = error.model;
-            logFallbackAttempt(previousProvider, error.provider, error.message, error.originalError);
-            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel}). Failed providers: [${failedProviders.join(', ')}]`);
-            continue; // Retry the API call with new provider
-          } else {
-            // Re-throw non-fallback errors
-            throw error;
-          }
-        }
+      if (useVertexAI) {
+        completion = await createVertexChatCompletion(messages, vertexModel, false, true);
+      } else {
+        completion = await callAPIByProvider('gemini', messages, selectedModel, false, functionsToPass);
       }
 
       const responseMessage = completion.choices[0].message;
@@ -780,12 +728,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Provide specific error messages based on error type
     let errorMessage = 'Failed to send message';
     const isRateLimitError = error.code === 'RATE_LIMIT' || error.message?.includes('quota') || error.message?.includes('rate limit');
-    const isFallbackError = error.code === 'FALLBACK_REQUIRED';
 
     if (isRateLimitError) {
       errorMessage = `Service temporarily unavailable (rate limit). ${error.message}. Please try again in a moment.`;
-    } else if (isFallbackError) {
-      errorMessage = `All configured AI services failed. Please check your API key configuration.`;
     } else if (error.message?.includes('API key')) {
       errorMessage = `API key not configured. Please add your API key in the admin settings.`;
     }

@@ -2,7 +2,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import { getApiKey } from '../utils/apiKeys.js';
-import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError, isAuthError } from './apiFallback.js';
+import { isRateLimitError, isAuthError } from './apiFallback.js';
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -71,32 +71,14 @@ export async function createChatCompletion(messages, model = 'gpt-4o', stream = 
       hasStream: stream
     });
 
-    // Create error object with status for fallback detection
+    // Create error object with status for error handling
     const apiError = new Error(error.response?.data?.error?.message || error.message || 'Failed to get AI response');
     apiError.status = error.response?.status || 0;
 
-    // Determine fallback strategy for ANY error
-    const fallbackStrategy = await determineFallbackStrategy(apiError, 'openai');
-
-    // If fallback is available, throw FALLBACK_REQUIRED error
-    if (fallbackStrategy.shouldRetry && fallbackStrategy.provider) {
-      logFallbackAttempt('openai', fallbackStrategy.provider, fallbackStrategy.reason, apiError);
-
-      // Create a fallback error with provider info so caller can handle it
-      const fallbackError = new Error(fallbackStrategy.reason);
-      fallbackError.code = 'FALLBACK_REQUIRED';
-      fallbackError.provider = fallbackStrategy.provider;
-      fallbackError.model = fallbackStrategy.model;
-      fallbackError.retryAfter = fallbackStrategy.retryAfter;
-      fallbackError.originalError = apiError;
-      throw fallbackError;
-    }
-
-    // For rate limit errors with no fallback available, return detailed error
-    if (isRateLimitError(apiError) && fallbackStrategy.retryAfter) {
-      const rateLimitError = new Error(`OpenAI API quota exceeded. ${fallbackStrategy.reason}. Retry in ${fallbackStrategy.retryAfter}s`);
+    // Handle errors directly without fallback
+    if (isRateLimitError(apiError)) {
+      const rateLimitError = new Error(`OpenAI API rate limited: ${apiError.message}`);
       rateLimitError.code = 'RATE_LIMIT';
-      rateLimitError.retryAfter = fallbackStrategy.retryAfter;
       rateLimitError.originalError = apiError;
       throw rateLimitError;
     }
