@@ -1,5 +1,4 @@
 import express from 'express';
-import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkRateLimit } from '../middleware/rateLimit.js';
