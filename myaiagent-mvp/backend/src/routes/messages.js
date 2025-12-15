@@ -26,6 +26,19 @@ const router = express.Router();
 const memoryExtractionInProgress = new Map(); // conversationId -> timestamp
 const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
 
+// Helper function to call the appropriate API based on provider
+async function callAPIByProvider(provider, messages, model, stream = false, functions = null) {
+  switch (provider?.toLowerCase()) {
+    case 'gemini':
+    case 'google':
+      return await createChatCompletion(messages, model, stream, functions);
+    case 'openai':
+      return await createOpenAIChatCompletion(messages, model, stream, functions);
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
+
 // Cleanup stale entries (older than timeout)
 function cleanupStaleExtractions() {
   const now = Date.now();
