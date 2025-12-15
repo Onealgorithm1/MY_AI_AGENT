@@ -408,10 +408,10 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       let completion;
       let currentProvider = 'gemini';
       let currentModel = selectedModel;
-      let retryAttempts = 0;
-      const maxRetries = 2;
+      let failedProviders = [];
+      let lastError = null;
 
-      while (retryAttempts < maxRetries) {
+      while (true) {
         try {
           if (useVertexAI) {
             completion = await createVertexChatCompletion(messages, vertexModel, true, true);
@@ -420,16 +420,17 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           }
           break; // Success, exit retry loop
         } catch (error) {
-          if (error.code === 'FALLBACK_REQUIRED' && retryAttempts < maxRetries - 1) {
+          lastError = error;
+          if (error.code === 'FALLBACK_REQUIRED' && error.provider) {
             // Handle fallback
+            failedProviders.push(currentProvider);
             currentProvider = error.provider;
             currentModel = error.model;
-            logFallbackAttempt('gemini', currentProvider, error.message, error.originalError);
-            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel})`);
-            retryAttempts++;
-            continue; // Retry the API call
+            logFallbackAttempt(currentProvider, error.provider, error.message, error.originalError);
+            console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel}). Failed providers: [${failedProviders.join(', ')}]`);
+            continue; // Retry the API call with new provider
           } else {
-            // Re-throw non-fallback errors or if max retries reached
+            // Re-throw non-fallback errors
             throw error;
           }
         }
