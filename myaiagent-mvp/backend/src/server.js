@@ -443,8 +443,6 @@ async function initializeDatabaseTablesOnStartup() {
     console.log('\n🔍 Checking AI Agent tables...');
     // Import here to avoid circular dependency
     const { query } = await import('./utils/database.js');
-    const fs = await import('fs');
-    const pathModule = await import('path');
 
     try {
       // Test if tables exist
@@ -454,7 +452,9 @@ async function initializeDatabaseTablesOnStartup() {
       if (error.message?.includes('does not exist') || error.code === '42P01') {
         console.warn('⚠️  Creating AI Agent tables...');
 
-        const migrationPath = pathModule.default.join(__dirname, '../migrations/020_add_user_ai_agents.sql');
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const migrationPath = path.join(__dirname, '../migrations/020_add_user_ai_agents.sql');
+
         if (fs.existsSync(migrationPath)) {
           const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
           const statements = migrationSQL
@@ -475,7 +475,7 @@ async function initializeDatabaseTablesOnStartup() {
           }
           console.log('✅ AI Agent tables created successfully');
         } else {
-          console.warn('⚠️  Migration file not found');
+          console.warn('⚠️  Migration file not found at', migrationPath);
         }
       }
     }
