@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
 import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
-import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError, isAuthError } from './apiFallback.js';
+import { isRateLimitError, isAuthError } from './apiFallback.js';
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;
@@ -153,28 +153,10 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
       functionNames: functions?.map(f => f.name) || []
     });
 
-    // Determine fallback strategy for ANY error
-    const fallbackStrategy = await determineFallbackStrategy(error, 'gemini');
-
-    // If fallback is available, throw FALLBACK_REQUIRED error
-    if (fallbackStrategy.shouldRetry && fallbackStrategy.provider) {
-      logFallbackAttempt('gemini', fallbackStrategy.provider, fallbackStrategy.reason, error);
-
-      // Create a fallback error with provider info so caller can handle it
-      const fallbackError = new Error(fallbackStrategy.reason);
-      fallbackError.code = 'FALLBACK_REQUIRED';
-      fallbackError.provider = fallbackStrategy.provider;
-      fallbackError.model = fallbackStrategy.model;
-      fallbackError.retryAfter = fallbackStrategy.retryAfter;
-      fallbackError.originalError = error;
-      throw fallbackError;
-    }
-
-    // For rate limit errors with no fallback available, return detailed error
-    if (isRateLimitError(error) && fallbackStrategy.retryAfter) {
-      const rateLimitError = new Error(`Gemini API quota exceeded. ${fallbackStrategy.reason}. Retry in ${fallbackStrategy.retryAfter}s`);
+    // Throw the error directly without fallback
+    if (isRateLimitError(error)) {
+      const rateLimitError = new Error(`Gemini API rate limited: ${error.message}`);
       rateLimitError.code = 'RATE_LIMIT';
-      rateLimitError.retryAfter = fallbackStrategy.retryAfter;
       rateLimitError.originalError = error;
       throw rateLimitError;
     }
