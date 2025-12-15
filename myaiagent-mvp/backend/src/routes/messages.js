@@ -772,14 +772,33 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
   } catch (error) {
     console.error('Send message error:', error);
-    
+
+    // Provide specific error messages based on error type
+    let errorMessage = 'Failed to send message';
+    const isRateLimitError = error.code === 'RATE_LIMIT' || error.message?.includes('quota') || error.message?.includes('rate limit');
+    const isFallbackError = error.code === 'FALLBACK_REQUIRED';
+
+    if (isRateLimitError) {
+      errorMessage = `Service temporarily unavailable (rate limit). ${error.message}. Please try again in a moment.`;
+    } else if (isFallbackError) {
+      errorMessage = `All configured AI services failed. Please check your API key configuration.`;
+    } else if (error.message?.includes('API key')) {
+      errorMessage = `API key not configured. Please add your API key in the admin settings.`;
+    }
+
     // Check if headers have already been sent (e.g., during streaming)
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to send message' });
+      res.status(error.status || 500).json({
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     } else {
       // If streaming, send error through SSE and close connection
       try {
-        res.write(`data: ${JSON.stringify({ error: 'AI service error. Please try again.' })}\n\n`);
+        res.write(`data: ${JSON.stringify({
+          error: errorMessage,
+          retryable: isRateLimitError
+        })}\n\n`);
         res.end();
       } catch (writeError) {
         // Connection may already be closed
