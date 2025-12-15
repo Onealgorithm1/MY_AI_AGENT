@@ -12,41 +12,69 @@ BEGIN
   FROM information_schema.columns
   WHERE table_name = 'users' AND column_name = 'id';
 
-  -- Create table with appropriate user_id type
+  RAISE NOTICE 'Creating user_ai_agents table with user_id type: %', v_user_id_type;
+
+  -- Create user_ai_agents table with appropriate user_id type
   IF v_user_id_type = 'uuid' THEN
     EXECUTE 'CREATE TABLE IF NOT EXISTS user_ai_agents (
       id SERIAL PRIMARY KEY,
       user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  provider_name VARCHAR(100) NOT NULL, -- openai, anthropic, google, grok, cohere, etc.
-  agent_name VARCHAR(255) NOT NULL, -- User-friendly name (e.g., "My GPT-4o", "Claude 3 Opus")
-  model VARCHAR(255) NOT NULL, -- Model identifier (gpt-4o, claude-3-opus, gemini-2.5-flash, etc.)
-  api_key_id INTEGER REFERENCES api_secrets(id) ON DELETE SET NULL, -- Reference to encrypted API key
-  oauth_token TEXT, -- For OAuth-based providers (encrypted)
-  auth_type VARCHAR(50) NOT NULL DEFAULT 'api_key', -- api_key, oauth, service_account
-  config JSONB DEFAULT '{}'::jsonb, -- Provider-specific config (temperature, max_tokens, etc.)
-  is_active BOOLEAN DEFAULT TRUE,
-  is_default BOOLEAN DEFAULT FALSE,
-  status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'error', 'expired')),
-  error_message TEXT, -- Store error details if status is 'error'
-  last_tested_at TIMESTAMP,
-  last_used_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, provider_name, agent_name)
-);
+      provider_name VARCHAR(100) NOT NULL,
+      agent_name VARCHAR(255) NOT NULL,
+      model VARCHAR(255) NOT NULL,
+      api_key_id INTEGER REFERENCES api_secrets(id) ON DELETE SET NULL,
+      oauth_token TEXT,
+      auth_type VARCHAR(50) NOT NULL DEFAULT ''api_key'',
+      config JSONB DEFAULT ''{}''::jsonb,
+      is_active BOOLEAN DEFAULT TRUE,
+      is_default BOOLEAN DEFAULT FALSE,
+      status VARCHAR(50) DEFAULT ''active'' CHECK (status IN (''active'', ''inactive'', ''error'', ''expired'')),
+      error_message TEXT,
+      last_tested_at TIMESTAMP,
+      last_used_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, provider_name, agent_name)
+    )';
+  ELSE
+    EXECUTE 'CREATE TABLE IF NOT EXISTS user_ai_agents (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      provider_name VARCHAR(100) NOT NULL,
+      agent_name VARCHAR(255) NOT NULL,
+      model VARCHAR(255) NOT NULL,
+      api_key_id INTEGER REFERENCES api_secrets(id) ON DELETE SET NULL,
+      oauth_token TEXT,
+      auth_type VARCHAR(50) NOT NULL DEFAULT ''api_key'',
+      config JSONB DEFAULT ''{}''::jsonb,
+      is_active BOOLEAN DEFAULT TRUE,
+      is_default BOOLEAN DEFAULT FALSE,
+      status VARCHAR(50) DEFAULT ''active'' CHECK (status IN (''active'', ''inactive'', ''error'', ''expired'')),
+      error_message TEXT,
+      last_tested_at TIMESTAMP,
+      last_used_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, provider_name, agent_name)
+    )';
+  END IF;
 
-CREATE INDEX idx_user_agents_user ON user_ai_agents(user_id);
-CREATE INDEX idx_user_agents_default ON user_ai_agents(user_id, is_default);
-CREATE INDEX idx_user_agents_active ON user_ai_agents(user_id, is_active);
-CREATE INDEX idx_user_agents_provider ON user_ai_agents(user_id, provider_name);
+  -- Create indexes
+  CREATE INDEX IF NOT EXISTS idx_user_agents_user ON user_ai_agents(user_id);
+  CREATE INDEX IF NOT EXISTS idx_user_agents_default ON user_ai_agents(user_id, is_default);
+  CREATE INDEX IF NOT EXISTS idx_user_agents_active ON user_ai_agents(user_id, is_active);
+  CREATE INDEX IF NOT EXISTS idx_user_agents_provider ON user_ai_agents(user_id, provider_name);
 
-COMMENT ON TABLE user_ai_agents IS 'User-connected AI agents with credentials and configuration';
-COMMENT ON COLUMN user_ai_agents.provider_name IS 'AI provider (openai, anthropic, google, grok, cohere, etc.)';
-COMMENT ON COLUMN user_ai_agents.api_key_id IS 'Foreign key to encrypted API key in api_secrets table';
-COMMENT ON COLUMN user_ai_agents.oauth_token IS 'OAuth token (encrypted) for providers using OAuth flow';
-COMMENT ON COLUMN user_ai_agents.config IS 'JSON config for model settings like temperature, max_tokens, etc.';
-COMMENT ON COLUMN user_ai_agents.status IS 'Current status (active, inactive, error, expired)';
-COMMENT ON COLUMN user_ai_agents.error_message IS 'Error details if status is error (e.g., invalid API key)';
+END $$;
+
+-- Add comments (after table creation to avoid errors)
+COMMENT ON TABLE IF EXISTS user_ai_agents IS 'User-connected AI agents with credentials and configuration';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.provider_name IS 'AI provider (openai, anthropic, google, grok, cohere, etc.)';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.api_key_id IS 'Foreign key to encrypted API key in api_secrets table';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.oauth_token IS 'OAuth token (encrypted) for providers using OAuth flow';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.config IS 'JSON config for model settings like temperature, max_tokens, etc.';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.status IS 'Current status (active, inactive, error, expired)';
+COMMENT ON COLUMN IF EXISTS user_ai_agents.error_message IS 'Error details if status is error (e.g., invalid API key)';
 
 -- ============================================
 -- User Conversation AI Agent Mapping
@@ -55,15 +83,15 @@ CREATE TABLE IF NOT EXISTS conversation_ai_agents (
   id SERIAL PRIMARY KEY,
   conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE NOT NULL,
   user_agent_id INTEGER REFERENCES user_ai_agents(id) ON DELETE SET NULL,
-  model_used VARCHAR(255), -- The actual model used in this conversation
+  model_used VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_conversation_agents_conversation ON conversation_ai_agents(conversation_id);
-CREATE INDEX idx_conversation_agents_user_agent ON conversation_ai_agents(user_agent_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_agents_conversation ON conversation_ai_agents(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_agents_user_agent ON conversation_ai_agents(user_agent_id);
 
-COMMENT ON TABLE conversation_ai_agents IS 'Track which AI agent was used for each conversation';
-COMMENT ON COLUMN conversation_ai_agents.user_agent_id IS 'Reference to user_ai_agents, NULL if agent was deleted';
+COMMENT ON TABLE IF EXISTS conversation_ai_agents IS 'Track which AI agent was used for each conversation';
+COMMENT ON COLUMN IF EXISTS conversation_ai_agents.user_agent_id IS 'Reference to user_ai_agents, NULL if agent was deleted';
 
 -- ============================================
 -- AI Agent Provider Configurations
@@ -75,24 +103,24 @@ CREATE TABLE IF NOT EXISTS ai_agent_providers (
   logo_url TEXT,
   docs_url TEXT,
   base_url VARCHAR(500),
-  auth_type VARCHAR(50) NOT NULL DEFAULT 'api_key', -- api_key, oauth, service_account
+  auth_type VARCHAR(50) NOT NULL DEFAULT 'api_key',
   oauth_auth_url VARCHAR(500),
   oauth_token_url VARCHAR(500),
   oauth_scopes TEXT[],
-  supported_models JSONB DEFAULT '[]'::jsonb, -- Array of available models with metadata
-  config_schema JSONB DEFAULT '{}'::jsonb, -- JSON schema for provider-specific config
-  rate_limit_info JSONB DEFAULT '{}'::jsonb, -- RPM, TPM info
+  supported_models JSONB DEFAULT '[]'::jsonb,
+  config_schema JSONB DEFAULT '{}'::jsonb,
+  rate_limit_info JSONB DEFAULT '{}'::jsonb,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_provider_name ON ai_agent_providers(provider_name);
-CREATE INDEX idx_provider_active ON ai_agent_providers(is_active);
+CREATE INDEX IF NOT EXISTS idx_provider_name ON ai_agent_providers(provider_name);
+CREATE INDEX IF NOT EXISTS idx_provider_active ON ai_agent_providers(is_active);
 
-COMMENT ON TABLE ai_agent_providers IS 'Configuration for supported AI providers';
-COMMENT ON COLUMN ai_agent_providers.supported_models IS 'Array of model objects with id, name, capabilities, etc.';
-COMMENT ON COLUMN ai_agent_providers.config_schema IS 'JSON schema describing configurable options for this provider';
+COMMENT ON TABLE IF EXISTS ai_agent_providers IS 'Configuration for supported AI providers';
+COMMENT ON COLUMN IF EXISTS ai_agent_providers.supported_models IS 'Array of model objects with id, name, capabilities, etc.';
+COMMENT ON COLUMN IF EXISTS ai_agent_providers.config_schema IS 'JSON schema describing configurable options for this provider';
 
 -- ============================================
 -- Insert Default AI Providers
@@ -237,11 +265,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_user_agents_timestamp ON user_ai_agents;
 CREATE TRIGGER update_user_agents_timestamp
   BEFORE UPDATE ON user_ai_agents
   FOR EACH ROW
   EXECUTE FUNCTION update_user_agents_timestamp();
 
+DROP TRIGGER IF EXISTS update_ai_providers_timestamp ON ai_agent_providers;
 CREATE TRIGGER update_ai_providers_timestamp
   BEFORE UPDATE ON ai_agent_providers
   FOR EACH ROW
