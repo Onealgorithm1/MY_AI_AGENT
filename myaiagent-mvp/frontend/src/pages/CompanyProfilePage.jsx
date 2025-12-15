@@ -76,7 +76,24 @@ const CompanyProfilePage = () => {
       }
     } catch (error) {
       console.error('AI analysis failed:', error);
-      alert('Failed to run AI analysis. Please try again.');
+
+      // Provide more informative error messages
+      let errorMessage = 'Failed to run AI analysis. Please try again.';
+
+      if (error.response?.status === 500) {
+        const errorData = error.response?.data;
+        if (errorData?.error) {
+          errorMessage = `AI Analysis Error: ${errorData.error}`;
+        } else {
+          errorMessage = 'Server error while running AI analysis. Please check that the API server is properly configured.';
+        }
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (error.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      }
+
+      alert(errorMessage);
     } finally {
       setAnalyzing(false);
     }
