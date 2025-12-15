@@ -448,11 +448,19 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Send message error:', error);
-      toast.error('Failed to send message');
+
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        toast.error('Request timeout - please try again');
+      } else {
+        toast.error(error.message || 'Failed to send message');
+      }
+
       setStreamingMessage('');
       setStreamingContent('');
       setIsThinking(false); // VUI: Clear thinking state on error
     } finally {
+      clearTimeout(timeoutId);
       setIsSending(false);
     }
   };
