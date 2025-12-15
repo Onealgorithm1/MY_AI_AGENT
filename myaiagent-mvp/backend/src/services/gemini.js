@@ -9,33 +9,39 @@ let lastApiKey = null;
 
 async function getGeminiClient() {
   // Always check for a fresh API key to support runtime updates
-  console.log('🔵 getGeminiClient: Attempting to fetch API key...');
-
   const fromEnvGemini = process.env.GEMINI_API_KEY;
   const fromEnvGoogle = process.env.GOOGLE_API_KEY;
-  const fromDb = await getApiKey('gemini');
+  let fromDb = null;
 
-  console.log('📋 API key sources:', {
-    hasGEMINI_API_KEY: !!fromEnvGemini,
-    hasGOOGLE_API_KEY: !!fromEnvGoogle,
-    hasDbKey: !!fromDb
-  });
+  try {
+    fromDb = await getApiKey('gemini');
+  } catch (error) {
+    // Database lookup failed, but we can still proceed with env vars
+    console.warn('⚠️  Could not fetch API key from database:', error.message);
+  }
 
   const apiKey = fromEnvGemini || fromEnvGoogle || fromDb;
 
   if (!apiKey) {
-    console.error('❌ Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
-    throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
+    const errorMsg = 'Gemini API key not configured. Please set GOOGLE_API_KEY or GEMINI_API_KEY environment variable. See API_CONFIGURATION.md for setup instructions.';
+    console.error('❌', errorMsg);
+    console.error('📋 Current configuration:', {
+      hasGEMINI_API_KEY: !!fromEnvGemini,
+      hasGOOGLE_API_KEY: !!fromEnvGoogle,
+      hasDbKey: !!fromDb,
+      NODE_ENV: process.env.NODE_ENV
+    });
+    throw new Error(errorMsg);
   }
 
   // Reinitialize if key changed or client not yet initialized
   if (!geminiClient || lastApiKey !== apiKey) {
-    console.log('🔄 Initializing Gemini client with API key');
-    lastApiKey = apiKey;
-    geminiClient = new GoogleGenerativeAI(apiKey);
-    console.log('✅ Gemini client initialized successfully');
-  } else {
-    console.log('♻️  Reusing cached Gemini client');
+    try {
+      geminiClient = new GoogleGenerativeAI(apiKey);
+    } catch (error) {
+      console.error('❌ Failed to initialize Gemini client:', error.message);
+      throw new Error('Failed to initialize Gemini client. Check your API key validity.');
+    }
   }
 
   return geminiClient;
