@@ -36,6 +36,34 @@ async function callAPIByProvider(provider, messages, model, stream = false, func
   }
 }
 
+/**
+ * Call API with automatic fallback on rate limit errors
+ * Tries Gemini first, falls back to OpenAI if rate limited
+ */
+async function callAPIWithFallback(messages, primaryModel, fallbackModel, stream = false, functions = null) {
+  try {
+    console.log(`🔵 Attempting API call with ${primaryModel}...`);
+    return await callAPIByProvider('gemini', messages, primaryModel, stream, functions);
+  } catch (error) {
+    if (isRateLimitError(error)) {
+      console.warn(`⚠️  Gemini rate limited (${error.status || 429}). Attempting fallback to OpenAI...`);
+
+      // Check if OpenAI key is available
+      const hasOpenAIKey = await hasApiKeyForProvider('openai');
+      if (!hasOpenAIKey) {
+        console.error('❌ OpenAI API key not available for fallback');
+        throw new Error('Gemini API rate limited and OpenAI API key not configured. Please configure OpenAI in admin settings.');
+      }
+
+      console.log(`🟡 Falling back to OpenAI with ${fallbackModel}...`);
+      return await callAPIByProvider('openai', messages, fallbackModel, stream, functions);
+    }
+
+    // If not a rate limit error, throw as-is
+    throw error;
+  }
+}
+
 // Cleanup stale entries (older than timeout)
 function cleanupStaleExtractions() {
   const now = Date.now();
