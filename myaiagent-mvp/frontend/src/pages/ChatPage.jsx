@@ -47,6 +47,7 @@ import BrandAvatar from '../components/BrandAvatar';
 import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
+import AIAgentSelector from '../components/AIAgentSelector';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
