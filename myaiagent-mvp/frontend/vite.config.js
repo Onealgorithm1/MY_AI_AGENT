@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
   console.log('🔧 Vite Config Mode:', mode);
   console.log('🔧 VITE_API_URL:', env.VITE_API_URL);
 
+  // Determine backend target - use local backend if available, otherwise werkules.com
+  const backendTarget = env.VITE_BACKEND_URL || process.env.BACKEND_URL || 'https://werkules.com';
+  console.log('🔧 Backend Target:', backendTarget);
+
   return {
     plugins: [react()],
     resolve: {
@@ -21,24 +25,24 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5000,
       allowedHosts: true,
-      // Proxy to werkules.com backend (EC2)
+      // Proxy to backend (local or production)
       proxy: {
         '/api': {
-          target: 'https://werkules.com',
+          target: backendTarget,
           changeOrigin: true,
         },
         '/stt-stream': {
-          target: 'https://werkules.com',
+          target: backendTarget,
           ws: true,
           changeOrigin: true,
         },
         '/voice': {
-          target: 'https://werkules.com',
+          target: backendTarget,
           ws: true,
           changeOrigin: true,
         },
         '/ws': {
-          target: 'https://werkules.com',
+          target: backendTarget,
           ws: true,
           changeOrigin: true,
         },

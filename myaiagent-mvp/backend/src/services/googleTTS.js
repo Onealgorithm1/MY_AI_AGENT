@@ -48,36 +48,58 @@ export function addThinkingPause(introPhrase = "Let me think about that") {
 export async function getVoices() {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    
+
     if (!apiKey) {
-      throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your secrets.');
+      console.error('❌ Google API key not configured');
+      throw new Error('Google API key not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your environment.');
     }
-    
+
+    console.log('🔑 Using Google API key:', apiKey.substring(0, 10) + '...');
+
     const response = await axios.get(`${GOOGLE_TTS_API_BASE}/voices`, {
-      params: { key: apiKey }
+      params: { key: apiKey },
+      timeout: 10000
     });
-    
+
     const voices = response.data.voices || [];
-    
+    console.log(`✅ Retrieved ${voices.length} total voices from Google TTS API`);
+
     // Filter and return popular voices
     const popularVoices = voices.filter(voice => {
       const name = voice.name || '';
       // Include English voices and some popular multilingual ones
-      return name.includes('en-US') || name.includes('en-GB') || 
+      return name.includes('en-US') || name.includes('en-GB') ||
              name.includes('Wavenet') || name.includes('Neural2');
     });
-    
+
+    console.log(`✅ Filtered to ${popularVoices.length} popular voices`);
+
     return popularVoices.map(voice => ({
       voice_id: voice.name,
       name: voice.name,
       language: voice.languageCodes[0],
       gender: voice.ssmlGender,
-      category: voice.name.includes('Wavenet') ? 'Premium' : 
+      category: voice.name.includes('Wavenet') ? 'Premium' :
                 voice.name.includes('Neural2') ? 'Latest' : 'Standard'
     }));
   } catch (error) {
-    console.error('Get Google TTS voices error:', error.response?.data || error.message);
-    throw new Error('Failed to get voices: ' + (error.response?.data?.error?.message || error.message));
+    console.error('❌ Get Google TTS voices error:');
+    console.error('   Status:', error.response?.status);
+    console.error('   Message:', error.response?.data?.error?.message || error.message);
+    console.error('   Full error:', error.response?.data || error);
+
+    // Provide more helpful error messages
+    const errorMsg = error.response?.data?.error?.message || error.message;
+
+    if (error.response?.status === 401 || errorMsg.includes('Invalid API key')) {
+      throw new Error('Invalid Google API key. Please check your API key configuration.');
+    } else if (error.response?.status === 403 || errorMsg.includes('not enabled')) {
+      throw new Error('Text-to-Speech API is not enabled for this project. Please enable it in Google Cloud Console.');
+    } else if (error.response?.status === 429) {
+      throw new Error('Rate limit exceeded for Google TTS API. Please try again later.');
+    }
+
+    throw new Error('Failed to get voices: ' + errorMsg);
   }
 }
 

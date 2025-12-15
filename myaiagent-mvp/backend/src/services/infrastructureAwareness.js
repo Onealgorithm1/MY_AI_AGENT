@@ -57,8 +57,17 @@ async function generateGranularStatusFacts(userId = null) {
     const apiLatency = performanceSummary.find(m => m.metric_name === 'api_latency');
     const externalApiLatency = performanceSummary.find(m => m.metric_name === 'external_api_latency');
     
-    // Get WebSocket health metrics
-    const wsAnomalies = await monitoringService.detectWebSocketAnomalies(null, '15 minutes');
+    // Get WebSocket health metrics with safe error handling
+    let wsAnomalies = { hasAnomaly: false, anomalies: [] };
+    try {
+      const result = await monitoringService.detectWebSocketAnomalies(null, '15 minutes');
+      if (result && result.anomalies) {
+        wsAnomalies = result;
+      }
+    } catch (error) {
+      console.error('Error detecting WebSocket anomalies:', error.message);
+      wsAnomalies = { hasAnomaly: false, anomalies: [] };
+    }
     const wsConnectionMetrics = performanceSummary.filter(m => m.metric_name === 'websocket_connection');
     const wsErrorMetrics = performanceSummary.filter(m => m.metric_name === 'websocket_error');
     
@@ -120,11 +129,11 @@ async function generateGranularStatusFacts(userId = null) {
         `Non-blocking async operations for zero performance impact`
       ],
       websockets: [
-        wsAnomalies.hasAnomaly 
-          ? `⚠️ WebSocket health issues detected: ${wsAnomalies.anomalies.length} active anomalies` 
+        (wsAnomalies && wsAnomalies.hasAnomaly && wsAnomalies.anomalies && wsAnomalies.anomalies.length > 0)
+          ? `⚠️ WebSocket health issues detected: ${wsAnomalies.anomalies.length} active anomalies`
           : 'WebSocket endpoints healthy - all connections operating normally',
-        wsAnomalies.anomalies.length > 0 
-          ? wsAnomalies.anomalies.map(a => `  - ${a.description}`).join('; ')
+        (wsAnomalies && wsAnomalies.anomalies && wsAnomalies.anomalies.length > 0)
+          ? wsAnomalies.anomalies.map(a => `  - ${a.description || a.type || 'Unknown issue'}`).join('; ')
           : 'Real-time endpoints: /stt-stream (Speech-to-Text), /voice (Voice Chat), /ws/telemetry (Frontend Telemetry)',
         wsConnectionMetrics.length > 0 
           ? `WebSocket connections in last hour: ${wsConnectionMetrics.reduce((sum, m) => sum + parseInt(m.sample_count), 0)} total attempts`

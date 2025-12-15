@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS capability_gaps (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
   requested_capability TEXT NOT NULL,
   gap_type TEXT NOT NULL CHECK (gap_type IN ('missing_function', 'missing_access', 'missing_integration', 'missing_data')),
