@@ -1,117 +1,11 @@
--- Migration: Final Schema Cleanup and Type Consistency
--- Purpose: Ensure all user_id columns are INTEGER to match users.id (SERIAL/INTEGER)
--- This is a safety migration that catches any remaining type mismatches
--- Safe to run multiple times - uses IF EXISTS checks
+-- Migration: Final Schema Cleanup and Verification
+-- Purpose: Ensure all critical tables exist and schema is complete
+-- All user_id columns should now be INTEGER (matching users.id SERIAL)
+-- This migration is idempotent and safe to run multiple times
 
 -- ============================================
--- Ensure all user_id columns are INTEGER
+-- Ensure capability_gaps table exists
 -- ============================================
-
--- Fix any remaining UUID user_id columns in core tables
-DO $$
-BEGIN
-  -- conversations.user_id
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'conversations' AND column_name = 'user_id' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_user_id_fkey;
-    ALTER TABLE conversations ALTER COLUMN user_id TYPE INTEGER USING user_id::text::integer;
-    ALTER TABLE conversations ADD CONSTRAINT conversations_user_id_fkey 
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-    RAISE NOTICE 'Fixed conversations.user_id: UUID -> INTEGER';
-  END IF;
-
-  -- memory_facts.user_id
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'memory_facts' AND column_name = 'user_id' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE memory_facts DROP CONSTRAINT IF EXISTS memory_facts_user_id_fkey;
-    ALTER TABLE memory_facts ALTER COLUMN user_id TYPE INTEGER USING user_id::text::integer;
-    ALTER TABLE memory_facts ADD CONSTRAINT memory_facts_user_id_fkey 
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-    RAISE NOTICE 'Fixed memory_facts.user_id: UUID -> INTEGER';
-  END IF;
-
-  -- memory_facts.approved_by
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'memory_facts' AND column_name = 'approved_by' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE memory_facts DROP CONSTRAINT IF EXISTS memory_facts_approved_by_fkey;
-    ALTER TABLE memory_facts ALTER COLUMN approved_by TYPE INTEGER USING approved_by::text::integer;
-    ALTER TABLE memory_facts ADD CONSTRAINT memory_facts_approved_by_fkey 
-      FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
-    RAISE NOTICE 'Fixed memory_facts.approved_by: UUID -> INTEGER';
-  END IF;
-
-  -- activity_logs.user_id
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'activity_logs' AND column_name = 'user_id' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE activity_logs DROP CONSTRAINT IF EXISTS activity_logs_user_id_fkey;
-    ALTER TABLE activity_logs ALTER COLUMN user_id TYPE INTEGER USING user_id::text::integer;
-    ALTER TABLE activity_logs ADD CONSTRAINT activity_logs_user_id_fkey 
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-    RAISE NOTICE 'Fixed activity_logs.user_id: UUID -> INTEGER';
-  END IF;
-
-  -- search_history.user_id
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'search_history' AND column_name = 'user_id' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE search_history DROP CONSTRAINT IF EXISTS search_history_user_id_fkey;
-    ALTER TABLE search_history ALTER COLUMN user_id TYPE INTEGER USING user_id::text::integer;
-    ALTER TABLE search_history ADD CONSTRAINT search_history_user_id_fkey 
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-    RAISE NOTICE 'Fixed search_history.user_id: UUID -> INTEGER';
-  END IF;
-
-  -- system_config.updated_by
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'system_config' AND column_name = 'updated_by' 
-    AND data_type = 'uuid'
-  ) THEN
-    ALTER TABLE system_config DROP CONSTRAINT IF EXISTS system_config_updated_by_fkey;
-    ALTER TABLE system_config ALTER COLUMN updated_by TYPE INTEGER USING updated_by::text::integer;
-    ALTER TABLE system_config ADD CONSTRAINT system_config_updated_by_fkey 
-      FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL;
-    RAISE NOTICE 'Fixed system_config.updated_by: UUID -> INTEGER';
-  END IF;
-
-  -- capability_gaps.user_id (if table exists)
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables WHERE table_name = 'capability_gaps'
-  ) THEN
-    IF EXISTS (
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_name = 'capability_gaps' AND column_name = 'user_id' 
-      AND data_type = 'uuid'
-    ) THEN
-      ALTER TABLE capability_gaps DROP CONSTRAINT IF EXISTS capability_gaps_user_id_fkey;
-      ALTER TABLE capability_gaps ALTER COLUMN user_id TYPE INTEGER USING user_id::text::integer;
-      ALTER TABLE capability_gaps ADD CONSTRAINT capability_gaps_user_id_fkey 
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-      RAISE NOTICE 'Fixed capability_gaps.user_id: UUID -> INTEGER';
-    END IF;
-  END IF;
-
-END $$;
-
--- ============================================
--- Ensure critical tables exist
--- ============================================
-
--- Ensure capability_gaps table exists with correct schema
 CREATE TABLE IF NOT EXISTS capability_gaps (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -126,7 +20,9 @@ CREATE TABLE IF NOT EXISTS capability_gaps (
 CREATE INDEX IF NOT EXISTS idx_capability_gaps_user ON capability_gaps(user_id);
 CREATE INDEX IF NOT EXISTS idx_capability_gaps_conversation ON capability_gaps(conversation_id);
 
+-- ============================================
 -- Ensure user_ai_agents table exists
+-- ============================================
 CREATE TABLE IF NOT EXISTS user_ai_agents (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -144,12 +40,47 @@ CREATE INDEX IF NOT EXISTS idx_user_ai_agents_user_id ON user_ai_agents(user_id)
 CREATE INDEX IF NOT EXISTS idx_user_ai_agents_active ON user_ai_agents(is_active);
 
 -- ============================================
+-- Ensure system_performance_metrics columns
+-- ============================================
+DO $$
+BEGIN
+  -- Add missing columns if they don't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'system_performance_metrics' AND column_name = 'value'
+  ) THEN
+    ALTER TABLE system_performance_metrics ADD COLUMN value NUMERIC NOT NULL DEFAULT 0;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'system_performance_metrics' AND column_name = 'unit'
+  ) THEN
+    ALTER TABLE system_performance_metrics ADD COLUMN unit VARCHAR(20) NOT NULL DEFAULT 'ms';
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'system_performance_metrics' AND column_name = 'metric_name'
+  ) THEN
+    ALTER TABLE system_performance_metrics ADD COLUMN metric_name VARCHAR(100) NOT NULL DEFAULT 'unknown';
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'system_performance_metrics' AND column_name = 'timestamp'
+  ) THEN
+    ALTER TABLE system_performance_metrics ADD COLUMN timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  END IF;
+END $$;
+
+-- ============================================
 -- Final Verification
 -- ============================================
-
 DO $$
 DECLARE
   table_count INTEGER;
+  missing_tables TEXT;
 BEGIN
   -- Count tables to verify schema is complete
   SELECT COUNT(*) INTO table_count 
@@ -157,4 +88,17 @@ BEGIN
   WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
   
   RAISE NOTICE 'Schema cleanup complete. Total tables: %', table_count;
+  
+  -- Check for any remaining UUID user_id columns (should be none)
+  SELECT STRING_AGG(table_name || '.' || column_name, ', ')
+  INTO missing_tables
+  FROM information_schema.columns
+  WHERE data_type = 'uuid' AND column_name LIKE '%user%'
+  AND table_schema = 'public';
+  
+  IF missing_tables IS NOT NULL THEN
+    RAISE WARNING 'Found UUID columns for user references (expected to be INTEGER): %', missing_tables;
+  ELSE
+    RAISE NOTICE 'Schema type consistency verified: No UUID user/user_id columns found';
+  END IF;
 END $$;
