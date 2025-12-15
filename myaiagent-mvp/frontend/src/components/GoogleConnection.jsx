@@ -17,13 +17,37 @@ const GoogleConnection = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        toast.error('Authentication required. Please log in again.');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await axios.get('/api/auth/google/status', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConnectionStatus(response.data);
     } catch (error) {
-      console.error('Error checking Google connection status:', error);
-      toast.error('Failed to check Google connection status');
+      console.error('Error checking Google connection status:', {
+        status: error.response?.status,
+        message: error.response?.data?.error || error.message,
+        details: error.response?.data,
+      });
+
+      let errorMessage = 'Failed to check Google connection status';
+      if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'User account not found';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+
+      toast.error(errorMessage);
+
+      // Set a default disconnected state on error
+      setConnectionStatus({ isConnected: false });
     } finally {
       setIsLoading(false);
     }
