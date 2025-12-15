@@ -19,6 +19,16 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TIMESTAMP
 );
 
+-- Alter users.id to INTEGER (it's already SERIAL, but ensure compatibility with foreign keys)
+DO $$
+BEGIN
+  -- If this is a new database, users table will have SERIAL which is correct
+  -- This block is a safety measure for existing databases
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'id') THEN
+    ALTER TABLE users ADD COLUMN id SERIAL PRIMARY KEY;
+  END IF;
+END $$;
+
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 
