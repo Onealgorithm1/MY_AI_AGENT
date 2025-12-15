@@ -614,7 +614,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (useVertexAI) {
         completion = await createVertexChatCompletion(messages, vertexModel, false, true);
       } else {
-        completion = await callAPIByProvider('gemini', messages, selectedModel, false, functionsToPass);
+        completion = await callAPIWithFallback(messages, selectedModel, 'gpt-4o-mini', false, functionsToPass);
       }
 
       const responseMessage = completion.choices[0].message;
