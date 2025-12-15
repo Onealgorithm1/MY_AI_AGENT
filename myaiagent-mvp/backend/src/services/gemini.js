@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
 import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
+import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError } from './apiFallback.js';
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;
