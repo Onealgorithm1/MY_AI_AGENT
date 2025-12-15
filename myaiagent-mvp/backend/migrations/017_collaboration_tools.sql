@@ -28,9 +28,9 @@ CREATE TABLE IF NOT EXISTS proposal_workspaces (
   bid_decision VARCHAR(50), -- Bid, No-Bid, Pending
 
   -- Team
-  owner_id UUID REFERENCES users(id),
-  proposal_manager_id UUID REFERENCES users(id),
-  capture_manager_id UUID REFERENCES users(id),
+  owner_id INTEGER REFERENCES users(id),
+  proposal_manager_id INTEGER REFERENCES users(id),
+  capture_manager_id INTEGER REFERENCES users(id),
 
   -- Strategy
   win_themes JSONB, -- Array of key win themes
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS proposal_workspaces (
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by INTEGER REFERENCES users(id)
 );
 
 -- Proposal Team Members
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS proposal_team_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   workspace_id UUID REFERENCES proposal_workspaces(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id),
+  user_id INTEGER REFERENCES users(id),
 
   -- Role
   role VARCHAR(100), -- Writer, Reviewer, Subject Matter Expert, Editor, etc.
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS proposal_team_members (
   contribution_count INTEGER DEFAULT 0,
 
   added_at TIMESTAMP DEFAULT NOW(),
-  added_by UUID REFERENCES users(id),
+  added_by INTEGER REFERENCES users(id),
 
   CONSTRAINT unique_workspace_user UNIQUE(workspace_id, user_id)
 );
@@ -104,8 +104,8 @@ CREATE TABLE IF NOT EXISTS proposal_sections (
   content_format VARCHAR(20) DEFAULT 'markdown', -- markdown, html, plaintext
 
   -- Assignments
-  assigned_to UUID REFERENCES users(id),
-  reviewer_id UUID REFERENCES users(id),
+  assigned_to INTEGER REFERENCES users(id),
+  reviewer_id INTEGER REFERENCES users(id),
 
   -- Status
   status VARCHAR(50) DEFAULT 'Not Started', -- Not Started, In Progress, Draft, Review, Approved
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS proposal_sections (
 
   -- Version Control
   version INTEGER DEFAULT 1,
-  last_edited_by UUID REFERENCES users(id),
+  last_edited_by INTEGER REFERENCES users(id),
   last_edited_at TIMESTAMP,
 
   created_at TIMESTAMP DEFAULT NOW(),
@@ -142,12 +142,12 @@ CREATE TABLE IF NOT EXISTS compliance_checklists (
   failed_items INTEGER DEFAULT 0,
 
   -- Responsible Party
-  owner_id UUID REFERENCES users(id),
+  owner_id INTEGER REFERENCES users(id),
 
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by INTEGER REFERENCES users(id)
 );
 
 -- Compliance Checklist Items
@@ -176,8 +176,8 @@ CREATE TABLE IF NOT EXISTS compliance_checklist_items (
   attachments JSONB, -- Array of file references
 
   -- Assignments
-  assigned_to UUID REFERENCES users(id),
-  verified_by UUID REFERENCES users(id),
+  assigned_to INTEGER REFERENCES users(id),
+  verified_by INTEGER REFERENCES users(id),
 
   -- Dates
   due_date TIMESTAMP,
@@ -210,14 +210,14 @@ CREATE TABLE IF NOT EXISTS proposal_comments (
   -- Status
   status VARCHAR(50) DEFAULT 'Open', -- Open, Resolved, Dismissed
   resolved_at TIMESTAMP,
-  resolved_by UUID REFERENCES users(id),
+  resolved_by INTEGER REFERENCES users(id),
 
   -- Thread
   parent_comment_id UUID REFERENCES proposal_comments(id),
   thread_count INTEGER DEFAULT 0,
 
   -- Author
-  created_by UUID REFERENCES users(id),
+  created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -242,7 +242,7 @@ CREATE TABLE IF NOT EXISTS proposal_activity_log (
   changes JSONB,
 
   -- User
-  user_id UUID REFERENCES users(id),
+  user_id INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS proposal_deadlines (
 
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by INTEGER REFERENCES users(id)
 );
 
 -- Indexes for Performance
