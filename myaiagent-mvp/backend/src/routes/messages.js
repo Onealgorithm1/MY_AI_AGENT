@@ -3,16 +3,22 @@ import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkRateLimit } from '../middleware/rateLimit.js';
 import { attachUIContext, generateUIAwarePrompt, buildEnhancedContext } from '../middleware/uiContext.js';
-import { 
-  createChatCompletion, 
+import {
+  createChatCompletion,
   buildMessagesWithMemory,
-  estimateTokens 
+  estimateTokens
 } from '../services/gemini.js'; // ✅ MIGRATED TO GEMINI
+import { createChatCompletion as createOpenAIChatCompletion } from '../services/openai.js';
 import { createVertexChatCompletion, isVertexAIConfigured } from '../services/vertexAI.js';
 import { selectBestModel, explainModelSelection } from '../services/modelSelector.js';
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
 import { extractMemoryFacts } from '../services/gemini.js';
+import {
+  getFallbackModel,
+  logFallbackAttempt,
+  getNextFallbackProvider
+} from '../services/apiFallback.js';
 
 const router = express.Router();
 
