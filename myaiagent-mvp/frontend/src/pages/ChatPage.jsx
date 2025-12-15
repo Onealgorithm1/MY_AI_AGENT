@@ -454,7 +454,7 @@ export default function ChatPage() {
 
   const createNewConversation = async () => {
     try {
-      const response = await conversationsApi.create('New Chat', selectedModel);
+      const response = await conversationsApi.create('New Chat', getCurrentModel());
       queryClient.invalidateQueries(['conversations']);
       return response.data.conversation.id;
     } catch (error) {
