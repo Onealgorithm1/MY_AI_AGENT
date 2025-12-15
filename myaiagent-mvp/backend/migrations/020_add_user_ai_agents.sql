@@ -1,13 +1,22 @@
 -- Migration: Add User AI Agents Management
 -- Description: Allow users to connect multiple AI providers (OpenAI, Anthropic, Google, etc.)
 -- Date: 2025-12-15
+-- NOTE: This migration safely handles both UUID and INTEGER user_id types
 
--- ============================================
--- User AI Agents Table
--- ============================================
-CREATE TABLE IF NOT EXISTS user_ai_agents (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+DO $$
+DECLARE
+  v_user_id_type TEXT;
+BEGIN
+  -- Detect the actual type of users.id column
+  SELECT data_type INTO v_user_id_type
+  FROM information_schema.columns
+  WHERE table_name = 'users' AND column_name = 'id';
+
+  -- Create table with appropriate user_id type
+  IF v_user_id_type = 'uuid' THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS user_ai_agents (
+      id SERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   provider_name VARCHAR(100) NOT NULL, -- openai, anthropic, google, grok, cohere, etc.
   agent_name VARCHAR(255) NOT NULL, -- User-friendly name (e.g., "My GPT-4o", "Claude 3 Opus")
   model VARCHAR(255) NOT NULL, -- Model identifier (gpt-4o, claude-3-opus, gemini-2.5-flash, etc.)
