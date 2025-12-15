@@ -82,6 +82,7 @@ export default function ChatPage() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
+  const initialLoadDoneRef = useRef(false); // Prevent loop in useEffect
   const [editingConvId, setEditingConvId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
