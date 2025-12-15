@@ -981,16 +981,10 @@ export default function ChatPage() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-2 md:px-3 py-2 md:py-1.5 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 touch-manipulation"
-            >
-              <option value="auto">🤖 Auto (AI picks best model)</option>
-              <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash • Latest & Fast</option>
-              <option value="gemini-2.5-pro">🧠 Gemini 2.5 Pro • Most Powerful</option>
-              <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash • Efficient</option>
-            </select>
+            <AIAgentSelector
+              selectedAgentId={selectedAgent?.id}
+              onSelectAgent={handleSelectAgent}
+            />
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
