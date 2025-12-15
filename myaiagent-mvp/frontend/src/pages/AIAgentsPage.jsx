@@ -44,33 +44,45 @@ export default function AIAgentsPage() {
         });
       }
     } catch (err) {
-      let errorMessage = 'Failed to load AI agents';
       const statusCode = err.response?.status;
       const responseData = err.response?.data;
+      let errorMessage = 'Failed to load AI agents';
 
+      // Log full error for debugging
       console.error('❌ Error loading AI agents:', {
         status: statusCode,
         data: responseData,
         message: err.message,
+        fullError: err,
       });
 
+      // Extract error message - handle multiple formats
       if (statusCode === 404) {
-        errorMessage = 'AI agents endpoint not found. Ensure backend is deployed and running. Try refreshing the page.';
+        errorMessage = 'AI agents endpoint not found. Ensure backend is deployed and running.';
       } else if (statusCode === 401) {
         errorMessage = 'Authentication failed. Please log in again.';
-      } else if (statusCode === 500) {
-        // Extract error message from backend response
-        const backendError = typeof responseData?.error === 'string'
-          ? responseData.error
-          : 'Internal server error';
-        errorMessage = `Server error: ${backendError}`;
-      } else if (err.message === 'Network Error') {
-        errorMessage = 'Network error. Check your connection and backend availability.';
-      } else {
-        // Fallback to error message or request message
-        errorMessage = (typeof responseData?.error === 'string' ? responseData.error : null)
-          || (typeof err.message === 'string' ? err.message : null)
-          || 'Failed to load AI agents';
+      } else if (statusCode === 500 || statusCode === 503) {
+        // Try to extract error message from response
+        let backendError = 'Server error';
+
+        if (typeof responseData?.error === 'string') {
+          backendError = responseData.error;
+        } else if (responseData?.message) {
+          backendError = responseData.message;
+        } else if (err.message) {
+          backendError = err.message;
+        }
+
+        errorMessage = `${backendError}. Please try again or contact support if the problem persists.`;
+      } else if (err.code === 'ERR_NETWORK' || err.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof responseData === 'string') {
+        errorMessage = responseData;
+      } else if (responseData && typeof responseData === 'object') {
+        // If response is an object, try to find any message field
+        errorMessage = responseData.error || responseData.message || JSON.stringify(responseData);
       }
 
       setError(errorMessage);
