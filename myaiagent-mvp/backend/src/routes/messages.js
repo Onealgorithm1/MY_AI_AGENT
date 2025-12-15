@@ -728,12 +728,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     // Provide specific error messages based on error type
     let errorMessage = 'Failed to send message';
     const isRateLimitError = error.code === 'RATE_LIMIT' || error.message?.includes('quota') || error.message?.includes('rate limit');
-    const isFallbackError = error.code === 'FALLBACK_REQUIRED';
 
     if (isRateLimitError) {
       errorMessage = `Service temporarily unavailable (rate limit). ${error.message}. Please try again in a moment.`;
-    } else if (isFallbackError) {
-      errorMessage = `All configured AI services failed. Please check your API key configuration.`;
     } else if (error.message?.includes('API key')) {
       errorMessage = `API key not configured. Please add your API key in the admin settings.`;
     }
