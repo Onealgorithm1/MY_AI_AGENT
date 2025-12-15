@@ -59,17 +59,23 @@ export async function getApiKey(provider, keyType = 'project') {
     // Map provider to service_name format
     const serviceNameMap = {
       'openai': 'OpenAI',
+      'openai-api': 'OpenAI',  // Fallback name
       'elevenlabs': 'ElevenLabs',
       'anthropic': 'Anthropic',
       'google': 'Google APIs',
+      'google-search_api': 'Google APIs',  // Google Search API uses Google APIs service
       'gemini': 'Google APIs',  // Gemini uses Google API key
       'stripe': 'Stripe',
-      'samgov': 'SAM.gov'
+      'samgov': 'SAM.gov',
+      'sam-gov': 'SAM.gov',
+      'cohere': 'Cohere',
+      'groq': 'Groq'
     };
-    
-    const serviceName = serviceNameMap[provider.toLowerCase()];
+
+    const normalizedProvider = provider.toLowerCase().trim();
+    const serviceName = serviceNameMap[normalizedProvider];
     if (!serviceName) {
-      console.error(`❌ Unknown provider: ${provider}`);
+      console.warn(`⚠️  Unknown provider: ${provider} - returning null. Available providers: ${Object.keys(serviceNameMap).join(', ')}`);
       return null;
     }
 
