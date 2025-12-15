@@ -2,24 +2,23 @@ import axios from 'axios';
 
 // Determine API base URL based on current hostname
 const getApiBaseUrl = () => {
-  // In production (deployed), always use relative path
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
 
-    // If on production domain, use relative path
-    if (hostname === 'werkules.com' || hostname.includes('werkules')) {
+    // If on werkules.com production domain, use relative path
+    if (hostname === 'werkules.com' || (hostname.includes('werkules') && !hostname.includes('fly.dev'))) {
       console.log('🎯 Detected werkules.com - using /api');
       return '/api';
     }
 
-    // If on Builder.io preview domain, use proxied API (relative path)
-    // The Vite dev server will proxy /api to https://werkules.com
+    // If on fly.dev or Builder.io preview, use full VITE_API_URL
     if (hostname.includes('fly.dev') ||
         hostname.includes('builder.io') ||
         hostname.includes('projects.builder.codes') ||
         hostname.includes('projects.builder.my')) {
-      console.log('🎯 Detected Builder.io preview - using proxied /api (backend: werkules.com)');
-      return '/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://werkules.com/api';
+      console.log('🎯 Detected preview domain - using full API URL:', apiUrl);
+      return apiUrl;
     }
   }
 
