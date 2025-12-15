@@ -88,7 +88,7 @@ export default function AIAgentsPage() {
 
       setAgents(agents.map(a =>
         a.id === agentId
-          ? { ...a, status: response.status, errorMessage: response.error }
+          ? { ...a, status: response.data.status, errorMessage: response.data.error }
           : a
       ));
     } catch (err) {
