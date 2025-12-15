@@ -241,13 +241,28 @@ export default function ChatPage() {
 
   const handleVoiceChange = async (voiceId) => {
     setSelectedVoice(voiceId);
-    
+
     try {
       await authApi.updatePreferences({ tts_voice_id: voiceId });
     } catch (error) {
       console.error('Failed to save voice preference:', error);
       toast.error('Failed to save voice preference');
     }
+  };
+
+  // Get the current model to use (from selected agent or fallback)
+  const getCurrentModel = () => {
+    if (selectedAgent) {
+      return selectedAgent.model;
+    }
+    return selectedModel;
+  };
+
+  // Handle agent selection
+  const handleSelectAgent = (agent) => {
+    setSelectedAgent(agent);
+    // Also update the selectedModel for fallback compatibility
+    setSelectedModel(agent.model);
   };
 
   const handleAutoPlayToggle = async (enabled) => {
