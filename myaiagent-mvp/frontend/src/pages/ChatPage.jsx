@@ -369,6 +369,7 @@ export default function ChatPage() {
           'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
         },
         credentials: 'include', // SECURITY: Send cookies (JWT)
+        signal: abortController.signal, // SECURITY: Timeout protection
         body: JSON.stringify({
           conversationId,
           content: userMessage.content,
