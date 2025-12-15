@@ -628,9 +628,10 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  // Auto-load first conversation on page load
+  // Auto-load first conversation on page load (prevent loop with ref)
   useEffect(() => {
-    if (conversations.length > 0 && !currentConversation) {
+    if (conversations.length > 0 && !currentConversation && !initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
       const firstConv = conversations[0];
       loadConversation(firstConv.id);
     }
