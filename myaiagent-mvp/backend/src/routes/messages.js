@@ -14,7 +14,6 @@ import { selectBestModel, explainModelSelection } from '../services/modelSelecto
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
 import { extractMemoryFacts } from '../services/gemini.js';
-import { isRateLimitError, hasApiKeyForProvider } from '../services/apiFallback.js';
 
 const router = express.Router();
 
@@ -32,34 +31,6 @@ async function callAPIByProvider(provider, messages, model, stream = false, func
       return await createOpenAIChatCompletion(messages, model, stream, functions);
     default:
       throw new Error(`Unsupported provider: ${provider}`);
-  }
-}
-
-/**
- * Call API with automatic fallback on rate limit errors
- * Tries Gemini first, falls back to OpenAI if rate limited
- */
-async function callAPIWithFallback(messages, primaryModel, fallbackModel, stream = false, functions = null) {
-  try {
-    console.log(`🔵 Attempting API call with ${primaryModel}...`);
-    return await callAPIByProvider('gemini', messages, primaryModel, stream, functions);
-  } catch (error) {
-    if (isRateLimitError(error)) {
-      console.warn(`⚠️  Gemini rate limited (${error.status || 429}). Attempting fallback to OpenAI...`);
-
-      // Check if OpenAI key is available
-      const hasOpenAIKey = await hasApiKeyForProvider('openai');
-      if (!hasOpenAIKey) {
-        console.error('❌ OpenAI API key not available for fallback');
-        throw new Error('Gemini API rate limited and OpenAI API key not configured. Please configure OpenAI in admin settings.');
-      }
-
-      console.log(`🟡 Falling back to OpenAI with ${fallbackModel}...`);
-      return await callAPIByProvider('openai', messages, fallbackModel, stream, functions);
-    }
-
-    // If not a rate limit error, throw as-is
-    throw error;
   }
 }
 
@@ -434,7 +405,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (useVertexAI) {
         completion = await createVertexChatCompletion(messages, vertexModel, true, true);
       } else {
-        completion = await callAPIWithFallback(messages, selectedModel, 'gpt-4o-mini', true, functionsToPass);
+        completion = await callAPIByProvider('gemini', messages, selectedModel, true, functionsToPass);
       }
 
       completion.on('data', (chunk) => {
@@ -477,26 +448,6 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         console.log(`✅ Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
         tokensUsed = estimateTokens(fullResponse || functionArgs);
 
-        // === ✅ FALLBACK: Handle empty responses in streaming ===
-        if (!functionCall && (!fullResponse || fullResponse.trim() === '')) {
-          console.warn('⚠️ AI returned empty streaming response, using fallback message');
-          const fallbackMessage = "I apologize, but I didn't generate a proper response. Could you please rephrase your question or provide more details?";
-
-          const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true, fallback: true }) : JSON.stringify({ fallback: true });
-          await query(
-            `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [conversationId, 'assistant', fallbackMessage, selectedModel, tokensUsed, metadata]
-          );
-
-          res.write(`data: ${JSON.stringify({
-            content: fallbackMessage,
-            warning: 'Empty response detected',
-            done: true
-          })}\n\n`);
-          res.end();
-          return;
-        }
 
         // Handle function call execution
         if (functionCall && functionCall.name) {
@@ -613,30 +564,12 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (useVertexAI) {
         completion = await createVertexChatCompletion(messages, vertexModel, false, true);
       } else {
-        completion = await callAPIWithFallback(messages, selectedModel, 'gpt-4o-mini', false, functionsToPass);
+        completion = await callAPIByProvider('gemini', messages, selectedModel, false, functionsToPass);
       }
 
       const responseMessage = completion.choices[0].message;
       const tokensUsed = completion.usage.total_tokens;
 
-      // === ✅ FALLBACK: Handle empty responses ===
-      if (!responseMessage.function_call && (!responseMessage.content || responseMessage.content.trim() === '')) {
-        console.warn('⚠️ AI returned empty response, using fallback message');
-        const fallbackMessage = "I apologize, but I didn't generate a proper response. Could you please rephrase your question or provide more details?";
-
-        const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true, fallback: true }) : JSON.stringify({ fallback: true });
-        await query(
-          `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING *`,
-          [conversationId, 'assistant', fallbackMessage, selectedModel, tokensUsed, metadata]
-        );
-
-        return res.json({
-          message: fallbackMessage,
-          warning: 'Empty response detected, fallback used',
-        });
-      }
 
       // Check if AI wants to call a function
       if (responseMessage.function_call) {

@@ -2,7 +2,37 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EventEmitter } from 'events';
 import { getApiKey } from '../utils/apiKeys.js';
 import { monitorExternalApi } from '../middleware/performanceMonitoring.js';
-import { isRateLimitError, isAuthError } from './apiFallback.js';
+
+// Error checking utilities
+function isRateLimitError(error) {
+  if (!error) return false;
+  const message = error.message || '';
+  const status = error.status || 0;
+  return (
+    status === 429 ||
+    status === 503 ||
+    message.includes('quota') ||
+    message.includes('rate limit') ||
+    message.includes('429') ||
+    message.includes('503') ||
+    message.includes('Too Many Requests') ||
+    message.includes('Service Unavailable')
+  );
+}
+
+function isAuthError(error) {
+  if (!error) return false;
+  const message = error.message || '';
+  const status = error.status || 0;
+  return (
+    status === 401 ||
+    status === 403 ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden') ||
+    message.includes('invalid api key') ||
+    message.includes('authentication')
+  );
+}
 
 // Initialize Gemini client (will be set when API key is available)
 let geminiClient = null;

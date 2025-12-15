@@ -48,6 +48,7 @@ import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import AIAgentSelector from '../components/AIAgentSelector';
+import ModelUsageDisplay from '../components/ModelUsageDisplay';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
@@ -354,20 +355,27 @@ export default function ChatPage() {
     try {
       // Get API base URL - use relative path for Vite proxy
       const apiUrl = '/api';
-      
-      // Get CSRF token for the request
-      const csrfToken = getCsrfToken();
+
+      // Ensure CSRF token is fetched and available
+      let csrfToken = getCsrfToken();
       if (!csrfToken) {
         console.warn('⚠️ CSRF token missing, fetching...');
-        await fetchCsrfToken();
+        csrfToken = await fetchCsrfToken();
+        if (!csrfToken) {
+          toast.error('Security token failed to load. Please refresh the page.');
+          setStreamingMessage('');
+          setIsSending(false);
+          setIsThinking(false);
+          return;
+        }
       }
-      
+
       // Send message with streaming
       const response = await fetch(`${apiUrl}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
+          'x-csrf-token': csrfToken, // SECURITY: CSRF protection (lowercase)
         },
         credentials: 'include', // SECURITY: Send cookies (JWT)
         signal: abortController.signal, // SECURITY: Timeout protection
@@ -1073,6 +1081,19 @@ export default function ChatPage() {
                 </label>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Model Usage Display */}
+        <div className="px-4 md:px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-3xl mx-auto">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+              Model Selection &amp; Metrics
+            </h3>
+            <ModelUsageDisplay
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+            />
           </div>
         </div>
 
