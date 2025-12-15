@@ -1,4 +1,5 @@
 import express from 'express';
+import express from 'express';
 import { query } from '../utils/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkRateLimit } from '../middleware/rateLimit.js';
@@ -14,7 +15,7 @@ import { selectBestModel, explainModelSelection } from '../services/modelSelecto
 import { UI_FUNCTIONS, executeUIFunction } from '../services/uiFunctions.js';
 import { autoNameConversation } from './conversations.js';
 import { extractMemoryFacts } from '../services/gemini.js';
-// Fallback service removed - using direct API calls only
+import { isRateLimitError, hasApiKeyForProvider } from '../services/apiFallback.js';
 
 const router = express.Router();
 
