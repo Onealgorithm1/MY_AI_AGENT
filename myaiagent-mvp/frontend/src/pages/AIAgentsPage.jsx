@@ -156,8 +156,18 @@ export default function AIAgentsPage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Error State */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
-            {error}
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="text-red-700 dark:text-red-400">
+                <p className="font-medium">{error}</p>
+              </div>
+              <button
+                onClick={loadData}
+                className="ml-4 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors whitespace-nowrap"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 
