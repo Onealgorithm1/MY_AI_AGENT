@@ -2,9 +2,39 @@ import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import { getApiKey } from '../utils/apiKeys.js';
-import { isRateLimitError, isAuthError } from './apiFallback.js';
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
+// Error checking utilities
+function isRateLimitError(error) {
+  if (!error) return false;
+  const message = error.message || '';
+  const status = error.status || 0;
+  return (
+    status === 429 ||
+    status === 503 ||
+    message.includes('quota') ||
+    message.includes('rate limit') ||
+    message.includes('429') ||
+    message.includes('503') ||
+    message.includes('Too Many Requests') ||
+    message.includes('Service Unavailable')
+  );
+}
+
+function isAuthError(error) {
+  if (!error) return false;
+  const message = error.message || '';
+  const status = error.status || 0;
+  return (
+    status === 401 ||
+    status === 403 ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden') ||
+    message.includes('invalid api key') ||
+    message.includes('authentication')
+  );
+}
 
 // Chat completion with streaming and function calling
 export async function createChatCompletion(messages, model = 'gpt-4o', stream = false, functions = null) {
