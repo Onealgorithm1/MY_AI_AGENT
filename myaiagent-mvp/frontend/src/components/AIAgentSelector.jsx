@@ -31,7 +31,11 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
       let errorMsg = 'Failed to load AI agents';
 
       if (err.response?.status === 404) {
-        errorMsg = 'AI agents endpoint not found. Backend needs to be deployed.';
+        errorMsg = 'AI agents endpoint not accessible. Backend may need to be deployed. Go to /ai-agents to configure.';
+        console.error('404 - AI agents endpoint not found', {
+          endpoint: '/api/ai-agents/my-agents',
+          fix: 'Run: cd myaiagent-mvp && flyctl deploy --no-cache',
+        });
       } else if (err.response?.status === 401) {
         errorMsg = 'Not authenticated. Please log in again.';
       } else if (err.response?.data?.error) {
