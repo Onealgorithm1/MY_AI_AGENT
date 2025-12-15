@@ -710,8 +710,6 @@ async function initializeAIAgentTables() {
 
       // Read and execute the migration file
       try {
-        const fs = require('fs');
-        const path = require('path');
         const migrationPath = path.join(__dirname, '../../migrations/020_add_user_ai_agents.sql');
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
