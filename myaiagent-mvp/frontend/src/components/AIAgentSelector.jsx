@@ -28,11 +28,23 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
         onSelectAgent(defaultAgent);
       }
     } catch (err) {
-      const errorMsg = err.response?.status === 404
-        ? 'AI agents endpoint not found. Please check server configuration.'
-        : err.response?.data?.error || err.message || 'Failed to load AI agents';
+      let errorMsg = 'Failed to load AI agents';
+
+      if (err.response?.status === 404) {
+        errorMsg = 'AI agents endpoint not found. Backend needs to be deployed.';
+      } else if (err.response?.status === 401) {
+        errorMsg = 'Not authenticated. Please log in again.';
+      } else if (err.response?.data?.error) {
+        errorMsg = err.response.data.error;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+
       setError(errorMsg);
-      console.warn('Failed to load AI agents:', { status: err.response?.status, message: errorMsg });
+      console.warn('Failed to load AI agents:', {
+        status: err.response?.status,
+        message: errorMsg,
+      });
     } finally {
       setLoading(false);
     }
