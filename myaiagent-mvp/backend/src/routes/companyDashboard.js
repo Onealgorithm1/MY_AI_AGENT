@@ -329,10 +329,13 @@ Format your response as JSON with this structure:
       false
     );
 
+    // Extract the text content from the OpenAI-compatible response format
+    const aiText = aiResponse.choices[0]?.message?.content || '';
+
     let analysis;
     try {
       // Try to parse as JSON
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
       } else {
@@ -341,7 +344,7 @@ Format your response as JSON with this structure:
     } catch (parseError) {
       // If parsing fails, structure the response manually
       analysis = {
-        summary: aiResponse.substring(0, 500),
+        summary: aiText.substring(0, 500),
         priorityActions: recommendations.strategic.map((rec, i) => ({
           priority: i + 1,
           title: rec.title,
