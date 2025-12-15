@@ -721,23 +721,58 @@ async function initializeAIAgentTables() {
     console.log('✅ AI Agent tables already exist');
     return true;
   } catch (error) {
-    if (error.message?.includes('does not exist')) {
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
       console.warn('⚠️  AI Agent tables not found, attempting to initialize...');
 
       // Read and execute the migration file
       try {
         const migrationPath = path.join(__dirname, '../../migrations/020_add_user_ai_agents.sql');
+
+        if (!fs.existsSync(migrationPath)) {
+          console.error('❌ Migration file not found at:', migrationPath);
+          return false;
+        }
+
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-        await query(migrationSQL);
+        // Split SQL into individual statements and execute each one
+        // This is safer than executing the entire file at once
+        const statements = migrationSQL
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+        console.log(`📝 Executing ${statements.length} migration statements...`);
+
+        for (const statement of statements) {
+          try {
+            await query(statement);
+          } catch (stmtError) {
+            // Ignore "already exists" errors (table/index already exists)
+            if (stmtError.message?.includes('already exists') || stmtError.code === '42P07') {
+              console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
+            } else if (stmtError.message?.includes('already exists as index') || stmtError.code === '42710') {
+              console.log(`⏭️  Skipped (index already exists): ${statement.substring(0, 50)}...`);
+            } else {
+              // Re-throw other errors
+              throw stmtError;
+            }
+          }
+        }
+
         console.log('✅ AI Agent tables initialized successfully');
         return true;
       } catch (migrationError) {
         console.error('❌ Failed to initialize AI Agent tables:', migrationError.message);
+        console.error('   Error code:', migrationError.code);
+        console.error('   Full error:', migrationError);
         return false;
       }
     }
-    throw error;
+
+    // Don't throw, just log and return false for other errors
+    console.error('❌ Unexpected error checking AI Agent tables:', error.message);
+    return false;
   }
 }
 
