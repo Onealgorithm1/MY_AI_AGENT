@@ -38,6 +38,14 @@ const SERVICE_TO_PROVIDER_MAP = {
 // Get available AI providers based on configured API keys
 router.get('/available-providers', async (req, res) => {
   try {
+    // Ensure AI Agent tables exist
+    const tablesInitialized = await initializeAIAgentTables();
+    if (!tablesInitialized) {
+      return res.status(500).json({
+        error: 'Database initialization failed. Contact your administrator.'
+      });
+    }
+
     // Get all configured API services
     const secretsResult = await query(
       `SELECT DISTINCT service_name FROM api_secrets
