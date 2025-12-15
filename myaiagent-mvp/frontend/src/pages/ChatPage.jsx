@@ -355,20 +355,27 @@ export default function ChatPage() {
     try {
       // Get API base URL - use relative path for Vite proxy
       const apiUrl = '/api';
-      
-      // Get CSRF token for the request
-      const csrfToken = getCsrfToken();
+
+      // Ensure CSRF token is fetched and available
+      let csrfToken = getCsrfToken();
       if (!csrfToken) {
         console.warn('⚠️ CSRF token missing, fetching...');
-        await fetchCsrfToken();
+        csrfToken = await fetchCsrfToken();
+        if (!csrfToken) {
+          toast.error('Security token failed to load. Please refresh the page.');
+          setStreamingMessage('');
+          setIsSending(false);
+          setIsThinking(false);
+          return;
+        }
       }
-      
+
       // Send message with streaming
       const response = await fetch(`${apiUrl}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
+          'x-csrf-token': csrfToken, // SECURITY: CSRF protection (lowercase)
         },
         credentials: 'include', // SECURITY: Send cookies (JWT)
         signal: abortController.signal, // SECURITY: Timeout protection
