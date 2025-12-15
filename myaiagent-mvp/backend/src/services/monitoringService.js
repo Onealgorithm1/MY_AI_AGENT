@@ -491,29 +491,57 @@ class MonitoringService {
   async detectWebSocketAnomalies(endpoint = null, timeRange = '15 minutes') {
     try {
       const anomalies = [];
-      
+
       // Query WebSocket connection metrics
       const endpoints = endpoint ? [endpoint] : ['/stt-stream', '/voice', '/ws/telemetry'];
-      
+
+      // Check if table exists first
+      try {
+        await pool.query(`SELECT 1 FROM system_performance_metrics LIMIT 1`);
+      } catch (error) {
+        if (error.code === '42P01') { // Table does not exist
+          console.warn('⚠️  system_performance_metrics table does not exist yet. Please run migrations.');
+          return {
+            hasAnomaly: false,
+            anomalies: [],
+            endpointsAnalyzed: 0
+          };
+        }
+        throw error;
+      }
+
       for (const wsEndpoint of endpoints) {
         // Get connection attempts (both success and failure)
-        const connectionsQuery = await pool.query(
-          `SELECT 
-            COUNT(*) as total_attempts,
-            SUM(CASE WHEN tags->>'success' = 'true' THEN 1 ELSE 0 END) as successful,
-            SUM(CASE WHEN tags->>'success' = 'false' THEN 1 ELSE 0 END) as failed
-           FROM system_performance_metrics
-           WHERE metric_name = 'websocket_connection'
-             AND tags->>'endpoint' = $1
-             AND timestamp >= NOW() - INTERVAL '${timeRange}'`,
-          [wsEndpoint]
-        );
+        let connectionsQuery;
+        try {
+          connectionsQuery = await pool.query(
+            `SELECT
+              COUNT(*) as total_attempts,
+              SUM(CASE WHEN tags->>'success' = 'true' THEN 1 ELSE 0 END) as successful,
+              SUM(CASE WHEN tags->>'success' = 'false' THEN 1 ELSE 0 END) as failed
+             FROM system_performance_metrics
+             WHERE metric_name = 'websocket_connection'
+               AND tags->>'endpoint' = $1
+               AND timestamp >= NOW() - INTERVAL '${timeRange}'`,
+            [wsEndpoint]
+          );
+        } catch (error) {
+          if (error.code === '42703') { // Column does not exist
+            console.warn(`⚠️  Missing columns in system_performance_metrics. Please run migrations.`);
+            continue;
+          }
+          throw error;
+        }
         
+        if (!connectionsQuery || !connectionsQuery.rows || connectionsQuery.rows.length === 0) {
+          continue;
+        }
+
         const connectionStats = connectionsQuery.rows[0];
         const totalAttempts = parseInt(connectionStats.total_attempts) || 0;
         const successful = parseInt(connectionStats.successful) || 0;
         const failed = parseInt(connectionStats.failed) || 0;
-        
+
         if (totalAttempts === 0) continue; // Skip if no data
         
         const errorRate = (failed / totalAttempts) * 100;
