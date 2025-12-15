@@ -1077,6 +1077,19 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {/* Model Usage Display */}
+        <div className="px-4 md:px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-3xl mx-auto">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+              Model Selection &amp; Metrics
+            </h3>
+            <ModelUsageDisplay
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+            />
+          </div>
+        </div>
+
         {/* Conversation Insights */}
         {showInsights && currentConversation && (
           <div className="px-4 pt-4">
