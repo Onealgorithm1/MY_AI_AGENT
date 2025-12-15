@@ -47,16 +47,10 @@ BEGIN
   END IF;
 
   -- Create indexes
-  CREATE INDEX IF NOT EXISTS idx_capability_gaps_user ON capability_gaps(user_id);
-  CREATE INDEX IF NOT EXISTS idx_capability_gaps_type ON capability_gaps(gap_type);
-  CREATE INDEX IF NOT EXISTS idx_capability_gaps_resolved ON capability_gaps(resolved);
-  CREATE INDEX IF NOT EXISTS idx_capability_gaps_occurrence ON capability_gaps(occurrence_count DESC);
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_capability_gaps_user ON capability_gaps(user_id)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_capability_gaps_type ON capability_gaps(gap_type)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_capability_gaps_resolved ON capability_gaps(resolved)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_capability_gaps_occurrence ON capability_gaps(occurrence_count DESC)';
 
   RAISE NOTICE 'Capability gaps table created successfully with user_id type: %', v_user_id_type;
 END $$;
-
--- Comments for documentation
-COMMENT ON TABLE IF EXISTS capability_gaps IS 'Tracks AI capability limitations and missing features for continuous improvement';
-COMMENT ON COLUMN IF EXISTS capability_gaps.gap_type IS 'Type of gap: missing_function, missing_access, missing_integration, or missing_data';
-COMMENT ON COLUMN IF EXISTS capability_gaps.occurrence_count IS 'Number of times this gap has been encountered';
-COMMENT ON COLUMN IF EXISTS capability_gaps.resolved IS 'Whether this gap has been addressed/implemented';
