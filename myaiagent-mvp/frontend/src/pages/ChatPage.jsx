@@ -79,6 +79,7 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const [inputMessage, setInputMessage] = useState('');
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const messagesEndRef = useRef(null);
   const [editingConvId, setEditingConvId] = useState(null);
