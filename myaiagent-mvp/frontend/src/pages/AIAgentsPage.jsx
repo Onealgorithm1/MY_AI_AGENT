@@ -45,25 +45,35 @@ export default function AIAgentsPage() {
       }
     } catch (err) {
       let errorMessage = 'Failed to load AI agents';
+      const statusCode = err.response?.status;
+      const responseData = err.response?.data;
 
-      if (err.response?.status === 404) {
+      console.error('❌ Error loading AI agents:', {
+        status: statusCode,
+        data: responseData,
+        message: err.message,
+      });
+
+      if (statusCode === 404) {
         errorMessage = 'AI agents endpoint not found. Ensure backend is deployed and running. Try refreshing the page.';
-        console.error('404 Error - AI agents endpoint not registered.', {
-          endpoint: '/api/ai-agents',
-          status: 404,
-          message: 'Run: flyctl deploy --no-cache && flyctl restart',
-          timestamp: new Date().toISOString(),
-        });
-      } else if (err.response?.status === 401) {
+      } else if (statusCode === 401) {
         errorMessage = 'Authentication failed. Please log in again.';
-      } else if (err.response?.status === 500) {
-        errorMessage = `Server error: ${err.response?.data?.error || 'Internal server error'}`;
+      } else if (statusCode === 500) {
+        // Extract error message from backend response
+        const backendError = typeof responseData?.error === 'string'
+          ? responseData.error
+          : 'Internal server error';
+        errorMessage = `Server error: ${backendError}`;
+      } else if (err.message === 'Network Error') {
+        errorMessage = 'Network error. Check your connection and backend availability.';
       } else {
-        errorMessage = err.response?.data?.error || err.message || 'Failed to load AI agents';
+        // Fallback to error message or request message
+        errorMessage = (typeof responseData?.error === 'string' ? responseData.error : null)
+          || (typeof err.message === 'string' ? err.message : null)
+          || 'Failed to load AI agents';
       }
 
       setError(errorMessage);
-      console.error('Error loading AI agents:', { status: err.response?.status, message: errorMessage });
     } finally {
       setLoading(false);
     }
