@@ -66,6 +66,16 @@ The migrations will now execute in this sequence:
 ## Files Modified
 
 ### Backend Code
+
+#### Critical Fixes
+- `myaiagent-mvp/backend/src/routes/messages.js` ⭐ **API FALLBACK FIX**
+  - Added imports for OpenAI provider and fallback service
+  - Function: `callAPIByProvider()` - New helper to call different providers
+  - Added retry loop for streaming responses with fallback handling
+  - Added retry loop for non-streaming responses with fallback handling
+  - Enhanced error handling with specific error messages
+  - Now properly catches FALLBACK_REQUIRED errors and retries with OpenAI
+
 - `myaiagent-mvp/backend/src/routes/aiAgents.js`
   - Function: `initializeAIAgentTables()`
   - Changes: Improved migration execution logic with DO block handling
