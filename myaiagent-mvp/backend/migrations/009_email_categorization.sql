@@ -5,7 +5,7 @@
 -- Table 1: Email Metadata with AI-Generated Tags and Analysis
 CREATE TABLE IF NOT EXISTS email_metadata (
   id SERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   
   -- Gmail identifiers
   gmail_message_id VARCHAR(255) NOT NULL,
@@ -58,7 +58,7 @@ CREATE INDEX idx_email_metadata_thread ON email_metadata(thread_id);
 -- Table 2: Email Processing Queue (for async background processing)
 CREATE TABLE IF NOT EXISTS email_processing_queue (
   id SERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   gmail_message_id VARCHAR(255) NOT NULL,
   
   -- Email content for processing
