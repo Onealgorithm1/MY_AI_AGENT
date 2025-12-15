@@ -838,28 +838,23 @@ async function initializeAIAgentTables() {
 
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-        // Split SQL into individual statements and execute each one
-        // This is safer than executing the entire file at once
-        const statements = migrationSQL
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        // Execute the entire migration file as a single transaction
+        // This properly handles DO blocks and other complex SQL structures
+        console.log('📝 Executing migration file...');
 
-        console.log(`📝 Executing ${statements.length} migration statements...`);
-
-        for (const statement of statements) {
-          try {
-            await query(statement);
-          } catch (stmtError) {
-            // Ignore "already exists" errors (table/index already exists)
-            if (stmtError.message?.includes('already exists') || stmtError.code === '42P07') {
-              console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
-            } else if (stmtError.message?.includes('already exists as index') || stmtError.code === '42710') {
-              console.log(`⏭️  Skipped (index already exists): ${statement.substring(0, 50)}...`);
-            } else {
-              // Re-throw other errors
-              throw stmtError;
-            }
+        try {
+          await query(migrationSQL);
+        } catch (stmtError) {
+          // Ignore "already exists" errors (table/index/column already exists)
+          if (stmtError.message?.includes('already exists') || stmtError.code === '42P07') {
+            console.log(`⏭️  Skipped: Some objects already exist (this is normal)`);
+          } else if (stmtError.message?.includes('already exists as index') || stmtError.code === '42710') {
+            console.log(`⏭️  Skipped: Indexes already exist (this is normal)`);
+          } else if (stmtError.message?.includes('Duplicate key value') || stmtError.code === '23505') {
+            console.log(`⏭️  Skipped: Duplicate values on INSERT (this is normal for provider data)`);
+          } else {
+            // Re-throw other errors
+            throw stmtError;
           }
         }
 
