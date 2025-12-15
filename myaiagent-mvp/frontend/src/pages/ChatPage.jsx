@@ -325,7 +325,7 @@ export default function ChatPage() {
   }, []);
 
 
-  // Send message
+  // Send message with timeout prevention
   const sendMessage = async () => {
     if (!inputMessage.trim() || isSending) return;
 
@@ -343,6 +343,10 @@ export default function ChatPage() {
     setInputMessage('');
     setIsSending(true);
     setIsThinking(true); // VUI: Show "Thinking" state
+
+    // Create AbortController for request timeout (60 seconds max)
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 60000);
     setStreamingMessage('●●●');
     setStreamingContent('');
 
