@@ -113,29 +113,54 @@ export default function ConnectAIAgentModal({ providers = [], onClose, onConnect
         <div className="p-6">
           {step === 'provider' ? (
             // Provider Selection
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {providers.map(provider => (
-                <button
-                  key={provider.providerName}
-                  onClick={() => handleProviderSelect(provider.providerName)}
-                  className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-all text-left group"
-                >
-                  {provider.logoUrl && (
-                    <img
-                      src={provider.logoUrl}
-                      alt={provider.displayName}
-                      className="w-10 h-10 mb-3 group-hover:scale-110 transition-transform"
-                    />
-                  )}
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {provider.displayName}
+            <>
+              {providers.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">⚙️</div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    No AI Providers Configured
                   </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    {provider.authType === 'api_key' ? 'API Key' : 'OAuth'}
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    To connect AI providers, you need to add API keys in the Admin Settings.
                   </p>
-                </button>
-              ))}
-            </div>
+                  <a
+                    href="/admin"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Admin Settings
+                  </a>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {providers.map(provider => (
+                    <button
+                      key={provider.providerName}
+                      onClick={() => handleProviderSelect(provider.providerName)}
+                      className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-all text-left group"
+                    >
+                      {provider.logoUrl && (
+                        <img
+                          src={provider.logoUrl}
+                          alt={provider.displayName}
+                          className="w-10 h-10 mb-3 group-hover:scale-110 transition-transform"
+                        />
+                      )}
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {provider.displayName}
+                      </h3>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        {provider.authType === 'api_key' ? 'API Key' : 'OAuth'}
+                      </p>
+                      {provider.hasApiKey && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                          ✓ API Key Configured
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             // Configuration Form
             <form onSubmit={handleSubmit} className="space-y-6">
