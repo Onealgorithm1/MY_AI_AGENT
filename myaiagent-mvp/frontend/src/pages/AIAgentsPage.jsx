@@ -16,7 +16,7 @@ export default function AIAgentsPage() {
 
   const loadServices = async () => {
     try {
-      setLoading(false);
+      setLoading(true);
       setError(null);
 
       const response = await api.get('/ai-agents/configured-services');
