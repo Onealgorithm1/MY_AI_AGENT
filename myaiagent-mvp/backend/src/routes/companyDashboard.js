@@ -248,6 +248,8 @@ router.post('/ai-eligibility-analysis', authenticate, async (req, res) => {
   try {
     const { createChatCompletion } = await import('../services/gemini.js');
 
+    console.log('Starting AI eligibility analysis...');
+
     // Get company profile and readiness
     const profile = companyProfile.getCompanyProfile();
     const readiness = companyProfile.analyzeCompanyReadiness();
@@ -323,14 +325,29 @@ Format your response as JSON with this structure:
 }`;
 
     // Call Gemini for AI analysis
+    console.log('Calling Gemini API for analysis...');
     const aiResponse = await createChatCompletion(
       [{ role: 'user', content: prompt }],
       'gemini-2.5-flash',
       false
     );
 
+    console.log('Gemini response received, processing...');
+
     // Extract the text content from the OpenAI-compatible response format
+    if (!aiResponse || !aiResponse.choices || !aiResponse.choices[0]) {
+      console.error('Invalid response format:', aiResponse);
+      throw new Error('Invalid response format from Gemini API');
+    }
+
     const aiText = aiResponse.choices[0]?.message?.content || '';
+
+    if (!aiText) {
+      console.error('Empty content in Gemini response');
+      throw new Error('Gemini API returned empty response');
+    }
+
+    console.log('Attempting to parse AI response as JSON...');
 
     let analysis;
     try {
@@ -338,10 +355,12 @@ Format your response as JSON with this structure:
       const jsonMatch = aiText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
+        console.log('Successfully parsed AI response');
       } else {
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
+      console.warn('Failed to parse JSON, using fallback structure:', parseError.message);
       // If parsing fails, structure the response manually
       analysis = {
         summary: aiText.substring(0, 500),
@@ -370,6 +389,8 @@ Format your response as JSON with this structure:
       };
     }
 
+    console.log('Analysis complete, sending response');
+
     res.json({
       success: true,
       analysis,
@@ -377,7 +398,11 @@ Format your response as JSON with this structure:
       recommendations: analysis.priorityActions || []
     });
   } catch (error) {
-    console.error('AI eligibility analysis error:', error);
+    console.error('AI eligibility analysis error:', {
+      message: error.message,
+      stack: error.stack,
+      type: error.constructor.name
+    });
 
     // Provide specific error messages for common issues
     let errorMessage = error.message || 'Failed to run AI analysis';
@@ -385,6 +410,10 @@ Format your response as JSON with this structure:
       errorMessage = 'Gemini API key is not configured. Please add GOOGLE_API_KEY to your environment variables.';
     } else if (errorMessage.includes('safety')) {
       errorMessage = 'Response was blocked by Gemini safety filters. Please try again with a different prompt.';
+    } else if (errorMessage.includes('Empty content') || errorMessage.includes('empty response')) {
+      errorMessage = 'Gemini API returned an empty response. Please try again.';
+    } else if (errorMessage.includes('Invalid response')) {
+      errorMessage = 'Received an invalid response from Gemini API. Please try again.';
     }
 
     res.status(500).json({
