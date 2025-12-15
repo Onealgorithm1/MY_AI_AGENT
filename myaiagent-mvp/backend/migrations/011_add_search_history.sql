@@ -2,11 +2,11 @@
 -- Tracks web search queries and results for audit and analytics
 
 CREATE TABLE IF NOT EXISTS search_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   query TEXT NOT NULL,
   results_count INTEGER NOT NULL DEFAULT 0,
-  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
   searched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

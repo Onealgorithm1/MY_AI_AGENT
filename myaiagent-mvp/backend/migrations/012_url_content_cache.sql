@@ -3,8 +3,8 @@
 
 -- Table for URL content cache
 CREATE TABLE IF NOT EXISTS url_cache (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   content JSONB NOT NULL,
   metadata JSONB DEFAULT '{}'::jsonb,
@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS url_cache (
 
 -- Table for URL summaries
 CREATE TABLE IF NOT EXISTS url_summaries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   summary TEXT NOT NULL,
   analysis JSONB DEFAULT '{}'::jsonb,
-  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

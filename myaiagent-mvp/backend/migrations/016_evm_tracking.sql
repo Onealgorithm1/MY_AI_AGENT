@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS evm_wbs (
   actual_cost DECIMAL(15, 2) DEFAULT 0,
 
   -- Responsible Party
-  responsible_user_id UUID REFERENCES users(id),
+  responsible_user_id INTEGER REFERENCES users(id),
 
   -- Status
   status VARCHAR(50) DEFAULT 'Not Started', -- Not Started, In Progress, Completed

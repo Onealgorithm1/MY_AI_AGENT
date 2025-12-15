@@ -30,7 +30,7 @@ CREATE INDEX idx_users_role ON users(role);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS conversations (
   id SERIAL PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255),
   description TEXT,
   model VARCHAR(100) DEFAULT 'gemini-2.5-flash',
@@ -95,13 +95,13 @@ CREATE INDEX idx_api_secrets_active ON api_secrets(is_active);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS memory_facts (
   id SERIAL PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
   fact_text TEXT NOT NULL,
   fact_type VARCHAR(100),
   relevance_score NUMERIC DEFAULT 0.5,
   approved BOOLEAN DEFAULT FALSE,
-  approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   source_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP
@@ -136,7 +136,7 @@ CREATE INDEX idx_user_preferences_user ON user_preferences(user_id);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS search_history (
   id SERIAL PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   query TEXT NOT NULL,
   result_count INTEGER,
   clicked_result_index INTEGER,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS system_config (
   config_value TEXT,
   description TEXT,
   is_sensitive BOOLEAN DEFAULT FALSE,
-  updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -168,7 +168,7 @@ CREATE INDEX idx_system_config_key ON system_config(config_key);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS activity_logs (
   id SERIAL PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   action VARCHAR(255) NOT NULL,
   resource_type VARCHAR(100),
   resource_id INTEGER,

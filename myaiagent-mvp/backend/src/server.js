@@ -472,22 +472,34 @@ async function initializeDatabaseMigrationsOnStartup() {
         await query(sql);
         successful++;
       } catch (error) {
-        // Skip if tables/objects already exist
-        if (error.code === '42P07' || error.code === '42710' ||
+        // Skip idempotent errors (object already exists)
+        const isIdempotentError = error.code === '42P07' || error.code === '42710' ||
+            error.code === '42701' || // duplicate column
             error.message?.includes('already exists') ||
-            error.message?.includes('duplicate key')) {
+            error.message?.includes('duplicate key') ||
+            error.message?.includes('migration is disabled'); // our custom skip marker
+
+        if (isIdempotentError) {
           skipped++;
         } else {
-          console.warn(`⚠️  Migration issue with ${file}:`, error.message);
-          // Don't fail startup, continue with next migration
+          // Log the full error for debugging
+          console.error(`❌ Critical migration failure in ${file}:`);
+          console.error(`   Error Code: ${error.code}`);
+          console.error(`   Message: ${error.message}`);
+          if (error.detail) console.error(`   Detail: ${error.detail}`);
+          if (error.hint) console.error(`   Hint: ${error.hint}`);
+
+          // Throw error to fail startup - migrations must succeed
+          throw new Error(`Database migration failed in ${file}: ${error.message}`);
         }
       }
     }
 
     console.log(`✅ Database migrations completed (${successful} executed, ${skipped} skipped)`);
   } catch (error) {
-    console.warn('⚠️  Database migration warning:', error.message);
-    // Don't fail startup if migrations fail
+    console.error('❌ Database migrations FAILED - server cannot start:', error.message);
+    // Re-throw to prevent server startup with inconsistent database
+    throw error;
   }
 }
 

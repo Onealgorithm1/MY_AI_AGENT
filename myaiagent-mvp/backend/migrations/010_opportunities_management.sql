@@ -24,12 +24,12 @@ CREATE TABLE IF NOT EXISTS opportunities (
   internal_status VARCHAR(50) NOT NULL DEFAULT 'New',
   -- Status values: New, Qualified, In Progress, Submitted, Won, Lost, Archived
 
-  assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+  assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
   internal_score INTEGER CHECK (internal_score >= 0 AND internal_score <= 100),
   internal_notes TEXT,
 
   -- Tracking
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_sync_at TIMESTAMP,
@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_notice_id ON opportunities(notice_i
 CREATE TABLE IF NOT EXISTS opportunity_activity (
   id SERIAL PRIMARY KEY,
   opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   activity_type VARCHAR(50) NOT NULL,
   -- Activity types: status_change, assignment, note_added, score_updated
   old_value TEXT,
