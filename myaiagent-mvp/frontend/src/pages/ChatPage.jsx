@@ -368,7 +368,8 @@ export default function ChatPage() {
         body: JSON.stringify({
           conversationId,
           content: userMessage.content,
-          model: selectedModel,
+          model: getCurrentModel(),
+          agentId: selectedAgent?.id,
           stream: true,
         }),
       });
