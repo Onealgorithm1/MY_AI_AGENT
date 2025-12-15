@@ -111,8 +111,18 @@ router.get('/available-providers', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get available providers error:', error);
-    res.status(500).json({ error: 'Failed to get available providers' });
+    console.error('❌ Get available providers error:', error.message);
+
+    // Check if this is a table missing error
+    if (error.message?.includes('does not exist')) {
+      return res.status(500).json({
+        error: 'Database tables not initialized. Please run migrations: npm run migrate'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to get available providers'
+    });
   }
 });
 
