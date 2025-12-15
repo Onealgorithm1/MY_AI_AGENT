@@ -2,6 +2,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import { getApiKey } from '../utils/apiKeys.js';
+import { determineFallbackStrategy, logFallbackAttempt, isRateLimitError, isAuthError } from './apiFallback.js';
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
