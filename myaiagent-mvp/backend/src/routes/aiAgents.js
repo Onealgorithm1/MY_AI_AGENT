@@ -219,6 +219,14 @@ router.get('/providers/:providerName', cacheControl(3600), async (req, res) => {
 // Get all AI agents for current user
 router.get('/my-agents', async (req, res) => {
   try {
+    // Ensure AI Agent tables exist
+    const tablesInitialized = await initializeAIAgentTables();
+    if (!tablesInitialized) {
+      return res.status(500).json({
+        error: 'Database initialization failed. Contact your administrator.'
+      });
+    }
+
     const userId = req.user.id;
 
     const result = await query(
