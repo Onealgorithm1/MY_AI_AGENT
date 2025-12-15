@@ -37,7 +37,7 @@ export default function AIAgentsPage() {
 
       if (err.response?.status === 404) {
         errorMessage = 'AI agents endpoint not found. This may mean the backend is not properly configured. Try refreshing the page or contact support.';
-        console.error('404 Error - AI agents endpoint not registered:', {
+        console.error('404 Error - AI agents endpoint not registered. Backend may not be deployed or server needs restart.', {
           endpoint: '/api/ai-agents/my-agents',
           status: 404,
           timestamp: new Date().toISOString(),
