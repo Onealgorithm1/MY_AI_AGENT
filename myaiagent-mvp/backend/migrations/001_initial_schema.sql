@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS system_config (
   config_value TEXT,
   description TEXT,
   is_sensitive BOOLEAN DEFAULT FALSE,
-  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -165,7 +165,7 @@ CREATE INDEX idx_system_config_key ON system_config(config_key);
 -- ===========================================
 CREATE TABLE IF NOT EXISTS activity_logs (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   action VARCHAR(255) NOT NULL,
   resource_type VARCHAR(100),
   resource_id INTEGER,
