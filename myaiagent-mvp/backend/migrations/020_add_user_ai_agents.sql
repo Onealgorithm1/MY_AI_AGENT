@@ -6,15 +6,21 @@
 DO $$
 DECLARE
   v_user_id_type TEXT;
+  v_api_secret_id_type TEXT;
 BEGIN
   -- Detect the actual type of users.id column
   SELECT data_type INTO v_user_id_type
   FROM information_schema.columns
   WHERE table_name = 'users' AND column_name = 'id';
 
-  RAISE NOTICE 'Creating user_ai_agents table with user_id type: %', v_user_id_type;
+  -- Detect the actual type of api_secrets.id column
+  SELECT data_type INTO v_api_secret_id_type
+  FROM information_schema.columns
+  WHERE table_name = 'api_secrets' AND column_name = 'id';
 
-  -- Create user_ai_agents table with appropriate user_id type
+  RAISE NOTICE 'Creating user_ai_agents table with user_id type: % and api_secret_id type: %', v_user_id_type, v_api_secret_id_type;
+
+  -- Create user_ai_agents table with appropriate types
   IF v_user_id_type = 'uuid' THEN
     EXECUTE 'CREATE TABLE IF NOT EXISTS user_ai_agents (
       id SERIAL PRIMARY KEY,
@@ -22,7 +28,7 @@ BEGIN
       provider_name VARCHAR(100) NOT NULL,
       agent_name VARCHAR(255) NOT NULL,
       model VARCHAR(255) NOT NULL,
-      api_key_id INTEGER REFERENCES api_secrets(id) ON DELETE SET NULL,
+      api_key_id ' || COALESCE(v_api_secret_id_type, 'INTEGER') || ' REFERENCES api_secrets(id) ON DELETE SET NULL,
       oauth_token TEXT,
       auth_type VARCHAR(50) NOT NULL DEFAULT ''api_key'',
       config JSONB DEFAULT ''{}''::jsonb,
@@ -43,7 +49,7 @@ BEGIN
       provider_name VARCHAR(100) NOT NULL,
       agent_name VARCHAR(255) NOT NULL,
       model VARCHAR(255) NOT NULL,
-      api_key_id INTEGER REFERENCES api_secrets(id) ON DELETE SET NULL,
+      api_key_id ' || COALESCE(v_api_secret_id_type, 'INTEGER') || ' REFERENCES api_secrets(id) ON DELETE SET NULL,
       oauth_token TEXT,
       auth_type VARCHAR(50) NOT NULL DEFAULT ''api_key'',
       config JSONB DEFAULT ''{}''::jsonb,
