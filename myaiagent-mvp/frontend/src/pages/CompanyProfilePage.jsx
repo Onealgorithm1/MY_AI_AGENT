@@ -225,7 +225,7 @@ const CompanyProfilePage = () => {
                 Certifications & Set-Asides
               </h2>
               <div className="space-y-3">
-                {(profile?.certifications || [
+                {(Array.isArray(profile?.certifications) ? profile.certifications : [
                   'ISO 27001 Certified',
                   'CMMI Level 3',
                   'AWS Certified Solutions Architect',
