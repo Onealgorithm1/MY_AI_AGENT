@@ -208,9 +208,9 @@ router.get('/my-agents', async (req, res) => {
     const userId = req.user.id;
 
     const result = await query(
-      `SELECT uaa.id, uaa.provider_name, uaa.agent_name, uaa.model, 
+      `SELECT uaa.id, uaa.provider_name, uaa.agent_name, uaa.model,
               uaa.auth_type, uaa.config, uaa.is_active, uaa.is_default,
-              uaa.status, uaa.error_message, uaa.last_tested_at, 
+              uaa.status, uaa.error_message, uaa.last_tested_at,
               uaa.last_used_at, uaa.created_at, uaa.updated_at,
               aap.display_name, aap.logo_url
        FROM user_ai_agents uaa
@@ -241,8 +241,18 @@ router.get('/my-agents', async (req, res) => {
 
     res.json({ agents });
   } catch (error) {
-    console.error('Get user AI agents error:', error);
-    res.status(500).json({ error: 'Failed to get AI agents' });
+    console.error('❌ Get user AI agents error:', error.message);
+
+    // Check if this is a table missing error
+    if (error.message?.includes('does not exist')) {
+      return res.status(500).json({
+        error: 'Database tables not initialized. Please run migrations: npm run migrate'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to get AI agents'
+    });
   }
 });
 
