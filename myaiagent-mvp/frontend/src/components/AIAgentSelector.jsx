@@ -17,18 +17,22 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
   const loadAgents = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.get('/ai-agents/my-agents');
-      setAgents(response.data.agents || []);
+      const agentsList = response.data.agents || [];
+      setAgents(agentsList);
 
       // Select the first agent or default if none selected
-      if (!selectedAgentId && response.agents?.length > 0) {
-        const defaultAgent = response.agents.find(a => a.isDefault) || response.agents[0];
+      if (!selectedAgentId && agentsList?.length > 0) {
+        const defaultAgent = agentsList.find(a => a.isDefault) || agentsList[0];
         onSelectAgent(defaultAgent);
       }
     } catch (err) {
-      setError(err.message);
-      // If error, fall back to built-in models
-      console.warn('Failed to load AI agents:', err);
+      const errorMsg = err.response?.status === 404
+        ? 'AI agents endpoint not found. Please check server configuration.'
+        : err.response?.data?.error || err.message || 'Failed to load AI agents';
+      setError(errorMsg);
+      console.warn('Failed to load AI agents:', { status: err.response?.status, message: errorMsg });
     } finally {
       setLoading(false);
     }
