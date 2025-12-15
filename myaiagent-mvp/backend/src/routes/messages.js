@@ -423,10 +423,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           lastError = error;
           if (error.code === 'FALLBACK_REQUIRED' && error.provider) {
             // Handle fallback
+            const previousProvider = currentProvider;
             failedProviders.push(currentProvider);
             currentProvider = error.provider;
             currentModel = error.model;
-            logFallbackAttempt(currentProvider, error.provider, error.message, error.originalError);
+            logFallbackAttempt(previousProvider, error.provider, error.message, error.originalError);
             console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel}). Failed providers: [${failedProviders.join(', ')}]`);
             continue; // Retry the API call with new provider
           } else {
@@ -625,10 +626,11 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           lastError = error;
           if (error.code === 'FALLBACK_REQUIRED' && error.provider) {
             // Handle fallback
+            const previousProvider = currentProvider;
             failedProviders.push(currentProvider);
             currentProvider = error.provider;
             currentModel = error.model;
-            logFallbackAttempt(currentProvider, error.provider, error.message, error.originalError);
+            logFallbackAttempt(previousProvider, error.provider, error.message, error.originalError);
             console.log(`🔄 Retrying with fallback provider: ${currentProvider} (${currentModel}). Failed providers: [${failedProviders.join(', ')}]`);
             continue; // Retry the API call with new provider
           } else {
