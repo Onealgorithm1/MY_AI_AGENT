@@ -46,14 +46,14 @@ CREATE TABLE IF NOT EXISTS email_metadata (
 );
 
 -- Indexes for efficient querying
-CREATE INDEX idx_email_metadata_user ON email_metadata(user_id);
-CREATE INDEX idx_email_metadata_urgency ON email_metadata(urgency_level);
-CREATE INDEX idx_email_metadata_sentiment ON email_metadata(sentiment);
-CREATE INDEX idx_email_metadata_analyzed ON email_metadata(analyzed_at DESC);
-CREATE INDEX idx_email_metadata_status ON email_metadata(status);
-CREATE INDEX idx_email_metadata_tags ON email_metadata USING gin(tags);
-CREATE INDEX idx_email_metadata_categories ON email_metadata USING gin(categories);
-CREATE INDEX idx_email_metadata_thread ON email_metadata(thread_id);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_user ON email_metadata(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_urgency ON email_metadata(urgency_level);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_sentiment ON email_metadata(sentiment);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_analyzed ON email_metadata(analyzed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_status ON email_metadata(status);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_tags ON email_metadata USING gin(tags);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_categories ON email_metadata USING gin(categories);
+CREATE INDEX IF NOT EXISTS idx_email_metadata_thread ON email_metadata(thread_id);
 
 -- Table 2: Email Processing Queue (for async background processing)
 CREATE TABLE IF NOT EXISTS email_processing_queue (
@@ -84,10 +84,10 @@ CREATE TABLE IF NOT EXISTS email_processing_queue (
   UNIQUE(user_id, gmail_message_id)
 );
 
-CREATE INDEX idx_email_queue_status ON email_processing_queue(status);
-CREATE INDEX idx_email_queue_priority ON email_processing_queue(priority DESC, queued_at ASC);
-CREATE INDEX idx_email_queue_retry ON email_processing_queue(next_retry_at) WHERE status = 'failed';
-CREATE INDEX idx_email_queue_user ON email_processing_queue(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_queue_status ON email_processing_queue(status);
+CREATE INDEX IF NOT EXISTS idx_email_queue_priority ON email_processing_queue(priority DESC, queued_at ASC);
+CREATE INDEX IF NOT EXISTS idx_email_queue_retry ON email_processing_queue(next_retry_at) WHERE status = 'failed';
+CREATE INDEX IF NOT EXISTS idx_email_queue_user ON email_processing_queue(user_id);
 
 -- Table 3: Email Tag Dictionary (for tag standardization and learning)
 CREATE TABLE IF NOT EXISTS email_tag_dictionary (
@@ -100,8 +100,8 @@ CREATE TABLE IF NOT EXISTS email_tag_dictionary (
   last_used_at TIMESTAMP
 );
 
-CREATE INDEX idx_tag_dictionary_category ON email_tag_dictionary(category);
-CREATE INDEX idx_tag_dictionary_usage ON email_tag_dictionary(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_tag_dictionary_category ON email_tag_dictionary(category);
+CREATE INDEX IF NOT EXISTS idx_tag_dictionary_usage ON email_tag_dictionary(usage_count DESC);
 
 -- Add comments for documentation
 COMMENT ON TABLE email_metadata IS 'Stores AI-analyzed email metadata with tags, sentiment, urgency, and action items';
