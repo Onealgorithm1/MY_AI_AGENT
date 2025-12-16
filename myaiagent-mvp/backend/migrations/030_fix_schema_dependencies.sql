@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_attachments_created ON attachments(created_at DES
 -- ============================================
 -- Drop old table if it exists with problematic UUID
 DO $$
+DECLARE
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -94,7 +95,8 @@ BEGIN
     FOR EACH ROW
     EXECUTE FUNCTION update_samgov_cache_timestamp();
   END IF;
-END $$;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================
 -- 3. Fix samgov_search_history - ensure correct user reference
