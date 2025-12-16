@@ -48,6 +48,7 @@ import AttachmentMenu from '../components/AttachmentMenu';
 import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import SAMGovPanel from '../components/SAMGovPanel';
 import AIAgentSelector from '../components/AIAgentSelector';
+import ModelUsageDisplay from '../components/ModelUsageDisplay';
 import useTypewriter from '../hooks/useTypewriter';
 import useStreamingSTT from '../hooks/useStreamingSTT';
 import useEnhancedSTT from '../hooks/useEnhancedSTT';
@@ -354,20 +355,27 @@ export default function ChatPage() {
     try {
       // Get API base URL - use relative path for Vite proxy
       const apiUrl = '/api';
-      
-      // Get CSRF token for the request
-      const csrfToken = getCsrfToken();
+
+      // Ensure CSRF token is fetched and available
+      let csrfToken = getCsrfToken();
       if (!csrfToken) {
         console.warn('⚠️ CSRF token missing, fetching...');
-        await fetchCsrfToken();
+        csrfToken = await fetchCsrfToken();
+        if (!csrfToken) {
+          toast.error('Security token failed to load. Please refresh the page.');
+          setStreamingMessage('');
+          setIsSending(false);
+          setIsThinking(false);
+          return;
+        }
       }
-      
+
       // Send message with streaming
       const response = await fetch(`${apiUrl}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': getCsrfToken(), // SECURITY: CSRF protection
+          'x-csrf-token': csrfToken, // SECURITY: CSRF protection (lowercase)
         },
         credentials: 'include', // SECURITY: Send cookies (JWT)
         signal: abortController.signal, // SECURITY: Timeout protection
@@ -986,93 +994,108 @@ export default function ChatPage() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col w-full md:w-auto">
         {/* Header */}
-        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-2 md:gap-3">
+        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-2 sm:px-4 md:px-6 bg-white dark:bg-gray-800 gap-1 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-3 min-w-0 flex-1">
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 md:hidden text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2 md:hidden text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
               aria-label="Open menu"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            <AIAgentSelector
-              selectedAgentId={selectedAgent?.id}
-              onSelectAgent={handleSelectAgent}
-            />
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <AIAgentSelector
+                selectedAgentId={selectedAgent?.id}
+                onSelectAgent={handleSelectAgent}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-1 md:gap-2">
+          <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-shrink-0">
             {currentConversation && (
               <button
                 onClick={() => setShowInsights(!showInsights)}
-                className={`p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
                   showInsights
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 title="Conversation Insights"
               >
-                <BarChart3 className="w-5 h-5" />
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             )}
 
             {/* SAM.gov Panel Toggle */}
             <button
               onClick={() => setShowSAMGovPanel(!showSAMGovPanel)}
-              className={`p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
                 showSAMGovPanel
                   ? 'bg-green-500 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
               title="SAM.gov Cache"
             >
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* TTS Toggle Button */}
             <button
               onClick={() => handleTtsToggle(!ttsEnabled)}
-              className={`flex items-center gap-1 md:gap-2 px-3 md:px-3 py-2.5 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${
-                ttsEnabled 
-                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+              className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 md:px-3 py-1.5 sm:py-2 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${
+                ttsEnabled
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
               }`}
               title={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
             >
               {ttsEnabled ? (
                 <>
-                  <Volume2 className="w-4 h-4" />
-                  <span className="text-xs md:text-sm hidden sm:inline">Voice On</span>
+                  <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs hidden sm:inline">Voice On</span>
                 </>
               ) : (
                 <>
-                  <VolumeX className="w-4 h-4" />
-                  <span className="text-xs md:text-sm hidden sm:inline">Voice Off</span>
+                  <VolumeX className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs hidden sm:inline">Voice Off</span>
                 </>
               )}
             </button>
-            
+
             {/* Voice Selector and Auto-play - Hidden on small mobile */}
             {ttsEnabled && (
               <>
-                <VoiceSelector 
+                <VoiceSelector
                   selectedVoice={selectedVoice}
                   onVoiceChange={handleVoiceChange}
-                  className="w-32 md:w-48 hidden sm:block"
+                  className="w-24 sm:w-32 md:w-48 hidden sm:block text-xs"
                 />
-                <label className="items-center gap-2 px-2 py-1 text-xs md:text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation hidden lg:flex">
+                <label className="items-center gap-1 px-1 sm:px-2 py-1 text-xs text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation hidden lg:flex">
                   <input
                     type="checkbox"
                     checked={ttsAutoPlay}
                     onChange={(e) => handleAutoPlayToggle(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     aria-label="Auto-play voice responses"
                   />
-                  <span>Auto-play</span>
+                  <span className="hidden xl:inline">Auto-play</span>
                 </label>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Model Usage Display */}
+        <div className="px-4 md:px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-3xl mx-auto">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+              Model Selection &amp; Metrics
+            </h3>
+            <ModelUsageDisplay
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+            />
           </div>
         </div>
 

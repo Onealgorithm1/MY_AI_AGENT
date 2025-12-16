@@ -46,7 +46,7 @@ const upload = multer({
 // Sign up
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, fullName } = req.body;
+    const { email, password, fullName, organizationName } = req.body;
 
     // Validate input
     if (!email || !password || !fullName) {
@@ -67,24 +67,50 @@ router.post('/signup', async (req, res) => {
     const passwordHash = await hashPassword(password);
 
     // Create user
-    const result = await query(
-      `INSERT INTO users (email, password_hash, full_name) 
-       VALUES ($1, $2, $3) 
+    const userResult = await query(
+      `INSERT INTO users (email, password_hash, full_name)
+       VALUES ($1, $2, $3)
        RETURNING id, email, full_name, role, created_at`,
       [email, passwordHash, fullName]
     );
 
-    const user = result.rows[0];
+    const user = userResult.rows[0];
 
-    // Generate token
-    const token = generateToken(user);
+    // Create organization for user
+    const orgSlug = (organizationName || fullName)
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    const orgResult = await query(
+      `INSERT INTO organizations (name, slug, owner_id, is_active)
+       VALUES ($1, $2, $3, true)
+       RETURNING id, name, slug`,
+      [organizationName || `${fullName}'s Organization`, orgSlug, user.id]
+    );
+
+    const organization = orgResult.rows[0];
+
+    // Add user as owner of organization
+    await query(
+      `INSERT INTO organization_users (organization_id, user_id, role, is_active)
+       VALUES ($1, $2, $3, true)`,
+      [organization.id, user.id, 'owner']
+    );
+
+    // Generate token with organization context
+    const tokenPayload = {
+      ...user,
+      organization_id: organization.id,
+    };
+    const token = generateToken(tokenPayload);
 
     // Initialize usage tracking for today
     await query(
-      `INSERT INTO usage_tracking (user_id, date) 
-       VALUES ($1, CURRENT_DATE) 
-       ON CONFLICT (user_id, date) DO NOTHING`,
-      [user.id]
+      `INSERT INTO usage_tracking (user_id, organization_id, date)
+       VALUES ($1, $2, CURRENT_DATE)
+       ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
+      [user.id, organization.id]
     );
 
     // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
@@ -105,6 +131,8 @@ router.post('/signup', async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: organization.id,
+        organization_name: organization.name,
       },
     });
   } catch (error) {
@@ -116,7 +144,7 @@ router.post('/signup', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, organizationId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -145,19 +173,47 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Get user's organizations
+    const orgResult = await query(
+      `SELECT ou.organization_id, o.name, o.slug
+       FROM organization_users ou
+       JOIN organizations o ON o.id = ou.organization_id
+       WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
+       ORDER BY ou.joined_at DESC`,
+      [user.id]
+    );
+
+    let selectedOrgId = organizationId;
+    if (!selectedOrgId && orgResult.rows.length > 0) {
+      selectedOrgId = orgResult.rows[0].organization_id;
+    }
+
     // Update last login
     await query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     // Initialize usage tracking for today
-    await query(
-      `INSERT INTO usage_tracking (user_id, date) 
-       VALUES ($1, CURRENT_DATE) 
-       ON CONFLICT (user_id, date) DO NOTHING`,
-      [user.id]
-    );
+    if (selectedOrgId) {
+      await query(
+        `INSERT INTO usage_tracking (user_id, organization_id, date)
+         VALUES ($1, $2, CURRENT_DATE)
+         ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
+        [user.id, selectedOrgId]
+      );
+    } else {
+      await query(
+        `INSERT INTO usage_tracking (user_id, date)
+         VALUES ($1, CURRENT_DATE)
+         ON CONFLICT (user_id, date) DO NOTHING`,
+        [user.id]
+      );
+    }
 
-    // Generate token
-    const token = generateToken(user);
+    // Generate token with organization context
+    const tokenPayload = {
+      ...user,
+      organization_id: selectedOrgId || null,
+    };
+    const token = generateToken(tokenPayload);
 
     // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
     const cookieOptions = {
@@ -177,7 +233,13 @@ router.post('/login', async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: selectedOrgId || null,
       },
+      organizations: orgResult.rows.map(org => ({
+        id: org.organization_id,
+        name: org.name,
+        slug: org.slug,
+      })),
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -189,8 +251,8 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, email, full_name, role, created_at, last_login_at, 
-              settings, preferences 
+      `SELECT id, email, full_name, role, created_at, last_login_at,
+              settings, preferences
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -199,12 +261,22 @@ router.get('/me', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Get user's organizations
+    const orgResult = await query(
+      `SELECT ou.organization_id, ou.role as org_role, o.name, o.slug
+       FROM organization_users ou
+       JOIN organizations o ON o.id = ou.organization_id
+       WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
+       ORDER BY ou.joined_at DESC`,
+      [req.user.id]
+    );
+
     // Get today's usage
     const usage = await query(
       `SELECT messages_sent, voice_minutes_used, tokens_consumed, files_uploaded
-       FROM usage_tracking 
-       WHERE user_id = $1 AND date = CURRENT_DATE`,
-      [req.user.id]
+       FROM usage_tracking
+       WHERE user_id = $1 AND organization_id = $2 AND date = CURRENT_DATE`,
+      [req.user.id, req.user.organization_id || null]
     );
 
     const user = result.rows[0];
@@ -221,11 +293,19 @@ router.get('/me', authenticate, async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: req.user.organization_id || null,
+        org_role: req.user.org_role || null,
         createdAt: user.created_at,
         lastLoginAt: user.last_login_at,
         settings: user.settings,
         preferences: user.preferences,
       },
+      organizations: orgResult.rows.map(org => ({
+        id: org.organization_id,
+        name: org.name,
+        slug: org.slug,
+        role: org.org_role,
+      })),
       usage: todayUsage,
       limits: {
         messagesPerDay: parseInt(process.env.RATE_LIMIT_MESSAGES) || 999999,

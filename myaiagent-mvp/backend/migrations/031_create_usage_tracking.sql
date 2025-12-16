@@ -1,43 +1,44 @@
--- Migration 031: Usage Tracking Table
--- Tracks daily usage metrics per user for rate limiting and analytics
+-- Migration 031: Create usage_tracking table and add missing columns
+-- Fixes login errors by creating the usage_tracking table
 
+-- ============================================
+-- Add settings column to users table
+-- ============================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'settings'
+  ) THEN
+    ALTER TABLE users ADD COLUMN settings JSONB DEFAULT '{}'::jsonb;
+  END IF;
+END $$;
+
+-- ============================================
+-- Create usage_tracking table
+-- ============================================
 CREATE TABLE IF NOT EXISTS usage_tracking (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
-  messages_sent INTEGER NOT NULL DEFAULT 0,
-  voice_minutes_used NUMERIC NOT NULL DEFAULT 0,
-  tokens_consumed BIGINT NOT NULL DEFAULT 0,
-  files_uploaded INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  
+  messages_sent INTEGER DEFAULT 0,
+  voice_minutes_used FLOAT DEFAULT 0.0,
+  tokens_consumed INTEGER DEFAULT 0,
+  files_uploaded INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, date)
 );
 
--- Indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_id ON usage_tracking(user_id);
-CREATE INDEX IF NOT EXISTS idx_usage_tracking_date ON usage_tracking(date);
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_user ON usage_tracking(user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_date ON usage_tracking(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_date ON usage_tracking(date);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_org ON usage_tracking(organization_id);
 
--- Trigger to update updated_at automatically
-CREATE OR REPLACE FUNCTION update_usage_tracking_updated_at()
-RETURNS TRIGGER AS $$
+-- Log completion
+DO $$
 BEGIN
-  NEW.updated_at = CURRENT_TIMESTAMP;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_update_usage_tracking_updated_at ON usage_tracking;
-
-CREATE TRIGGER trg_update_usage_tracking_updated_at
-BEFORE UPDATE ON usage_tracking
-FOR EACH ROW
-EXECUTE FUNCTION update_usage_tracking_updated_at();
-
-COMMENT ON TABLE usage_tracking IS 'Daily usage metrics per user for rate limiting and analytics';
-COMMENT ON COLUMN usage_tracking.messages_sent IS 'Number of messages sent today';
-COMMENT ON COLUMN usage_tracking.voice_minutes_used IS 'Minutes of voice input/output used today';
-COMMENT ON COLUMN usage_tracking.tokens_consumed IS 'Total API tokens consumed today';
-COMMENT ON COLUMN usage_tracking.files_uploaded IS 'Number of files uploaded today';
+  RAISE NOTICE 'Migration 031 completed - created usage_tracking table and added settings column';
+END $$;

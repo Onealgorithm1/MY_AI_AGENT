@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquare, Building2, Settings, Shield, User, Grid, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import OrganizationSelector from './OrganizationSelector';
 
 const AppLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -69,6 +70,11 @@ const AppLayout = ({ children }) => {
               werkules
             </span>
           </div>
+        </div>
+
+        {/* Organization Selector */}
+        <div className="hidden lg:block p-4 border-b border-gray-200 dark:border-gray-700">
+          <OrganizationSelector />
         </div>
 
         {/* Navigation */}

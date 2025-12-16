@@ -4,6 +4,7 @@ import * as samGovService from '../services/samGov.js';
 import * as samGovCache from '../services/samGovCache.js';
 import * as documentFetcher from '../services/samGovDocumentFetcher.js';
 import * as documentAnalyzer from '../services/samGovDocumentAnalyzer.js';
+import { query } from '../utils/database.js';
 
 const router = express.Router();
 
@@ -155,6 +156,119 @@ router.get('/cached-opportunities', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Get cached opportunities error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/sam-gov/batch-fetch-all
+ * Fetch all opportunities from SAM.gov in batches and cache them
+ * Automatically handles pagination with 1000-record limit per request
+ */
+router.post('/batch-fetch-all', async (req, res) => {
+  try {
+    const { keyword = '', postedFrom = '', postedTo = '' } = req.body;
+
+    console.log('🔄 Starting batch fetch of all SAM.gov opportunities...');
+
+    let allOpportunities = [];
+    let currentOffset = 0;
+    const pageSize = 1000;
+    let totalRecords = 0;
+    let continueLoop = true;
+    const maxIterations = 5; // Limit to 5000 records (5 * 1000) to avoid timeout
+    let iterations = 0;
+
+    while (continueLoop && iterations < maxIterations) {
+      iterations++;
+      console.log(`📝 Batch ${iterations}: Fetching records ${currentOffset} to ${currentOffset + pageSize}...`);
+
+      try {
+        const batchResult = await samGovService.searchOpportunities(
+          {
+            keyword,
+            postedFrom,
+            postedTo,
+            limit: pageSize,
+            offset: currentOffset,
+          },
+          req.user?.id || null
+        );
+
+        if (!batchResult.opportunities || batchResult.opportunities.length === 0) {
+          console.log('✅ No more opportunities to fetch');
+          continueLoop = false;
+          break;
+        }
+
+        allOpportunities = allOpportunities.concat(batchResult.opportunities);
+        totalRecords = batchResult.totalRecords || 0;
+
+        console.log(`✅ Batch ${iterations}: Fetched ${batchResult.opportunities.length} opportunities`);
+
+        // Check if we've fetched all available records
+        if (currentOffset + pageSize >= totalRecords) {
+          console.log('✅ All opportunities fetched');
+          continueLoop = false;
+          break;
+        }
+
+        currentOffset += pageSize;
+      } catch (batchError) {
+        console.error(`❌ Error in batch ${iterations}:`, batchError.message);
+        // Continue with what we have
+        continueLoop = false;
+      }
+    }
+
+    // Cache all fetched opportunities
+    console.log(`💾 Caching ${allOpportunities.length} opportunities...`);
+    const cacheResult = await samGovCache.cacheOpportunities(allOpportunities, req.user?.id || null);
+
+    res.json({
+      success: true,
+      message: `Batch fetch completed: ${allOpportunities.length} opportunities fetched and cached`,
+      stats: {
+        totalFetched: allOpportunities.length,
+        totalAvailable: totalRecords,
+        batches: iterations,
+        new: cacheResult.new,
+        existing: cacheResult.existing,
+        summary: cacheResult.summary,
+      }
+    });
+
+  } catch (error) {
+    console.error('Batch fetch error:', error);
+    res.status(500).json({
+      error: error.message,
+      details: 'Failed to batch fetch opportunities'
+    });
+  }
+});
+
+/**
+ * GET /api/sam-gov/departments
+ * Get list of unique departments from cached opportunities
+ */
+router.get('/departments', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT DISTINCT contracting_office as department
+       FROM samgov_opportunities_cache
+       WHERE contracting_office IS NOT NULL AND contracting_office != ''
+       ORDER BY contracting_office ASC`
+    );
+
+    const departments = result.rows.map(row => row.department).filter(Boolean);
+
+    res.json({
+      success: true,
+      departments,
+      total: departments.length
+    });
+  } catch (error) {
+    console.error('Get departments error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -12,6 +12,7 @@ import LandingPage from './pages/LandingPage';
 
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
@@ -20,6 +21,7 @@ const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage')
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
 const CompanyProfilePage = lazy(() => import('./pages/CompanyProfilePage'));
+const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettingsPage'));
 const AppLayout = lazy(() => import('./components/AppLayout'));
 
 function LoadingFallback() {
@@ -67,6 +69,20 @@ function AdminRoute({ children }) {
 
   if (!isAuthenticated) return <Navigate to="/login" />;
   if (!isAdmin) return <Navigate to="/" />;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
+}
+
+function OrgAdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuthStore();
+  const isOrgAdmin = user && (user.org_role === 'admin' || user.org_role === 'owner');
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isOrgAdmin) return <Navigate to="/" />;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -205,6 +221,22 @@ function App() {
               <AdminRoute>
                 <AdminPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/org/:slug/settings"
+            element={
+              <OrgAdminRoute>
+                <OrganizationSettingsPage />
+              </OrgAdminRoute>
             }
           />
           <Route path="/privacy" element={<PrivacyPolicy />} />

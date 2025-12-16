@@ -57,17 +57,20 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
   return (
-    <div className="relative">
+    <div className="relative flex-1 min-w-0 sm:flex-none">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 md:px-3 py-2 md:py-1.5 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none touch-manipulation whitespace-nowrap max-w-[200px] overflow-hidden"
+        className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-2 md:px-3 py-2 md:py-1.5 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none touch-manipulation whitespace-nowrap max-w-full sm:max-w-[180px] md:max-w-[200px] overflow-hidden"
         title={selectedAgent ? selectedAgent.agentName : 'Select AI Agent'}
       >
         <Zap className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-        <span className="truncate">
-          {selectedAgent ? selectedAgent.agentName : 'Select Agent'}
+        <span className="truncate hidden xs:inline">
+          {selectedAgent ? selectedAgent.agentName : 'Agent'}
         </span>
-        <ChevronDown className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0 ml-auto" />
+        <span className="truncate inline xs:hidden">
+          {selectedAgent ? selectedAgent.agentName.substring(0, 8) : 'A'}
+        </span>
+        <ChevronDown className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
       </button>
 
       {/* Dropdown Menu */}
@@ -80,7 +83,7 @@ export default function AIAgentSelector({ selectedAgentId, onSelectAgent }) {
           />
 
           {/* Dropdown Content */}
-          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="fixed sm:absolute left-4 right-4 sm:right-0 sm:left-auto bottom-0 sm:bottom-auto sm:top-12 w-auto sm:w-72 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto rounded-b-none sm:rounded-b-lg">
             {loading ? (
               <div className="p-4 text-center text-gray-600 dark:text-gray-400">
                 Loading agents...

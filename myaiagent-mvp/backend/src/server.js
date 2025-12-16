@@ -62,6 +62,8 @@ import marketAnalyticsRoutes from './routes/marketAnalytics.js';
 import intelligenceRoutes from './routes/intelligence.js';
 import companyDashboardRoutes from './routes/companyDashboard.js';
 import aiAgentsRoutes from './routes/aiAgents.js';
+import organizationsRoutes from './routes/organizations.js';
+import adminOrganizationsRoutes from './routes/admin-organizations.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -295,13 +297,21 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// Apply CSRF protection to all state-changing API requests
-// NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
-app.use('/api/', doubleCsrfProtection);
-
-// API routes
+// API routes - Auth routes MUST be before CSRF protection
+// because login/signup don't need CSRF tokens (they're initial auth)
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', googleAuthRoutes);
+
+// Apply CSRF protection to all state-changing API requests
+// NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
+// NOTE: Auth routes are excluded because they're initial authentication endpoints
+app.use('/api/', (req, res, next) => {
+  // Skip CSRF protection for auth routes
+  if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  doubleCsrfProtection(req, res, next);
+});
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memory', memoryRoutes);
@@ -332,6 +342,8 @@ app.use('/api/market-analytics', marketAnalyticsRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/company', companyDashboardRoutes);
 app.use('/api/ai-agents', aiAgentsRoutes);
+app.use('/api/organizations', organizationsRoutes);
+app.use('/api/admin/organizations', adminOrganizationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -475,6 +487,7 @@ async function initializeDatabaseMigrationsOnStartup() {
         // Skip idempotent errors (object already exists)
         const isIdempotentError = error.code === '42P07' || error.code === '42710' ||
             error.code === '42701' || // duplicate column
+            error.code === '42703' || // column does not exist (create index on missing column)
             error.message?.includes('already exists') ||
             error.message?.includes('duplicate key') ||
             error.message?.includes('migration is disabled'); // our custom skip marker
