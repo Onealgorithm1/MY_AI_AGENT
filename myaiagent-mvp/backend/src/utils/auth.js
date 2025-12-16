@@ -31,8 +31,9 @@ export function generateToken(user) {
     id: user.id,
     email: user.email,
     role: user.role,
+    organization_id: user.organization_id || null,
   };
-  
+
   return jwt.sign(payload, getJwtSecret(), {
     expiresIn: `${getJwtExpiry()}h`,
   });
