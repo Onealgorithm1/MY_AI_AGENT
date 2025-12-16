@@ -60,14 +60,19 @@ export async function optionalAuth(req, res, next) {
     const token = extractToken(req);
     if (token) {
       const decoded = verifyToken(token);
-      const result = await query(
-        `SELECT id, email, full_name, role, phone, profile_image, 
-                created_at, last_login_at, settings, preferences, google_id 
-         FROM users WHERE id = $1`,
-        [decoded.id]
-      );
-      if (result.rows.length > 0) {
-        req.user = result.rows[0];
+
+      // Validate user ID is an integer (not UUID)
+      const userId = parseInt(decoded.id, 10);
+      if (Number.isInteger(userId)) {
+        const result = await query(
+          `SELECT id, email, full_name, role, phone, profile_image,
+                  created_at, last_login_at, settings, preferences, google_id
+           FROM users WHERE id = $1`,
+          [userId]
+        );
+        if (result.rows.length > 0) {
+          req.user = result.rows[0];
+        }
       }
     }
   } catch (error) {
