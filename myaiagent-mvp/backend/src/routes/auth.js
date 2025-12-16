@@ -105,7 +105,7 @@ router.post('/signup', async (req, res) => {
     };
     const token = generateToken(tokenPayload);
 
-    // Initialize usage tracking for today
+    // Initialize usage tracking for today (signup always has organization)
     await query(
       `INSERT INTO usage_tracking (user_id, organization_id, date)
        VALUES ($1, $2, CURRENT_DATE)
