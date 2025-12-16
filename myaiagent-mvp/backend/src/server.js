@@ -297,13 +297,14 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
+// API routes - Auth routes MUST be before CSRF protection
+// because login/signup don't need CSRF tokens (they're initial auth)
+app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleAuthRoutes);
+
 // Apply CSRF protection to all state-changing API requests
 // NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
 app.use('/api/', doubleCsrfProtection);
-
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/auth', googleAuthRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memory', memoryRoutes);
@@ -479,6 +480,7 @@ async function initializeDatabaseMigrationsOnStartup() {
         // Skip idempotent errors (object already exists)
         const isIdempotentError = error.code === '42P07' || error.code === '42710' ||
             error.code === '42701' || // duplicate column
+            error.code === '42703' || // column does not exist (create index on missing column)
             error.message?.includes('already exists') ||
             error.message?.includes('duplicate key') ||
             error.message?.includes('migration is disabled'); // our custom skip marker

@@ -13,6 +13,14 @@ CREATE TABLE IF NOT EXISTS search_history (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add missing columns if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='search_history' AND column_name='searched_at') THEN
+    ALTER TABLE search_history ADD COLUMN searched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  END IF;
+END $$;
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_search_history_user_id ON search_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_search_history_user_searched_at ON search_history(user_id, searched_at DESC);
@@ -23,10 +31,14 @@ CREATE INDEX IF NOT EXISTS idx_search_history_searched_at ON search_history(sear
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
-    EXECUTE 'CREATE TRIGGER update_search_history_updated_at
-             BEFORE UPDATE ON search_history
-             FOR EACH ROW
-             EXECUTE FUNCTION update_updated_at_column()';
+    BEGIN
+      EXECUTE 'CREATE TRIGGER update_search_history_updated_at
+               BEFORE UPDATE ON search_history
+               FOR EACH ROW
+               EXECUTE FUNCTION update_updated_at_column()';
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
   END IF;
 END $$;
 
