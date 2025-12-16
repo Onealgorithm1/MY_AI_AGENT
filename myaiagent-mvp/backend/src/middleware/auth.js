@@ -57,11 +57,45 @@ export async function authenticate(req, res, next) {
   }
 }
 
-// Require admin role
+// Require super admin role (system-wide admin)
 export function requireAdmin(req, res, next) {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
+  next();
+}
+
+// Require organization membership
+export function requireOrgAccess(req, res, next) {
+  if (!req.user.organization_id) {
+    return res.status(403).json({ error: 'Organization access required' });
+  }
+
+  // Optionally check if org matches request parameter
+  const orgIdParam = req.params.orgId || req.body?.organization_id;
+  if (orgIdParam && parseInt(orgIdParam) !== req.user.organization_id) {
+    return res.status(403).json({ error: 'Access denied to this organization' });
+  }
+
+  next();
+}
+
+// Require organization admin or owner role
+export function requireOrgAdmin(req, res, next) {
+  if (!req.user.organization_id) {
+    return res.status(403).json({ error: 'Organization access required' });
+  }
+
+  if (req.user.org_role !== 'admin' && req.user.org_role !== 'owner') {
+    return res.status(403).json({ error: 'Organization admin access required' });
+  }
+
+  // Check if org matches request parameter
+  const orgIdParam = req.params.orgId || req.body?.organization_id;
+  if (orgIdParam && parseInt(orgIdParam) !== req.user.organization_id) {
+    return res.status(403).json({ error: 'Access denied to this organization' });
+  }
+
   next();
 }
 
