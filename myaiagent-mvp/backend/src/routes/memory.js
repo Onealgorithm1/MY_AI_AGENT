@@ -187,11 +187,11 @@ router.put('/:id', authenticate, async (req, res) => {
     let paramCount = 1;
 
     if (fact !== undefined) {
-      updates.push(`fact = $${paramCount++}`);
+      updates.push(`fact_text = $${paramCount++}`);
       values.push(fact);
     }
     if (category !== undefined) {
-      updates.push(`category = $${paramCount++}`);
+      updates.push(`fact_type = $${paramCount++}`);
       values.push(category);
     }
     if (approved !== undefined) {
@@ -206,7 +206,7 @@ router.put('/:id', authenticate, async (req, res) => {
     values.push(id);
 
     const result = await query(
-      `UPDATE memory_facts SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE memory_facts SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING id, user_id, fact_text as fact, fact_type as category, approved, created_at`,
       values
     );
 
