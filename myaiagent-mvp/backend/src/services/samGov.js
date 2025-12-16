@@ -207,10 +207,16 @@ export async function searchOpportunities(options = {}, userId = null) {
       opportunities: response.data.opportunitiesData || [],
     };
   } catch (error) {
-    console.error('SAM.gov opportunities search error:', error.response?.data || error.message);
-    throw new Error(
-      error.response?.data?.message || 'Failed to search opportunities'
-    );
+    const errorMessage = error.response?.data?.message || error.message;
+    console.error('SAM.gov opportunities search error:', errorMessage);
+
+    // Check for rate limit/throttle errors
+    if (errorMessage?.includes('throttled') || errorMessage?.includes('rate') || errorMessage?.includes('Message throttled')) {
+      console.error('⚠️  SAM.gov API rate limit hit - please wait before retrying');
+      throw new Error(`SAM.gov API rate limited: ${errorMessage}`);
+    }
+
+    throw new Error(errorMessage || 'Failed to search opportunities');
   }
 }
 
