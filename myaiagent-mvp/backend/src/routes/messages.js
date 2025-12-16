@@ -477,9 +477,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             const metadata = JSON.stringify(metadataObj);
             
             await query(
-              `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+              `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [conversationId, 'assistant', responseMessage, selectedModel, tokensUsed, metadata]
+              [conversationId, req.user.id, 'assistant', responseMessage, tokensUsed, metadata]
             );
             
             // Update usage tracking
@@ -509,9 +509,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             
             const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
             await query(
-              `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+              `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [conversationId, 'assistant', errorMessage, selectedModel, tokensUsed, metadata]
+              [conversationId, req.user.id, 'assistant', errorMessage, tokensUsed, metadata]
             );
             
             res.write(`data: ${JSON.stringify({ 
@@ -527,9 +527,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         // Regular text response (no function call)
         const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
         await query(
-          `INSERT INTO messages (conversation_id, role, content, model, tokens_used, metadata)
+          `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [conversationId, 'assistant', fullResponse, selectedModel, tokensUsed, metadata]
+          [conversationId, req.user.id, 'assistant', fullResponse, tokensUsed, metadata]
         );
 
         // Update usage tracking
