@@ -77,10 +77,10 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `INSERT INTO memory_facts (user_id, fact, category, manually_added, approved)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [req.user.id, fact, category, true, true]
+      `INSERT INTO memory_facts (user_id, fact_text, fact_type, approved)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, user_id, fact_text as fact, fact_type as category, approved, created_at`,
+      [req.user.id, fact, category, true]
     );
 
     // Invalidate memory facts cache for this user
