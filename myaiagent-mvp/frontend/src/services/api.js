@@ -439,6 +439,18 @@ export const samGov = {
     const response = await api.get(`/sam-gov/cached-opportunities?${queryParams.toString()}`);
     return response.data;
   },
+
+  // Batch fetch all opportunities from SAM.gov
+  batchFetchAll: async (params = {}) => {
+    const response = await api.post('/sam-gov/batch-fetch-all', params);
+    return response.data;
+  },
+
+  // Get list of departments from cached opportunities
+  getDepartments: async () => {
+    const response = await api.get('/sam-gov/departments');
+    return response.data;
+  },
 };
 
 // AI Agents endpoints
