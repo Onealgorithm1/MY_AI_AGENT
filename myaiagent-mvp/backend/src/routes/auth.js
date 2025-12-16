@@ -251,8 +251,8 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, email, full_name, role, created_at, last_login_at, 
-              settings, preferences 
+      `SELECT id, email, full_name, role, created_at, last_login_at,
+              settings, preferences
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -261,12 +261,22 @@ router.get('/me', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Get user's organizations
+    const orgResult = await query(
+      `SELECT ou.organization_id, ou.role as org_role, o.name, o.slug
+       FROM organization_users ou
+       JOIN organizations o ON o.id = ou.organization_id
+       WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
+       ORDER BY ou.joined_at DESC`,
+      [req.user.id]
+    );
+
     // Get today's usage
     const usage = await query(
       `SELECT messages_sent, voice_minutes_used, tokens_consumed, files_uploaded
-       FROM usage_tracking 
-       WHERE user_id = $1 AND date = CURRENT_DATE`,
-      [req.user.id]
+       FROM usage_tracking
+       WHERE user_id = $1 AND organization_id = $2 AND date = CURRENT_DATE`,
+      [req.user.id, req.user.organization_id || null]
     );
 
     const user = result.rows[0];
@@ -283,11 +293,19 @@ router.get('/me', authenticate, async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: req.user.organization_id || null,
+        org_role: req.user.org_role || null,
         createdAt: user.created_at,
         lastLoginAt: user.last_login_at,
         settings: user.settings,
         preferences: user.preferences,
       },
+      organizations: orgResult.rows.map(org => ({
+        id: org.organization_id,
+        name: org.name,
+        slug: org.slug,
+        role: org.org_role,
+      })),
       usage: todayUsage,
       limits: {
         messagesPerDay: parseInt(process.env.RATE_LIMIT_MESSAGES) || 999999,
