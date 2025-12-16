@@ -59,7 +59,15 @@ const SAMGovPage = () => {
   // View mode state
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
+  // Department filter state
+  const [departments, setDepartments] = useState([]);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [loadingBatch, setLoadingBatch] = useState(false);
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
+    loadUserProfile();
+    loadDepartments();
     loadData();
     loadSavedSearches();
 
