@@ -353,16 +353,16 @@ CREATE TABLE IF NOT EXISTS market_insights (
 
   -- Actions
   recommended_actions JSONB, -- Array of action items
-  assigned_to UUID REFERENCES users(id),
+  assigned_to INTEGER REFERENCES users(id),
 
   -- Status
   status VARCHAR(50) DEFAULT 'New', -- New, Reviewing, Actioned, Dismissed
-  reviewed_by UUID REFERENCES users(id),
+  reviewed_by INTEGER REFERENCES users(id),
   reviewed_at TIMESTAMP,
 
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
-  created_by UUID REFERENCES users(id), -- NULL if AI-generated
+  created_by INTEGER REFERENCES users(id), -- NULL if AI-generated
   is_ai_generated BOOLEAN DEFAULT TRUE
 );
 
