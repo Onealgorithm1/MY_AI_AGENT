@@ -220,10 +220,10 @@ router.post('/', async (req, res) => {
 
     // Upsert secret using (service_name, key_label) uniqueness
     const result = await query(
-      `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, docs_url, is_active, is_default, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       ON CONFLICT (service_name, key_label) 
-       DO UPDATE SET 
+      `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, docs_url, is_active, is_default)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (service_name, key_label)
+       DO UPDATE SET
          key_value = EXCLUDED.key_value,
          key_name = EXCLUDED.key_name,
          key_type = EXCLUDED.key_type,
@@ -233,7 +233,7 @@ router.post('/', async (req, res) => {
          is_default = EXCLUDED.is_default,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id, key_name, service_name, key_label, key_type, is_active, is_default`,
-      [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault, req.user.id]
+      [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault]
     );
 
     res.status(201).json({
