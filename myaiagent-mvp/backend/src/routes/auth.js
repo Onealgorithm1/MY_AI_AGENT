@@ -175,7 +175,7 @@ router.post('/login', async (req, res) => {
 
     // Get user's organizations
     const orgResult = await query(
-      `SELECT ou.organization_id, o.name, o.slug
+      `SELECT ou.organization_id, ou.role as org_role, o.name, o.slug
        FROM organization_users ou
        JOIN organizations o ON o.id = ou.organization_id
        WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
@@ -184,8 +184,15 @@ router.post('/login', async (req, res) => {
     );
 
     let selectedOrgId = organizationId;
+    let selectedOrgRole = null;
     if (!selectedOrgId && orgResult.rows.length > 0) {
       selectedOrgId = orgResult.rows[0].organization_id;
+      selectedOrgRole = orgResult.rows[0].org_role;
+    } else if (selectedOrgId && orgResult.rows.length > 0) {
+      const selectedOrg = orgResult.rows.find(o => o.organization_id === selectedOrgId);
+      if (selectedOrg) {
+        selectedOrgRole = selectedOrg.org_role;
+      }
     }
 
     // Update last login
