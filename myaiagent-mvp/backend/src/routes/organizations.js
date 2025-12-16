@@ -37,14 +37,16 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Get organization details
+// Get organization details with stats
 router.get('/:orgId', authenticate, async (req, res) => {
   try {
+    const orgId = parseInt(req.params.orgId);
+
     // Verify user has access to this organization
     const accessCheck = await query(
       `SELECT ou.role as user_role FROM organization_users ou
        WHERE ou.user_id = $1 AND ou.organization_id = $2 AND ou.is_active = TRUE`,
-      [req.user.id, parseInt(req.params.orgId)]
+      [req.user.id, orgId]
     );
 
     if (accessCheck.rows.length === 0) {
@@ -52,18 +54,45 @@ router.get('/:orgId', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `SELECT id, name, slug, logo_url, description, website_url, industry, size, 
+      `SELECT id, name, slug, logo_url, description, website_url, industry, size,
               owner_id, is_active, created_at, updated_at, settings
        FROM organizations WHERE id = $1 AND is_active = TRUE`,
-      [parseInt(req.params.orgId)]
+      [orgId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
+    const organization = result.rows[0];
+
+    // Get member count
+    const memberResult = await query(
+      'SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = TRUE',
+      [orgId]
+    );
+
+    // Get conversation count
+    const conversationResult = await query(
+      'SELECT COUNT(*) as count FROM conversations WHERE organization_id = $1',
+      [orgId]
+    );
+
+    // Get API key count
+    const apiKeyResult = await query(
+      'SELECT COUNT(*) as count FROM api_secrets WHERE (organization_id = $1 OR organization_id IS NULL) AND is_active = TRUE',
+      [orgId]
+    );
+
     res.json({
-      organization: result.rows[0],
+      organization: {
+        ...organization,
+        stats: {
+          memberCount: parseInt(memberResult.rows[0].count) || 0,
+          conversationCount: parseInt(conversationResult.rows[0].count) || 0,
+          apiKeyCount: parseInt(apiKeyResult.rows[0].count) || 0,
+        },
+      },
     });
   } catch (error) {
     console.error('Get organization error:', error);
