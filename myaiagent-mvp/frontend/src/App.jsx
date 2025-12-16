@@ -248,6 +248,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/system"
+            element={
+              <MasterAdminRoute>
+                <AdminDashboard />
+              </MasterAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/org"
+            element={
+              <OrgAdminRoute>
+                <OrgAdminDashboard />
+              </OrgAdminRoute>
+            }
+          />
+          <Route
             path="/org/:slug/settings"
             element={
               <OrgAdminRoute>
