@@ -434,18 +434,55 @@ export default function OrgAdminDashboard() {
             )}
 
             {/* API Keys List */}
-            {orgLoading && !org ? (
+            {(keysLoading || orgLoading) && apiKeys.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader className="w-6 h-6 animate-spin text-blue-600" />
               </div>
-            ) : org?.stats?.apiKeyCount > 0 ? (
+            ) : apiKeys.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {org.stats.apiKeyCount} API key{org.stats.apiKeyCount !== 1 ? 's' : ''} for this organization
+                  {apiKeys.length} API key{apiKeys.length !== 1 ? 's' : ''} for this organization
                 </p>
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center text-gray-600 dark:text-gray-400">
-                  API key list details coming soon - backend endpoint pending
-                </div>
+                {apiKeys.map((key) => (
+                  <div
+                    key={key.id}
+                    className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{key.keyLabel}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Service: {key.serviceName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          Created {new Date(key.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        key.isActive
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      }`}>
+                        {key.isActive ? 'Active' : 'Revoked'}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-3">
+                      {key.isActive && (
+                        <>
+                          <button
+                            onClick={() => handleRevokeKey(key.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Revoke
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-12">
