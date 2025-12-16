@@ -198,6 +198,28 @@ CREATE INDEX IF NOT EXISTS idx_memory_facts_user_category
 ON memory_facts(user_id, category);
 
 -- ============================================
+-- Ensure messages table has all required columns
+-- ============================================
+DO $$
+BEGIN
+  -- Add 'model' column if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'messages' AND column_name = 'model'
+  ) THEN
+    ALTER TABLE messages ADD COLUMN model VARCHAR(100);
+  END IF;
+
+  -- Add 'tokens_used' column if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'messages' AND column_name = 'tokens_used'
+  ) THEN
+    ALTER TABLE messages ADD COLUMN tokens_used INTEGER DEFAULT 0;
+  END IF;
+END $$;
+
+-- ============================================
 -- Ensure opportunities table exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS opportunities (
