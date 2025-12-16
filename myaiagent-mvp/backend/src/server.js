@@ -297,13 +297,14 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
+// API routes - Auth routes MUST be before CSRF protection
+// because login/signup don't need CSRF tokens (they're initial auth)
+app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleAuthRoutes);
+
 // Apply CSRF protection to all state-changing API requests
 // NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
 app.use('/api/', doubleCsrfProtection);
-
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/auth', googleAuthRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memory', memoryRoutes);
