@@ -796,6 +796,43 @@ What would you like to know about this opportunity?`;
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </FilterSection>
+
+              <FilterSection
+                title="Department"
+                name="department"
+                count={departmentFilter ? 1 : 0}
+              >
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => {
+                    setDepartmentFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map((dept, idx) => (
+                    <option key={idx} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </FilterSection>
+
+              {/* Profile Section - Bottom of Sidebar */}
+              {user && (
+                <div className="border-t border-gray-200 mt-4 pt-4 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                      {user.fullName?.split(' ').map(n => n[0]).join('') || user.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.fullName || user.email}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
