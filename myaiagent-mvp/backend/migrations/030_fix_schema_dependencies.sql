@@ -514,16 +514,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS fpds_awards_updated_at_trigger ON fpds_contract_awards;
 CREATE TRIGGER fpds_awards_updated_at_trigger
   BEFORE UPDATE ON fpds_contract_awards
   FOR EACH ROW
   EXECUTE FUNCTION update_fpds_awards_updated_at();
 
+DROP TRIGGER IF EXISTS incumbent_analysis_updated_at_trigger ON incumbent_analysis;
 CREATE TRIGGER incumbent_analysis_updated_at_trigger
   BEFORE UPDATE ON incumbent_analysis
   FOR EACH ROW
   EXECUTE FUNCTION update_fpds_awards_updated_at();
 
+DROP TRIGGER IF EXISTS competitive_intelligence_updated_at_trigger ON competitive_intelligence;
 CREATE TRIGGER competitive_intelligence_updated_at_trigger
   BEFORE UPDATE ON competitive_intelligence
   FOR EACH ROW
@@ -537,11 +540,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS evm_projects_updated_at_trigger ON evm_projects;
 CREATE TRIGGER evm_projects_updated_at_trigger
   BEFORE UPDATE ON evm_projects
   FOR EACH ROW
   EXECUTE FUNCTION update_evm_updated_at();
 
+DROP TRIGGER IF EXISTS evm_wbs_updated_at_trigger ON evm_wbs;
 CREATE TRIGGER evm_wbs_updated_at_trigger
   BEFORE UPDATE ON evm_wbs
   FOR EACH ROW
@@ -555,11 +560,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS samgov_documents_updated_at ON samgov_documents;
 CREATE TRIGGER samgov_documents_updated_at
   BEFORE UPDATE ON samgov_documents
   FOR EACH ROW
   EXECUTE FUNCTION update_samgov_documents_updated_at();
 
+DROP TRIGGER IF EXISTS samgov_analysis_queue_updated_at ON samgov_document_analysis_queue;
 CREATE TRIGGER samgov_analysis_queue_updated_at
   BEFORE UPDATE ON samgov_document_analysis_queue
   FOR EACH ROW
@@ -587,12 +594,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS evm_periods_calculate_metrics ON evm_reporting_periods;
 CREATE TRIGGER evm_periods_calculate_metrics
   BEFORE INSERT OR UPDATE ON evm_reporting_periods
   FOR EACH ROW
   EXECUTE FUNCTION calculate_evm_metrics();
 
--- Add trigger for attachments timestamp
 CREATE OR REPLACE FUNCTION update_attachments_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -601,6 +608,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS attachments_updated_at_trigger ON attachments;
 CREATE TRIGGER attachments_updated_at_trigger
   BEFORE UPDATE ON attachments
   FOR EACH ROW
