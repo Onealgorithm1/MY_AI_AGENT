@@ -31,71 +31,72 @@ CREATE INDEX IF NOT EXISTS idx_attachments_created ON attachments(created_at DES
 -- ============================================
 -- Drop old table if it exists with problematic UUID
 DO $$
+DECLARE
+  v_has_uuid_column BOOLEAN;
 BEGIN
-  IF EXISTS (
+  SELECT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'samgov_opportunities_cache'
       AND column_name = 'created_by'
       AND data_type = 'uuid'
-  ) THEN
-    -- Drop dependent objects first
-    DROP TRIGGER IF EXISTS update_samgov_cache_timestamp ON samgov_opportunities_cache;
-    DROP FUNCTION IF EXISTS update_samgov_cache_timestamp();
-    
-    -- Drop the table and recreate it correctly
-    DROP TABLE IF EXISTS samgov_opportunities_cache CASCADE;
-    
-    CREATE TABLE samgov_opportunities_cache (
-      id SERIAL PRIMARY KEY,
-      notice_id VARCHAR(255) UNIQUE NOT NULL,
-      solicitation_number VARCHAR(255),
-      title TEXT NOT NULL,
-      type VARCHAR(100),
-      posted_date TIMESTAMP,
-      response_deadline TIMESTAMP,
-      archive_date TIMESTAMP,
-      naics_code VARCHAR(50),
-      set_aside_type VARCHAR(100),
-      contracting_office TEXT,
-      place_of_performance TEXT,
-      description TEXT,
-      raw_data JSONB NOT NULL,
-      first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-      last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-      seen_count INTEGER DEFAULT 1 NOT NULL,
-      opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
-      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE
-    );
+  ) INTO v_has_uuid_column;
 
-    -- Recreate indexes
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_notice_id ON samgov_opportunities_cache(notice_id);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_posted_date ON samgov_opportunities_cache(posted_date DESC);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_deadline ON samgov_opportunities_cache(response_deadline);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_first_seen ON samgov_opportunities_cache(first_seen_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_last_seen ON samgov_opportunities_cache(last_seen_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_opportunity_id ON samgov_opportunities_cache(opportunity_id);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_naics ON samgov_opportunities_cache(naics_code);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_raw_data ON samgov_opportunities_cache USING GIN (raw_data);
-    CREATE INDEX IF NOT EXISTS idx_samgov_cache_org ON samgov_opportunities_cache(organization_id);
-
-    -- Recreate trigger
-    CREATE OR REPLACE FUNCTION update_samgov_cache_timestamp()
-    RETURNS TRIGGER AS $$
-    BEGIN
-      NEW.updated_at = CURRENT_TIMESTAMP;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER update_samgov_cache_timestamp
-    BEFORE UPDATE ON samgov_opportunities_cache
-    FOR EACH ROW
-    EXECUTE FUNCTION update_samgov_cache_timestamp();
+  IF v_has_uuid_column THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS update_samgov_cache_timestamp ON samgov_opportunities_cache';
+    EXECUTE 'DROP FUNCTION IF EXISTS update_samgov_cache_timestamp()';
+    EXECUTE 'DROP TABLE IF EXISTS samgov_opportunities_cache CASCADE';
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TABLE IF NOT EXISTS samgov_opportunities_cache (
+  id SERIAL PRIMARY KEY,
+  notice_id VARCHAR(255) UNIQUE NOT NULL,
+  solicitation_number VARCHAR(255),
+  title TEXT NOT NULL,
+  type VARCHAR(100),
+  posted_date TIMESTAMP,
+  response_deadline TIMESTAMP,
+  archive_date TIMESTAMP,
+  naics_code VARCHAR(50),
+  set_aside_type VARCHAR(100),
+  contracting_office TEXT,
+  place_of_performance TEXT,
+  description TEXT,
+  raw_data JSONB NOT NULL,
+  first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  seen_count INTEGER DEFAULT 1 NOT NULL,
+  opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_notice_id ON samgov_opportunities_cache(notice_id);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_posted_date ON samgov_opportunities_cache(posted_date DESC);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_deadline ON samgov_opportunities_cache(response_deadline);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_first_seen ON samgov_opportunities_cache(first_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_last_seen ON samgov_opportunities_cache(last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_opportunity_id ON samgov_opportunities_cache(opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_naics ON samgov_opportunities_cache(naics_code);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_raw_data ON samgov_opportunities_cache USING GIN (raw_data);
+CREATE INDEX IF NOT EXISTS idx_samgov_cache_org ON samgov_opportunities_cache(organization_id);
+
+CREATE OR REPLACE FUNCTION update_samgov_cache_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_samgov_cache_timestamp ON samgov_opportunities_cache;
+
+CREATE TRIGGER update_samgov_cache_timestamp
+BEFORE UPDATE ON samgov_opportunities_cache
+FOR EACH ROW
+EXECUTE FUNCTION update_samgov_cache_timestamp();
 
 -- ============================================
 -- 3. Fix samgov_search_history - ensure correct user reference
