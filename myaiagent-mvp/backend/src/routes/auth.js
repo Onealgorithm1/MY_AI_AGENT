@@ -144,7 +144,7 @@ router.post('/signup', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, organizationId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -173,19 +173,47 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Get user's organizations
+    const orgResult = await query(
+      `SELECT ou.organization_id, o.name, o.slug
+       FROM organization_users ou
+       JOIN organizations o ON o.id = ou.organization_id
+       WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
+       ORDER BY ou.joined_at DESC`,
+      [user.id]
+    );
+
+    let selectedOrgId = organizationId;
+    if (!selectedOrgId && orgResult.rows.length > 0) {
+      selectedOrgId = orgResult.rows[0].organization_id;
+    }
+
     // Update last login
     await query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     // Initialize usage tracking for today
-    await query(
-      `INSERT INTO usage_tracking (user_id, date) 
-       VALUES ($1, CURRENT_DATE) 
-       ON CONFLICT (user_id, date) DO NOTHING`,
-      [user.id]
-    );
+    if (selectedOrgId) {
+      await query(
+        `INSERT INTO usage_tracking (user_id, organization_id, date)
+         VALUES ($1, $2, CURRENT_DATE)
+         ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
+        [user.id, selectedOrgId]
+      );
+    } else {
+      await query(
+        `INSERT INTO usage_tracking (user_id, date)
+         VALUES ($1, CURRENT_DATE)
+         ON CONFLICT (user_id, date) DO NOTHING`,
+        [user.id]
+      );
+    }
 
-    // Generate token
-    const token = generateToken(user);
+    // Generate token with organization context
+    const tokenPayload = {
+      ...user,
+      organization_id: selectedOrgId || null,
+    };
+    const token = generateToken(tokenPayload);
 
     // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
     const cookieOptions = {
@@ -205,7 +233,13 @@ router.post('/login', async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: selectedOrgId || null,
       },
+      organizations: orgResult.rows.map(org => ({
+        id: org.organization_id,
+        name: org.name,
+        slug: org.slug,
+      })),
     });
   } catch (error) {
     console.error('Login error:', error);
