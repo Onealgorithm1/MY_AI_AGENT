@@ -170,14 +170,16 @@ router.post('/batch-fetch-all', async (req, res) => {
     const { keyword = '', postedFrom = '', postedTo = '' } = req.body;
 
     console.log('🔄 Starting batch fetch of all SAM.gov opportunities...');
+    console.log('⚠️  SAM.gov API has rate limits - this may take a few minutes...');
 
     let allOpportunities = [];
     let currentOffset = 0;
-    const pageSize = 1000;
+    const pageSize = 100; // Reduced from 1000 to avoid rate limiting
     let totalRecords = 0;
     let continueLoop = true;
-    const maxIterations = 5; // Limit to 5000 records (5 * 1000) to avoid timeout
+    const maxIterations = 20; // Reduced from 50 to 2000 total (20 * 100)
     let iterations = 0;
+    const delayBetweenRequests = 2000; // 2 second delay between API requests (required by SAM.gov rate limits)
 
     while (continueLoop && iterations < maxIterations) {
       iterations++;
@@ -204,7 +206,7 @@ router.post('/batch-fetch-all', async (req, res) => {
         allOpportunities = allOpportunities.concat(batchResult.opportunities);
         totalRecords = batchResult.totalRecords || 0;
 
-        console.log(`✅ Batch ${iterations}: Fetched ${batchResult.opportunities.length} opportunities`);
+        console.log(`✅ Batch ${iterations}: Fetched ${batchResult.opportunities.length} opportunities (${allOpportunities.length}/${totalRecords} total)`);
 
         // Check if we've fetched all available records
         if (currentOffset + pageSize >= totalRecords) {
@@ -214,10 +216,43 @@ router.post('/batch-fetch-all', async (req, res) => {
         }
 
         currentOffset += pageSize;
+
+        // Respect SAM.gov rate limits - wait between requests
+        if (continueLoop && iterations < maxIterations) {
+          console.log(`⏳ Waiting ${delayBetweenRequests / 1000}s before next batch (SAM.gov rate limit)...`);
+          await new Promise(resolve => setTimeout(resolve, delayBetweenRequests));
+        }
       } catch (batchError) {
         console.error(`❌ Error in batch ${iterations}:`, batchError.message);
-        // Continue with what we have
-        continueLoop = false;
+
+        // Check if it's a rate limit error
+        if (batchError.message?.includes('throttled') || batchError.message?.includes('rate')) {
+          console.error('⚠️  SAM.gov rate limit hit. Waiting 5 seconds before retry...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          // Retry once
+          try {
+            const retryResult = await samGovService.searchOpportunities(
+              {
+                keyword,
+                postedFrom,
+                postedTo,
+                limit: pageSize,
+                offset: currentOffset,
+              },
+              req.user?.id || null
+            );
+            allOpportunities = allOpportunities.concat(retryResult.opportunities || []);
+            totalRecords = retryResult.totalRecords || 0;
+            currentOffset += pageSize;
+            console.log(`✅ Retry successful: Fetched ${retryResult.opportunities?.length || 0} opportunities`);
+          } catch (retryError) {
+            console.error(`❌ Retry failed:`, retryError.message);
+            continueLoop = false;
+          }
+        } else {
+          // Continue with what we have for non-rate-limit errors
+          continueLoop = false;
+        }
       }
     }
 

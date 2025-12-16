@@ -100,7 +100,7 @@ class TelemetryService {
       };
 
       if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
+        headers['x-csrf-token'] = csrfToken;
       }
 
       const controller = new AbortController();
