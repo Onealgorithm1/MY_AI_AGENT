@@ -295,7 +295,7 @@ CREATE TABLE IF NOT EXISTS competitive_landscape (
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  analyzed_by UUID REFERENCES users(id)
+  analyzed_by INTEGER REFERENCES users(id)
 );
 
 -- External API Response Cache
