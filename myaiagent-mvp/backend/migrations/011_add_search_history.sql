@@ -1,6 +1,7 @@
 -- Migration 011: Search History Table
 -- Tracks web search queries and results for audit and analytics
 
+-- Create table if it doesn't exist
 CREATE TABLE IF NOT EXISTS search_history (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -13,35 +14,58 @@ CREATE TABLE IF NOT EXISTS search_history (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add missing columns if they don't exist
+-- Add searched_at column if table exists but column doesn't
+ALTER TABLE IF EXISTS search_history ADD COLUMN IF NOT EXISTS searched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- Safely create indexes - IF NOT EXISTS protects against re-runs
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='search_history' AND column_name='searched_at') THEN
-    ALTER TABLE search_history ADD COLUMN searched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.statistics
+    WHERE table_name = 'search_history' AND index_name = 'idx_search_history_user_id'
+  ) THEN
+    CREATE INDEX idx_search_history_user_id ON search_history(user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.statistics
+    WHERE table_name = 'search_history' AND index_name = 'idx_search_history_user_searched_at'
+  ) THEN
+    CREATE INDEX idx_search_history_user_searched_at ON search_history(user_id, searched_at DESC);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.statistics
+    WHERE table_name = 'search_history' AND index_name = 'idx_search_history_conversation_id'
+  ) THEN
+    CREATE INDEX idx_search_history_conversation_id ON search_history(conversation_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.statistics
+    WHERE table_name = 'search_history' AND index_name = 'idx_search_history_searched_at'
+  ) THEN
+    CREATE INDEX idx_search_history_searched_at ON search_history(searched_at DESC);
   END IF;
 END $$;
 
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_search_history_user_id ON search_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_search_history_user_searched_at ON search_history(user_id, searched_at DESC);
-CREATE INDEX IF NOT EXISTS idx_search_history_conversation_id ON search_history(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_search_history_searched_at ON search_history(searched_at DESC);
-
--- Trigger for updated_at (if update_updated_at_column function exists)
+-- Safely create trigger
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column') THEN
-    BEGIN
-      EXECUTE 'CREATE TRIGGER update_search_history_updated_at
-               BEFORE UPDATE ON search_history
-               FOR EACH ROW
-               EXECUTE FUNCTION update_updated_at_column()';
-    EXCEPTION WHEN OTHERS THEN
-      NULL;
-    END;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.triggers
+      WHERE trigger_name = 'update_search_history_updated_at'
+    ) THEN
+      CREATE TRIGGER update_search_history_updated_at
+        BEFORE UPDATE ON search_history
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
   END IF;
 END $$;
 
+-- Add comments for documentation
 COMMENT ON TABLE search_history IS 'Tracks web search queries and results for audit and analytics';
 COMMENT ON COLUMN search_history.user_id IS 'User who performed the search';
 COMMENT ON COLUMN search_history.query IS 'The actual search query string';
