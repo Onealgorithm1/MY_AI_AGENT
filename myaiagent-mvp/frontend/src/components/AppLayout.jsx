@@ -133,15 +133,24 @@ const AppLayout = ({ children }) => {
             >
               <Settings className="w-4 h-4" />
             </button>
-            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            {(user?.role === 'master_admin' || user?.role === 'superadmin') && (
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin/system')}
                 className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                title="Admin Panel"
+                title="System Admin"
               >
                 <Shield className="w-4 h-4" />
               </button>
             )}
+            {user?.org_role === 'admin' || user?.org_role === 'owner' ? (
+              <button
+                onClick={() => navigate('/admin/org')}
+                className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Organization Admin"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            ) : null}
           </div>
 
           {/* Mobile: Icons only */}
