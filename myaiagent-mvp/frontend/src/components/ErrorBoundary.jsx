@@ -48,7 +48,7 @@ class ErrorBoundary extends Component {
       };
 
       if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
+        headers['x-csrf-token'] = csrfToken;
       }
 
       await fetch(`${apiUrl}/telemetry/error`, {

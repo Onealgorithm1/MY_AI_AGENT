@@ -143,12 +143,21 @@ const SAMGovPage = () => {
       // If we have fewer than 100 cached opportunities, batch-fetch more
       if (cachedCount < 100 && !isBackgroundRefresh) {
         console.log(`📥 Only ${cachedCount} cached opportunities, batch-fetching from SAM.gov...`);
+        console.log('⚠️  This may take a few minutes due to SAM.gov API rate limits');
         setLoadingBatch(true);
         try {
           await samGov.batchFetchAll({ keyword: '' });
           await loadDepartments(); // Reload departments after batch fetch
         } catch (batchError) {
-          console.warn('Batch fetch failed, using cached data:', batchError);
+          const errorMessage = batchError?.response?.data?.error || batchError?.message || 'Unknown error';
+          console.error('❌ Batch fetch failed:', errorMessage);
+
+          // Check for rate limit errors
+          if (errorMessage.includes('throttled') || errorMessage.includes('rate') || errorMessage.includes('Message throttled')) {
+            console.warn('⚠️  SAM.gov API rate limited. Please wait a few minutes and refresh the page to try again.');
+          } else {
+            console.warn('⚠️  Batch fetch failed, using cached data. Error:', errorMessage);
+          }
         } finally {
           setLoadingBatch(false);
         }
