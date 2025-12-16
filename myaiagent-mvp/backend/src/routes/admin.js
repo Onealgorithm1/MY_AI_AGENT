@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../utils/database.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireMasterAdmin } from '../middleware/auth.js';
+import { getSystemApiKeys } from '../services/apiKeyResolver.js';
 
 const router = express.Router();
 
