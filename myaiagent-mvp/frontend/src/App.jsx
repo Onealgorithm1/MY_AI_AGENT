@@ -79,6 +79,20 @@ function AdminRoute({ children }) {
   );
 }
 
+function MasterAdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuthStore();
+  const isMasterAdmin = user?.role === 'master_admin' || user?.role === 'superadmin';
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isMasterAdmin) return <Navigate to="/" />;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
+}
+
 function OrgAdminRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore();
   const isOrgAdmin = user && (user.org_role === 'admin' || user.org_role === 'owner');
