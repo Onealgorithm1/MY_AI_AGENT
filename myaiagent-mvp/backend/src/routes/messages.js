@@ -116,7 +116,7 @@ async function triggerAutoMemoryExtraction(conversationId, userId) {
 
             const result = await query(
               `INSERT INTO memory_facts
-               (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
+               (user_id, fact_text, fact_type, conversation_id, manually_added, approved, confidence)
                VALUES ${placeholders.join(', ')}
                ON CONFLICT DO NOTHING
                RETURNING *`,
