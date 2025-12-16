@@ -318,6 +318,17 @@ export async function getCachedOpportunities(options = {}) {
       offset
     };
   } catch (error) {
+    // Handle missing table gracefully
+    if (error.code === '42P01') {
+      console.warn('⚠️ samgov_opportunities_cache table does not exist yet');
+      return {
+        success: true,
+        total: 0,
+        opportunities: [],
+        limit: options.limit || 20,
+        offset: options.offset || 0
+      };
+    }
     console.error('Error getting cached opportunities:', error);
     throw error;
   }
