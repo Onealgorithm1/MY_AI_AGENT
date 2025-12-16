@@ -31,54 +31,72 @@ async function addGoogleSearchCredentials() {
 
     // Add API Key
     console.log('📝 Adding GOOGLE_SEARCH_API_KEY...');
-    await client.query(`
-      INSERT INTO api_secrets (
-        service_name,
-        key_name,
-        key_value,
-        key_label,
-        is_default,
-        is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (service_name, key_name)
-      DO UPDATE SET
-        key_value = EXCLUDED.key_value,
-        is_active = EXCLUDED.is_active,
-        updated_at = CURRENT_TIMESTAMP
+    const apiKeyResult = await client.query(`
+      UPDATE api_secrets
+      SET key_value = $1, is_active = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE service_name = $3 AND key_name = $4
+      RETURNING id
     `, [
-      'Google',
-      'GOOGLE_SEARCH_API_KEY',
       encryptedApiKey,
-      'Production API Key',
       true,
-      true
+      'Google',
+      'GOOGLE_SEARCH_API_KEY'
     ]);
+
+    if (apiKeyResult.rows.length === 0) {
+      await client.query(`
+        INSERT INTO api_secrets (
+          service_name,
+          key_name,
+          key_value,
+          key_label,
+          is_default,
+          is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        'Google',
+        'GOOGLE_SEARCH_API_KEY',
+        encryptedApiKey,
+        'Production API Key',
+        true,
+        true
+      ]);
+    }
     console.log('✅ GOOGLE_SEARCH_API_KEY added successfully\n');
 
     // Add Search Engine ID
     console.log('📝 Adding GOOGLE_SEARCH_ENGINE_ID...');
-    await client.query(`
-      INSERT INTO api_secrets (
-        service_name,
-        key_name,
-        key_value,
-        key_label,
-        is_default,
-        is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (service_name, key_name)
-      DO UPDATE SET
-        key_value = EXCLUDED.key_value,
-        is_active = EXCLUDED.is_active,
-        updated_at = CURRENT_TIMESTAMP
+    const engineIdResult = await client.query(`
+      UPDATE api_secrets
+      SET key_value = $1, is_active = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE service_name = $3 AND key_name = $4
+      RETURNING id
     `, [
-      'Google',
-      'GOOGLE_SEARCH_ENGINE_ID',
       encryptedSearchEngineId,
-      'Custom Search Engine ID',
       true,
-      true
+      'Google',
+      'GOOGLE_SEARCH_ENGINE_ID'
     ]);
+
+    if (engineIdResult.rows.length === 0) {
+      await client.query(`
+        INSERT INTO api_secrets (
+          service_name,
+          key_name,
+          key_value,
+          key_label,
+          is_default,
+          is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        'Google',
+        'GOOGLE_SEARCH_ENGINE_ID',
+        encryptedSearchEngineId,
+        'Custom Search Engine ID',
+        true,
+        true
+      ]);
+    }
     console.log('✅ GOOGLE_SEARCH_ENGINE_ID added successfully\n');
 
     // Verify the credentials
