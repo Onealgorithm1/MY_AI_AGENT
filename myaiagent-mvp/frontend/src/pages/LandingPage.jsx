@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Sparkles, BarChart3, FileText, Calendar, Users,
   Building2, Target, TrendingUp, Zap, Shield, Globe, Award,
-  CheckCircle, ArrowRight, Play
+  CheckCircle, ArrowRight, Play, Menu, X
 } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
     { icon: MessageSquare, name: 'AI Chat', color: 'from-blue-500 to-blue-600' },
