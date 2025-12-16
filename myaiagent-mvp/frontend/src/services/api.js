@@ -557,6 +557,22 @@ export const organizations = {
   // Reset password with token
   resetPassword: (token, password) =>
     api.post(`/organizations/password-reset/${token}`, { password }),
+
+  // Get organization API keys
+  getApiKeys: (orgId) =>
+    api.get(`/organizations/${orgId}/api-keys`),
+
+  // Create organization API key
+  createApiKey: (orgId, data) =>
+    api.post(`/organizations/${orgId}/api-keys`, data),
+
+  // Revoke organization API key
+  revokeApiKey: (orgId, keyId) =>
+    api.delete(`/organizations/${orgId}/api-keys/${keyId}`),
+
+  // Rotate organization API key
+  rotateApiKey: (orgId, keyId, newKeyValue) =>
+    api.post(`/organizations/${orgId}/api-keys/${keyId}/rotate`, { newKeyValue }),
 };
 
 // Admin Organizations endpoints (for system admins only)
