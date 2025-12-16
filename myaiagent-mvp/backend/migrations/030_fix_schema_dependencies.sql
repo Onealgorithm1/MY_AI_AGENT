@@ -31,12 +31,11 @@ CREATE INDEX IF NOT EXISTS idx_attachments_created ON attachments(created_at DES
 -- ============================================
 -- Drop old table if it exists with problematic UUID
 DO $$
-DECLARE
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'samgov_opportunities_cache' 
-      AND column_name = 'created_by' 
+    WHERE table_name = 'samgov_opportunities_cache'
+      AND column_name = 'created_by'
       AND data_type = 'uuid'
   ) THEN
     -- Drop dependent objects first
