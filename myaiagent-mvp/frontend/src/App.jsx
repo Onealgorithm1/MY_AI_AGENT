@@ -77,6 +77,20 @@ function AdminRoute({ children }) {
   );
 }
 
+function OrgAdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuthStore();
+  const isOrgAdmin = user && (user.org_role === 'admin' || user.org_role === 'owner');
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isOrgAdmin) return <Navigate to="/" />;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
+}
+
 function App() {
   const { isAuthenticated, user } = useAuthStore();
 
