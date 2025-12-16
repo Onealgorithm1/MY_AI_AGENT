@@ -62,6 +62,7 @@ import marketAnalyticsRoutes from './routes/marketAnalytics.js';
 import intelligenceRoutes from './routes/intelligence.js';
 import companyDashboardRoutes from './routes/companyDashboard.js';
 import aiAgentsRoutes from './routes/aiAgents.js';
+import organizationsRoutes from './routes/organizations.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
