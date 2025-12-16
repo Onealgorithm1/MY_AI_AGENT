@@ -28,12 +28,14 @@ CREATE TABLE IF NOT EXISTS usage_tracking (
   files_uploaded INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, organization_id, date),
   UNIQUE(user_id, date)
 );
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user ON usage_tracking(user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_date ON usage_tracking(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_org_date ON usage_tracking(user_id, organization_id, date);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_date ON usage_tracking(date);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_org ON usage_tracking(organization_id);
 
