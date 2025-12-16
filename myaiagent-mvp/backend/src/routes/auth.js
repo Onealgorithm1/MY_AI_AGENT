@@ -192,21 +192,12 @@ router.post('/login', async (req, res) => {
     await query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     // Initialize usage tracking for today
-    if (selectedOrgId) {
-      await query(
-        `INSERT INTO usage_tracking (user_id, organization_id, date)
-         VALUES ($1, $2, CURRENT_DATE)
-         ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
-        [user.id, selectedOrgId]
-      );
-    } else {
-      await query(
-        `INSERT INTO usage_tracking (user_id, date)
-         VALUES ($1, CURRENT_DATE)
-         ON CONFLICT (user_id, date) DO NOTHING`,
-        [user.id]
-      );
-    }
+    await query(
+      `INSERT INTO usage_tracking (user_id, organization_id, date)
+       VALUES ($1, $2, CURRENT_DATE)
+       ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
+      [user.id, selectedOrgId || null]
+    );
 
     // Generate token with organization context
     const tokenPayload = {
