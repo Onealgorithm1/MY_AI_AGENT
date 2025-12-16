@@ -72,6 +72,11 @@ const AppLayout = ({ children }) => {
           </div>
         </div>
 
+        {/* Organization Selector */}
+        <div className="hidden lg:block p-4 border-b border-gray-200 dark:border-gray-700">
+          <OrganizationSelector />
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item) => {
