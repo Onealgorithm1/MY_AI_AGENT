@@ -46,7 +46,7 @@ const upload = multer({
 // Sign up
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, fullName } = req.body;
+    const { email, password, fullName, organizationName } = req.body;
 
     // Validate input
     if (!email || !password || !fullName) {
@@ -67,24 +67,50 @@ router.post('/signup', async (req, res) => {
     const passwordHash = await hashPassword(password);
 
     // Create user
-    const result = await query(
-      `INSERT INTO users (email, password_hash, full_name) 
-       VALUES ($1, $2, $3) 
+    const userResult = await query(
+      `INSERT INTO users (email, password_hash, full_name)
+       VALUES ($1, $2, $3)
        RETURNING id, email, full_name, role, created_at`,
       [email, passwordHash, fullName]
     );
 
-    const user = result.rows[0];
+    const user = userResult.rows[0];
 
-    // Generate token
-    const token = generateToken(user);
+    // Create organization for user
+    const orgSlug = (organizationName || fullName)
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    const orgResult = await query(
+      `INSERT INTO organizations (name, slug, owner_id, is_active)
+       VALUES ($1, $2, $3, true)
+       RETURNING id, name, slug`,
+      [organizationName || `${fullName}'s Organization`, orgSlug, user.id]
+    );
+
+    const organization = orgResult.rows[0];
+
+    // Add user as owner of organization
+    await query(
+      `INSERT INTO organization_users (organization_id, user_id, role, is_active)
+       VALUES ($1, $2, $3, true)`,
+      [organization.id, user.id, 'owner']
+    );
+
+    // Generate token with organization context
+    const tokenPayload = {
+      ...user,
+      organization_id: organization.id,
+    };
+    const token = generateToken(tokenPayload);
 
     // Initialize usage tracking for today
     await query(
-      `INSERT INTO usage_tracking (user_id, date) 
-       VALUES ($1, CURRENT_DATE) 
-       ON CONFLICT (user_id, date) DO NOTHING`,
-      [user.id]
+      `INSERT INTO usage_tracking (user_id, organization_id, date)
+       VALUES ($1, $2, CURRENT_DATE)
+       ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
+      [user.id, organization.id]
     );
 
     // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
@@ -105,6 +131,8 @@ router.post('/signup', async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        organization_id: organization.id,
+        organization_name: organization.name,
       },
     });
   } catch (error) {
