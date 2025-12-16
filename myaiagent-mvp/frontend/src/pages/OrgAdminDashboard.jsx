@@ -71,13 +71,15 @@ export default function OrgAdminDashboard() {
   useEffect(() => {
     if (orgId) {
       refetchOrg();
+      refetchUsers();
+      refetchKeys();
     }
-  }, [orgId, refetchOrg]);
+  }, [orgId, refetchOrg, refetchUsers, refetchKeys]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refetchOrg();
+      await Promise.all([refetchOrg(), refetchUsers(), refetchKeys()]);
       toast.success('Data refreshed');
     } catch (error) {
       toast.error('Failed to refresh data');
