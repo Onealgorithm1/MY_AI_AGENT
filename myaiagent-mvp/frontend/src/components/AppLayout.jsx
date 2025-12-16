@@ -171,7 +171,7 @@ const AppLayout = ({ children }) => {
                 <Shield className="w-5 h-5" />
               </button>
             )}
-            {user?.org_role === 'admin' || user?.org_role === 'owner' ? (
+            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
               <button
                 onClick={() => navigate('/admin/org')}
                 className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
@@ -179,7 +179,7 @@ const AppLayout = ({ children }) => {
               >
                 <Shield className="w-5 h-5" />
               </button>
-            ) : null}
+            )}
           </div>
         </div>
       </div>
