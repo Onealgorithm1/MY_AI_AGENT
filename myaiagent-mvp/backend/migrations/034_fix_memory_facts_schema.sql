@@ -7,9 +7,9 @@ DROP TABLE IF EXISTS memory_facts CASCADE;
 CREATE TABLE memory_facts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    fact TEXT NOT NULL,
-    category VARCHAR(100),
-    source_conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
+    fact_text TEXT NOT NULL,
+    fact_type VARCHAR(100),
+    conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
     source_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
     confidence FLOAT DEFAULT 1.0,
     manually_added BOOLEAN DEFAULT false,
