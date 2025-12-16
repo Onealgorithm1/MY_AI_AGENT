@@ -110,14 +110,14 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
 
     // Get conversation messages
     const messages = await query(
-      `SELECT role, content FROM messages 
-       WHERE conversation_id = $1 
+      `SELECT role, content FROM messages
+       WHERE conversation_id = $1
        ORDER BY created_at ASC`,
       [conversationId]
     );
 
     if (messages.rows.length === 0) {
-      return res.json({ memoryFacts: [], message: 'No messages to analyze' });
+      return res.json({ facts: [], message: 'No messages to analyze' });
     }
 
     // Extract facts using AI
@@ -125,12 +125,12 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
 
     // Save facts using bulk insert for better performance
     let savedFacts = [];
-    
+
     if (extractedFacts.length > 0) {
       // Build bulk insert query
       const values = extractedFacts.map((factData, index) => {
-        const baseParam = index * 7;
-        return `($${baseParam + 1}, $${baseParam + 2}, $${baseParam + 3}, $${baseParam + 4}, $${baseParam + 5}, $${baseParam + 6}, $${baseParam + 7})`;
+        const baseParam = index * 4;
+        return `($${baseParam + 1}, $${baseParam + 2}, $${baseParam + 3}, $${baseParam + 4})`;
       }).join(', ');
 
       const params = extractedFacts.flatMap(factData => [
@@ -138,28 +138,25 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
         factData.fact,
         factData.category || 'general',
         conversationId,
-        false,
-        false, // Requires user approval
-        factData.confidence || 0.8,
       ]);
 
       const result = await query(
-        `INSERT INTO memory_facts 
-         (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
+        `INSERT INTO memory_facts
+         (user_id, fact_text, fact_type, conversation_id)
          VALUES ${values}
          ON CONFLICT DO NOTHING
-         RETURNING *`,
+         RETURNING id, user_id, fact_text as fact, fact_type as category, conversation_id as source_conversation_id, created_at`,
         params
       );
 
       savedFacts = result.rows;
-      
+
       // Invalidate memory facts cache for this user
       cache.invalidateNamespace('memory_facts');
     }
 
     res.json({
-      memoryFacts: savedFacts,
+      facts: savedFacts,
       total: savedFacts.length,
       message: `Extracted ${savedFacts.length} new facts for your review`,
     });
