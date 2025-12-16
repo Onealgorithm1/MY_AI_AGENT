@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Building2, Settings, Shield, User, Grid, X } from 'lucide-react';
+import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrganizationSelector from './OrganizationSelector';
 
