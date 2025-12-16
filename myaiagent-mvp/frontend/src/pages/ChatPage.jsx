@@ -994,20 +994,22 @@ export default function ChatPage() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col w-full md:w-auto">
         {/* Header */}
-        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-2 md:gap-3">
+        <div className="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-2 sm:px-4 md:px-6 bg-white dark:bg-gray-800 gap-1 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-3 min-w-0 flex-1">
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 md:hidden text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2 md:hidden text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
               aria-label="Open menu"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            <AIAgentSelector
-              selectedAgentId={selectedAgent?.id}
-              onSelectAgent={handleSelectAgent}
-            />
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <AIAgentSelector
+                selectedAgentId={selectedAgent?.id}
+                onSelectAgent={handleSelectAgent}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
