@@ -4,6 +4,7 @@ import * as samGovService from '../services/samGov.js';
 import * as samGovCache from '../services/samGovCache.js';
 import * as documentFetcher from '../services/samGovDocumentFetcher.js';
 import * as documentAnalyzer from '../services/samGovDocumentAnalyzer.js';
+import { query } from '../utils/database.js';
 
 const router = express.Router();
 
