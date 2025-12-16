@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS samgov_opportunities_cache (
   opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
 
   -- Metadata
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS samgov_search_history (
   existing_records INTEGER, -- How many were already in cache
 
   -- Tracking
-  searched_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  searched_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   -- Store full search params as JSONB for flexibility
