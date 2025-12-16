@@ -89,13 +89,30 @@ const SAMGovPage = () => {
     }
   };
 
-  // Load departments
+  // Load departments - extract from cached opportunities
   const loadDepartments = async () => {
     try {
-      const response = await samGov.getDepartments();
-      setDepartments(response.departments || []);
+      // Try API first (if backend is updated)
+      try {
+        const response = await samGov.getDepartments();
+        setDepartments(response.departments || []);
+        return;
+      } catch (apiError) {
+        console.warn('Departments API not available, extracting from cache:', apiError.message);
+      }
+
+      // Fallback: extract unique departments from cached opportunities
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
+      const uniqueDepts = new Set();
+      (cachedRes.opportunities || []).forEach(opp => {
+        if (opp.contracting_office) {
+          uniqueDepts.add(opp.contracting_office);
+        }
+      });
+      setDepartments(Array.from(uniqueDepts).sort());
     } catch (error) {
       console.error('Failed to load departments:', error);
+      setDepartments([]);
     }
   };
 
