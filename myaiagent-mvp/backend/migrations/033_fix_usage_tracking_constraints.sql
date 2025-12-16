@@ -1,6 +1,7 @@
 -- Migration 033: Fix usage_tracking constraints
 -- Fixes the ON CONFLICT constraint issues in login/signup
--- The auth.js code now uses consistent INSERT pattern with organization_id (NULL or value)
+-- Simplifies tracking to use (user_id, date) as the unique key
+-- organization_id is kept as optional denormalization for organizational analytics
 
 -- Drop and recreate usage_tracking with proper constraints
 DROP TABLE IF EXISTS usage_tracking CASCADE;
@@ -16,15 +17,13 @@ CREATE TABLE usage_tracking (
   files_uploaded INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  -- Single unique constraint that works for both org and non-org scenarios
-  -- Note: NULLs in unique constraints don't match each other, so (user_id, NULL, date)
-  -- can occur multiple times. For non-org tracking, use user_id+date as key instead.
-  UNIQUE(user_id, organization_id, date)
+  -- Unique constraint: one record per user per day
+  -- (organization_id is optional and not part of the key)
+  UNIQUE(user_id, date)
 );
 
 -- Create indexes for query performance
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user ON usage_tracking(user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_date ON usage_tracking(user_id, date);
-CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_org_date ON usage_tracking(user_id, organization_id, date);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_date ON usage_tracking(date);
 CREATE INDEX IF NOT EXISTS idx_usage_tracking_org ON usage_tracking(organization_id);
