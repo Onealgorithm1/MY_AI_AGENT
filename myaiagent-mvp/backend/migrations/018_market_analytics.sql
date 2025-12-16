@@ -242,7 +242,7 @@ CREATE TABLE IF NOT EXISTS market_forecasts (
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by INTEGER REFERENCES users(id)
 );
 
 -- Competitive Landscape Analysis
