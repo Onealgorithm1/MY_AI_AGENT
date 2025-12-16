@@ -193,10 +193,10 @@ router.post('/login', async (req, res) => {
 
     // Initialize usage tracking for today
     await query(
-      `INSERT INTO usage_tracking (user_id, organization_id, date)
-       VALUES ($1, $2, CURRENT_DATE)
-       ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
-      [user.id, selectedOrgId || null]
+      `INSERT INTO usage_tracking (user_id, date)
+       VALUES ($1, CURRENT_DATE)
+       ON CONFLICT (user_id, date) DO NOTHING`,
+      [user.id]
     );
 
     // Generate token with organization context
