@@ -439,6 +439,18 @@ export const samGov = {
     const response = await api.get(`/sam-gov/cached-opportunities?${queryParams.toString()}`);
     return response.data;
   },
+
+  // Batch fetch all opportunities from SAM.gov
+  batchFetchAll: async (params = {}) => {
+    const response = await api.post('/sam-gov/batch-fetch-all', params);
+    return response.data;
+  },
+
+  // Get list of departments from cached opportunities
+  getDepartments: async () => {
+    const response = await api.get('/sam-gov/departments');
+    return response.data;
+  },
 };
 
 // AI Agents endpoints
@@ -482,6 +494,96 @@ export const aiAgents = {
   // Test an agent's connectivity
   testAgent: (agentId) =>
     api.post(`/ai-agents/my-agents/${agentId}/test`),
+};
+
+// Organizations endpoints
+export const organizations = {
+  // List user's organizations
+  list: () =>
+    api.get('/organizations'),
+
+  // Get organization details
+  get: (orgId) =>
+    api.get(`/organizations/${orgId}`),
+
+  // Create new organization
+  create: (data) =>
+    api.post('/organizations', data),
+
+  // Update organization
+  update: (orgId, data) =>
+    api.put(`/organizations/${orgId}`, data),
+
+  // Get organization users
+  getUsers: (orgId) =>
+    api.get(`/organizations/${orgId}/users`),
+
+  // Invite user to organization
+  inviteUser: (orgId, data) =>
+    api.post(`/organizations/${orgId}/invitations`, data),
+
+  // Get invitations for organization
+  getInvitations: (orgId) =>
+    api.get(`/organizations/${orgId}/invitations`),
+
+  // Revoke invitation
+  revokeInvitation: (orgId, invitationId) =>
+    api.delete(`/organizations/${orgId}/invitations/${invitationId}`),
+
+  // Accept invitation
+  acceptInvitation: (token) =>
+    api.post(`/organizations/invitations/${token}/accept`),
+
+  // Deactivate user in organization
+  deactivateUser: (orgId, userId) =>
+    api.put(`/organizations/${orgId}/users/${userId}/deactivate`),
+
+  // Activate user in organization
+  activateUser: (orgId, userId) =>
+    api.put(`/organizations/${orgId}/users/${userId}/activate`),
+
+  // Update user role in organization
+  updateUserRole: (orgId, userId, role) =>
+    api.put(`/organizations/${orgId}/users/${userId}/role`, { role }),
+
+  // Remove user from organization
+  removeUser: (orgId, userId) =>
+    api.delete(`/organizations/${orgId}/users/${userId}`),
+
+  // Request password reset
+  requestPasswordReset: (email) =>
+    api.post('/organizations/password-reset/request', { email }),
+
+  // Reset password with token
+  resetPassword: (token, password) =>
+    api.post(`/organizations/password-reset/${token}`, { password }),
+};
+
+// Admin Organizations endpoints (for system admins only)
+export const adminOrganizations = {
+  // Get all organizations
+  list: (isActive, limit = 50, offset = 0) =>
+    api.get('/admin/organizations', { params: { isActive, limit, offset } }),
+
+  // Get organization details with stats
+  get: (orgId) =>
+    api.get(`/admin/organizations/${orgId}`),
+
+  // Get organization users (admin view)
+  getUsers: (orgId) =>
+    api.get(`/admin/organizations/${orgId}/users`),
+
+  // Deactivate organization
+  deactivate: (orgId) =>
+    api.put(`/admin/organizations/${orgId}/deactivate`),
+
+  // Activate organization
+  activate: (orgId) =>
+    api.put(`/admin/organizations/${orgId}/activate`),
+
+  // Get admin statistics
+  getStatistics: () =>
+    api.get('/admin/organizations/stats/overview'),
 };
 
 // Export both default and named export for flexibility

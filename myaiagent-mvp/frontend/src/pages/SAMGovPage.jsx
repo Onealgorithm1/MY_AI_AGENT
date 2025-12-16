@@ -59,7 +59,15 @@ const SAMGovPage = () => {
   // View mode state
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
+  // Department filter state
+  const [departments, setDepartments] = useState([]);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [loadingBatch, setLoadingBatch] = useState(false);
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
+    loadUserProfile();
+    loadDepartments();
     loadData();
     loadSavedSearches();
 
@@ -70,6 +78,43 @@ const SAMGovPage = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Load user profile
+  const loadUserProfile = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      setUser(response.data);
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    }
+  };
+
+  // Load departments - extract from cached opportunities
+  const loadDepartments = async () => {
+    try {
+      // Try API first (if backend is updated)
+      try {
+        const response = await samGov.getDepartments();
+        setDepartments(response.departments || []);
+        return;
+      } catch (apiError) {
+        console.warn('Departments API not available, extracting from cache:', apiError.message);
+      }
+
+      // Fallback: extract unique departments from cached opportunities
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
+      const uniqueDepts = new Set();
+      (cachedRes.opportunities || []).forEach(opp => {
+        if (opp.contracting_office) {
+          uniqueDepts.add(opp.contracting_office);
+        }
+      });
+      setDepartments(Array.from(uniqueDepts).sort());
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+      setDepartments([]);
+    }
+  };
 
   // Load saved searches from localStorage
   const loadSavedSearches = () => {
@@ -91,12 +136,31 @@ const SAMGovPage = () => {
         setLoading(true);
       }
 
-      const cachedRes = await samGov.getCachedOpportunities({ limit: 1000, offset: 0 });
-      setOpportunities(cachedRes.opportunities || []);
+      // Check cached count first
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 10, offset: 0 });
+      const cachedCount = cachedRes.total || 0;
+
+      // If we have fewer than 100 cached opportunities, batch-fetch more
+      if (cachedCount < 100 && !isBackgroundRefresh) {
+        console.log(`📥 Only ${cachedCount} cached opportunities, batch-fetching from SAM.gov...`);
+        setLoadingBatch(true);
+        try {
+          await samGov.batchFetchAll({ keyword: '' });
+          await loadDepartments(); // Reload departments after batch fetch
+        } catch (batchError) {
+          console.warn('Batch fetch failed, using cached data:', batchError);
+        } finally {
+          setLoadingBatch(false);
+        }
+      }
+
+      // Now load full cached opportunities
+      const fullRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
+      setOpportunities(fullRes.opportunities || []);
       setLastRefreshTime(new Date());
 
       if (isBackgroundRefresh) {
-        console.log(`✅ Auto-refresh: ${cachedRes.opportunities?.length || 0} opportunities`);
+        console.log(`✅ Auto-refresh: ${fullRes.opportunities?.length || 0} opportunities`);
       }
     } catch (error) {
       console.error('Failed to load opportunities:', error);
@@ -133,6 +197,12 @@ const SAMGovPage = () => {
     if (filters.setAsideType && opp.set_aside_type !== filters.setAsideType) return false;
     if (filters.naicsCode && !opp.naics_code?.includes(filters.naicsCode)) return false;
     if (filters.noticeType && opp.type !== filters.noticeType) return false;
+
+    // Department filter
+    if (departmentFilter) {
+      const oppDept = opp.contracting_office || '';
+      if (!oppDept.toLowerCase().includes(departmentFilter.toLowerCase())) return false;
+    }
 
     // Domain filter
     if (selectedDomain) {
@@ -743,53 +813,69 @@ What would you like to know about this opportunity?`;
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </FilterSection>
+
+              <FilterSection
+                title="Department"
+                name="department"
+                count={departmentFilter ? 1 : 0}
+              >
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => {
+                    setDepartmentFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map((dept, idx) => (
+                    <option key={idx} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </FilterSection>
+
+              {/* Profile Section - Bottom of Sidebar */}
+              {user && (
+                <div className="border-t border-gray-200 mt-4 pt-4 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                      {user.fullName?.split(' ').map(n => n[0]).join('') || user.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.fullName || user.email}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Results */}
           <div className="flex-1 min-w-0">
-            {/* Domain Filter Chips */}
-            <div className="mb-3 md:mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 className="w-4 h-4 text-gray-600" />
-                <span className="text-xs md:text-sm font-medium text-gray-700">Filter by Department:</span>
-              </div>
-              {/* Horizontal scrollable on mobile, wrap on desktop */}
-              <div className="overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0">
-                <div className="flex md:flex-wrap gap-2 min-w-max md:min-w-0">
-                  <button
-                    onClick={() => {
-                      setSelectedDomain('');
-                      setCurrentPage(1);
-                      setIsMobileFilterOpen(false);
-                    }}
-                    className={`px-3 py-2 md:py-1.5 text-xs md:text-sm font-medium rounded-full transition-colors touch-manipulation whitespace-nowrap ${
-                      selectedDomain === ''
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    All Departments
-                  </button>
-                  {getDomains().map((domain, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSelectedDomain(domain);
-                        setCurrentPage(1);
-                        setIsMobileFilterOpen(false);
-                      }}
-                      className={`px-3 py-2 md:py-1.5 text-xs md:text-sm font-medium rounded-full transition-colors touch-manipulation whitespace-nowrap ${
-                        selectedDomain === domain
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {domain}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Department Filter Dropdown */}
+            <div className="mb-3 md:mb-4 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-600" />
+              <label htmlFor="dept-select" className="text-xs md:text-sm font-medium text-gray-700">Filter by Department:</label>
+              <select
+                id="dept-select"
+                value={selectedDomain}
+                onChange={(e) => {
+                  setSelectedDomain(e.target.value);
+                  setCurrentPage(1);
+                  setIsMobileFilterOpen(false);
+                }}
+                className="px-3 py-2 text-xs md:text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
+              >
+                <option value="">All Departments</option>
+                {getDomains().map((domain, idx) => (
+                  <option key={idx} value={domain}>
+                    {domain}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Results Header */}

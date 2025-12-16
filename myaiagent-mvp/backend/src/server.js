@@ -62,6 +62,8 @@ import marketAnalyticsRoutes from './routes/marketAnalytics.js';
 import intelligenceRoutes from './routes/intelligence.js';
 import companyDashboardRoutes from './routes/companyDashboard.js';
 import aiAgentsRoutes from './routes/aiAgents.js';
+import organizationsRoutes from './routes/organizations.js';
+import adminOrganizationsRoutes from './routes/admin-organizations.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -332,6 +334,8 @@ app.use('/api/market-analytics', marketAnalyticsRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/company', companyDashboardRoutes);
 app.use('/api/ai-agents', aiAgentsRoutes);
+app.use('/api/organizations', organizationsRoutes);
+app.use('/api/admin/organizations', adminOrganizationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
