@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../utils/database.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireMasterAdmin } from '../middleware/auth.js';
+import { getSystemApiKeys } from '../services/apiKeyResolver.js';
 
 const router = express.Router();
 
@@ -398,6 +399,185 @@ router.get('/feedback-analytics', async (req, res) => {
   } catch (error) {
     console.error('Feedback analytics error:', error);
     res.status(500).json({ error: 'Failed to get feedback analytics' });
+  }
+});
+
+// ============================================
+// MASTER ADMIN ENDPOINTS (System-wide admin)
+// ============================================
+
+/**
+ * GET /api/admin/organizations
+ * List all organizations in the system (master admin only)
+ */
+router.get('/organizations', requireMasterAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT o.id, o.name, o.slug, o.owner_id, o.is_active, o.created_at, o.updated_at,
+             COUNT(DISTINCT ou.user_id) as user_count,
+             COUNT(DISTINCT c.id) as conversation_count,
+             COUNT(DISTINCT m.id) as message_count
+      FROM organizations o
+      LEFT JOIN organization_users ou ON o.id = ou.organization_id AND ou.is_active = TRUE
+      LEFT JOIN conversations c ON o.id = c.organization_id
+      LEFT JOIN messages m ON c.id = m.conversation_id
+      GROUP BY o.id
+      ORDER BY o.created_at DESC
+    `);
+
+    res.json({
+      organizations: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching organizations:', error);
+    res.status(500).json({ error: 'Failed to fetch organizations' });
+  }
+});
+
+/**
+ * GET /api/admin/organizations/:orgId
+ * Get details of specific organization (master admin only)
+ */
+router.get('/organizations/:orgId', requireMasterAdmin, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+
+    const result = await query(`
+      SELECT o.*, u.full_name as owner_name, u.email as owner_email
+      FROM organizations o
+      LEFT JOIN users u ON o.owner_id = u.id
+      WHERE o.id = $1
+    `, [parseInt(orgId)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    res.json({ organization: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching organization:', error);
+    res.status(500).json({ error: 'Failed to fetch organization' });
+  }
+});
+
+/**
+ * GET /api/admin/organizations/:orgId/users
+ * List all users in specific organization (master admin only)
+ */
+router.get('/organizations/:orgId/users', requireMasterAdmin, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await query(`
+      SELECT u.id, u.email, u.full_name, u.is_active, u.role,
+             ou.role as org_role, ou.joined_at, ou.is_active as org_active,
+             COUNT(DISTINCT c.id) as conversation_count
+      FROM users u
+      JOIN organization_users ou ON u.id = ou.user_id
+      LEFT JOIN conversations c ON u.id = c.user_id AND c.organization_id = $1
+      WHERE ou.organization_id = $1
+      GROUP BY u.id, ou.id
+      ORDER BY ou.joined_at DESC
+      LIMIT $2 OFFSET $3
+    `, [parseInt(orgId), parseInt(limit), parseInt(offset)]);
+
+    res.json({
+      users: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching organization users:', error);
+    res.status(500).json({ error: 'Failed to fetch organization users' });
+  }
+});
+
+/**
+ * GET /api/admin/api-keys
+ * List all API keys across all organizations (master admin only, audit view)
+ */
+router.get('/api-keys', requireMasterAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT a.id, a.key_label, a.service_name, a.is_active, a.created_at, a.updated_at,
+             a.organization_id,
+             o.name as org_name
+      FROM api_secrets a
+      LEFT JOIN organizations o ON a.organization_id = o.id
+      ORDER BY a.organization_id ASC, a.created_at DESC
+    `);
+
+    res.json({
+      apiKeys: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching API keys:', error);
+    res.status(500).json({ error: 'Failed to fetch API keys' });
+  }
+});
+
+/**
+ * GET /api/admin/api-keys/:keyId
+ * Get specific API key details (master admin only)
+ */
+router.get('/api-keys/:keyId', requireMasterAdmin, async (req, res) => {
+  try {
+    const { keyId } = req.params;
+
+    const result = await query(`
+      SELECT a.id, a.key_label, a.service_name, a.is_active, a.created_at, a.updated_at,
+             a.organization_id,
+             o.name as org_name
+      FROM api_secrets a
+      LEFT JOIN organizations o ON a.organization_id = o.id
+      WHERE a.id = $1
+    `, [parseInt(keyId)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+
+    res.json({ apiKey: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching API key:', error);
+    res.status(500).json({ error: 'Failed to fetch API key' });
+  }
+});
+
+/**
+ * GET /api/admin/master-stats
+ * Get master admin dashboard statistics (master admin only)
+ */
+router.get('/master-stats', requireMasterAdmin, async (req, res) => {
+  try {
+    const orgsResult = await query('SELECT COUNT(*) as count FROM organizations WHERE is_active = TRUE');
+    const usersResult = await query('SELECT COUNT(*) as count FROM users WHERE is_active = TRUE');
+    const conversationsResult = await query('SELECT COUNT(*) as count FROM conversations');
+    const messagesResult = await query('SELECT COUNT(*) as count FROM messages');
+    const apiKeysResult = await query('SELECT COUNT(*) as count FROM api_secrets WHERE is_active = TRUE');
+
+    res.json({
+      organizations: {
+        total: parseInt(orgsResult.rows[0].count) || 0
+      },
+      users: {
+        total: parseInt(usersResult.rows[0].count) || 0
+      },
+      conversations: {
+        total: parseInt(conversationsResult.rows[0].count) || 0
+      },
+      messages: {
+        total: parseInt(messagesResult.rows[0].count) || 0
+      },
+      apiKeys: {
+        total: parseInt(apiKeysResult.rows[0].count) || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching master stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
 

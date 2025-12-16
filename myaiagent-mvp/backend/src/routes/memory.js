@@ -13,19 +13,33 @@ router.get('/', authenticate, async (req, res) => {
 
     // Create cache key based on query parameters
     const cacheKey = `${req.user.id}:${category || 'all'}:${approved || 'all'}`;
-    
+
     // Check cache first
     const cached = cache.get('memory_facts', cacheKey);
     if (cached) {
       return res.json(cached);
     }
 
-    let sql = 'SELECT * FROM memory_facts WHERE user_id = $1';
+    let sql = `SELECT
+      id,
+      user_id,
+      fact_text as fact,
+      fact_type as category,
+      conversation_id as source_conversation_id,
+      source_message_id,
+      COALESCE(relevance_score, 1.0) as confidence,
+      false as manually_added,
+      approved,
+      created_at,
+      created_at as last_referenced_at,
+      0 as times_referenced
+    FROM memory_facts
+    WHERE user_id = $1`;
     const params = [req.user.id];
     let paramCount = 2;
 
     if (category) {
-      sql += ` AND category = $${paramCount++}`;
+      sql += ` AND fact_type = $${paramCount++}`;
       params.push(category);
     }
 
@@ -34,12 +48,12 @@ router.get('/', authenticate, async (req, res) => {
       params.push(approved === 'true');
     }
 
-    sql += ' ORDER BY last_referenced_at DESC';
+    sql += ' ORDER BY created_at DESC';
 
     const result = await query(sql, params);
 
     const response = {
-      memoryFacts: result.rows,
+      facts: result.rows,
       total: result.rows.length,
     };
 
@@ -63,10 +77,10 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `INSERT INTO memory_facts (user_id, fact, category, manually_added, approved)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [req.user.id, fact, category, true, true]
+      `INSERT INTO memory_facts (user_id, fact_text, fact_type, approved)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, user_id, fact_text as fact, fact_type as category, approved, created_at`,
+      [req.user.id, fact, category, true]
     );
 
     // Invalidate memory facts cache for this user
@@ -96,14 +110,14 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
 
     // Get conversation messages
     const messages = await query(
-      `SELECT role, content FROM messages 
-       WHERE conversation_id = $1 
+      `SELECT role, content FROM messages
+       WHERE conversation_id = $1
        ORDER BY created_at ASC`,
       [conversationId]
     );
 
     if (messages.rows.length === 0) {
-      return res.json({ memoryFacts: [], message: 'No messages to analyze' });
+      return res.json({ facts: [], message: 'No messages to analyze' });
     }
 
     // Extract facts using AI
@@ -111,12 +125,12 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
 
     // Save facts using bulk insert for better performance
     let savedFacts = [];
-    
+
     if (extractedFacts.length > 0) {
       // Build bulk insert query
       const values = extractedFacts.map((factData, index) => {
-        const baseParam = index * 7;
-        return `($${baseParam + 1}, $${baseParam + 2}, $${baseParam + 3}, $${baseParam + 4}, $${baseParam + 5}, $${baseParam + 6}, $${baseParam + 7})`;
+        const baseParam = index * 4;
+        return `($${baseParam + 1}, $${baseParam + 2}, $${baseParam + 3}, $${baseParam + 4})`;
       }).join(', ');
 
       const params = extractedFacts.flatMap(factData => [
@@ -124,28 +138,25 @@ router.post('/extract/:conversationId', authenticate, async (req, res) => {
         factData.fact,
         factData.category || 'general',
         conversationId,
-        false,
-        false, // Requires user approval
-        factData.confidence || 0.8,
       ]);
 
       const result = await query(
-        `INSERT INTO memory_facts 
-         (user_id, fact, category, source_conversation_id, manually_added, approved, confidence)
+        `INSERT INTO memory_facts
+         (user_id, fact_text, fact_type, conversation_id)
          VALUES ${values}
          ON CONFLICT DO NOTHING
-         RETURNING *`,
+         RETURNING id, user_id, fact_text as fact, fact_type as category, conversation_id as source_conversation_id, created_at`,
         params
       );
 
       savedFacts = result.rows;
-      
+
       // Invalidate memory facts cache for this user
       cache.invalidateNamespace('memory_facts');
     }
 
     res.json({
-      memoryFacts: savedFacts,
+      facts: savedFacts,
       total: savedFacts.length,
       message: `Extracted ${savedFacts.length} new facts for your review`,
     });
@@ -176,11 +187,11 @@ router.put('/:id', authenticate, async (req, res) => {
     let paramCount = 1;
 
     if (fact !== undefined) {
-      updates.push(`fact = $${paramCount++}`);
+      updates.push(`fact_text = $${paramCount++}`);
       values.push(fact);
     }
     if (category !== undefined) {
-      updates.push(`category = $${paramCount++}`);
+      updates.push(`fact_type = $${paramCount++}`);
       values.push(category);
     }
     if (approved !== undefined) {
@@ -195,7 +206,7 @@ router.put('/:id', authenticate, async (req, res) => {
     values.push(id);
 
     const result = await query(
-      `UPDATE memory_facts SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE memory_facts SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING id, user_id, fact_text as fact, fact_type as category, approved, created_at`,
       values
     );
 
@@ -252,10 +263,10 @@ router.delete('/', authenticate, async (req, res) => {
 router.get('/categories', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT DISTINCT category, COUNT(*) as count 
-       FROM memory_facts 
+      `SELECT DISTINCT fact_type as category, COUNT(*) as count
+       FROM memory_facts
        WHERE user_id = $1 AND approved = true
-       GROUP BY category
+       GROUP BY fact_type
        ORDER BY count DESC`,
       [req.user.id]
     );

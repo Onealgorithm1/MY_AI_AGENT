@@ -64,10 +64,20 @@ export async function authenticate(req, res, next) {
   }
 }
 
-// Require super admin role (system-wide admin)
+// Require super admin role (system-wide admin) - backward compatible
+// Includes: admin, superadmin, and master_admin (new hierarchical role)
 export function requireAdmin(req, res, next) {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'master_admin') {
     return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+// Require master admin role (system-wide, highest privilege)
+// Use this for true system admin operations only
+export function requireMasterAdmin(req, res, next) {
+  if (req.user.role !== 'master_admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Master admin access required' });
   }
   next();
 }

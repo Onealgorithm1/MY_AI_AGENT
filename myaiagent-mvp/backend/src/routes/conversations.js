@@ -14,15 +14,15 @@ router.get('/', authenticate, async (req, res) => {
     const validatedOffset = Math.max(0, parseInt(offset) || 0);
 
     const result = await query(
-      `SELECT c.id, c.user_id, c.title, c.model, c.pinned, c.archived,
+      `SELECT c.id, c.user_id, c.title, c.model, c.is_archived,
               c.created_at, c.updated_at,
               COUNT(m.id) as message_count
        FROM conversations c
        LEFT JOIN messages m ON m.conversation_id = c.id
-       WHERE c.user_id = $1 AND c.archived = $2
-       GROUP BY c.id, c.user_id, c.title, c.model, c.pinned, c.archived,
+       WHERE c.user_id = $1 AND c.is_archived = $2
+       GROUP BY c.id, c.user_id, c.title, c.model, c.is_archived,
                 c.created_at, c.updated_at
-       ORDER BY c.pinned DESC, c.updated_at DESC
+       ORDER BY c.updated_at DESC
        LIMIT $3 OFFSET $4`,
       [req.user.id, archived === 'true', validatedLimit, validatedOffset]
     );

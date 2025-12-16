@@ -1,174 +1,125 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { organizations } from '../services/api';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import {
-  Users,
-  Mail,
-  UserPlus,
-  Key,
-  Plus,
-  Copy,
-  Trash2,
-  Loader,
-  AlertCircle,
-  Settings as SettingsIcon,
-  Eye,
-  EyeOff,
-  RotateCw,
-  MessageSquare,
-  RefreshCw,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { api } from '../services/api';
 import './OrgAdminDashboard.css';
 
-export default function OrgAdminDashboard() {
+export function OrgAdminDashboard() {
   const { user, currentOrganization } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState('member');
-  const [showAddKey, setShowAddKey] = useState(false);
-  const [newKeyLabel, setNewKeyLabel] = useState('');
-  const [showApiKeyValues, setShowApiKeyValues] = useState({});
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [apiKeys, setApiKeys] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [showNewKeyForm, setShowNewKeyForm] = useState(false);
 
-  const orgId = currentOrganization?.id;
-
-  // Fetch organization details with real-time updates
-  const { data: orgData, isLoading: orgLoading, error: orgError, refetch: refetchOrg, isFetching } = useQuery({
-    queryKey: ['orgDetails', orgId],
-    queryFn: () => organizations.get(orgId),
-    enabled: !!orgId,
-    staleTime: 15000,
-    refetchInterval: 30000,
-    refetchIntervalInBackground: true,
-  });
-
-  // Fetch organization members
-  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
-    queryKey: ['orgUsers', orgId],
-    queryFn: () => organizations.getUsers(orgId),
-    enabled: !!orgId,
-    staleTime: 15000,
-    refetchInterval: 30000,
-  });
-
-  // Fetch organization API keys
-  const { data: keysData, isLoading: keysLoading, refetch: refetchKeys } = useQuery({
-    queryKey: ['orgApiKeys', orgId],
-    queryFn: () => organizations.getApiKeys(orgId),
-    enabled: !!orgId,
-    staleTime: 15000,
-    refetchInterval: 30000,
-  });
-
-  const org = orgData?.data?.organization;
-  const members = usersData?.data?.users || [];
-  const apiKeys = keysData?.data?.apiKeys || [];
-
-  // Auto-refetch when organization changes
+  // Verify user is org admin
   useEffect(() => {
-    if (orgId) {
-      refetchOrg();
-      refetchUsers();
-      refetchKeys();
+    if (user && user.org_role !== 'admin' && user.org_role !== 'owner') {
+      setError('Access denied. Organization admin access required.');
     }
-  }, [orgId, refetchOrg, refetchUsers, refetchKeys]);
+  }, [user]);
 
-  const handleManualRefresh = async () => {
-    setIsRefreshing(true);
+  // Load users
+  useEffect(() => {
+    if (activeTab === 'users' && currentOrganization) {
+      async function loadUsers() {
+        try {
+          setLoading(true);
+          setError(null);
+          const response = await api.org.getUsers(currentOrganization.id);
+          setUsers(response.data.users || []);
+        } catch (err) {
+          console.error('Error loading users:', err);
+          setError('Failed to load users');
+        } finally {
+          setLoading(false);
+        }
+      }
+      loadUsers();
+    }
+  }, [activeTab, currentOrganization]);
+
+  // Load API keys
+  useEffect(() => {
+    if (activeTab === 'api-keys' && currentOrganization) {
+      async function loadApiKeys() {
+        try {
+          setLoading(true);
+          setError(null);
+          const response = await api.org.getApiKeys(currentOrganization.id);
+          setApiKeys(response.data.apiKeys || []);
+        } catch (err) {
+          console.error('Error loading API keys:', err);
+          setError('Failed to load API keys');
+        } finally {
+          setLoading(false);
+        }
+      }
+      loadApiKeys();
+    }
+  }, [activeTab, currentOrganization]);
+
+  const handleInviteUser = async (e) => {
+    e.preventDefault();
     try {
-      await Promise.all([refetchOrg(), refetchUsers(), refetchKeys()]);
-      toast.success('Data refreshed');
-    } catch (error) {
-      toast.error('Failed to refresh data');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleInviteUser = async () => {
-    if (!newUserEmail.trim()) {
-      toast.error('Please enter an email');
-      return;
-    }
-
-    try {
-      await organizations.inviteUser(orgId, {
-        email: newUserEmail,
-        role: newUserRole
+      setError(null);
+      await api.org.inviteUser(currentOrganization.id, {
+        email: inviteEmail,
+        role: inviteRole
       });
-      toast.success('User invitation sent');
-      setNewUserEmail('');
-      setNewUserRole('member');
-      setShowAddUser(false);
-      refetchUsers();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to send invitation');
-      console.error('Invite error:', error);
+      setSuccessMessage(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail('');
+      setInviteRole('member');
+      setShowInviteForm(false);
+      
+      // Reload users
+      const response = await api.org.getUsers(currentOrganization.id);
+      setUsers(response.data.users || []);
+
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to invite user');
     }
   };
 
-  const handleCreateApiKey = async () => {
-    if (!newKeyLabel.trim()) {
-      toast.error('Please enter a key label');
-      return;
-    }
-
+  const handleResetPassword = async (userId) => {
     try {
-      // Generate a random key value (in real implementation, should be from user input or backend)
-      const randomKey = 'sk-' + Math.random().toString(36).substring(2, 15);
-
-      await organizations.createApiKey(orgId, {
-        serviceName: 'Custom',
-        keyLabel: newKeyLabel,
-        keyValue: randomKey
-      });
-      toast.success('API key created');
-      setNewKeyLabel('');
-      setShowAddKey(false);
-      refetchKeys();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to create API key');
-      console.error('Create key error:', error);
+      setError(null);
+      await api.org.resetPassword(currentOrganization.id, userId);
+      setSuccessMessage('Password reset link sent');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to reset password');
     }
   };
 
-  const handleRevokeKey = async (keyId) => {
-    if (!confirm('Are you sure you want to revoke this API key?')) {
-      return;
-    }
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure? This will deactivate the user but preserve all their data.')) {
+      try {
+        setError(null);
+        await api.org.deleteUser(currentOrganization.id, userId);
+        setSuccessMessage('User deactivated');
+        
+        // Reload users
+        const response = await api.org.getUsers(currentOrganization.id);
+        setUsers(response.data.users || []);
 
-    try {
-      await organizations.revokeApiKey(orgId, keyId);
-      toast.success('API key revoked');
-      refetchKeys();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to revoke API key');
-      console.error('Revoke error:', error);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to deactivate user');
+      }
     }
   };
 
-  const toggleKeyVisibility = (keyId) => {
-    setShowApiKeyValues((prev) => ({
-      ...prev,
-      [keyId]: !prev[keyId],
-    }));
-  };
-
-  if (!orgId) {
+  if (error && error.includes('Access denied')) {
     return (
-      <div className="org-admin-dashboard">
-        <div className="p-8 text-center">
-          <AlertCircle className="w-12 h-12 text-yellow-600 dark:text-yellow-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            No Organization Selected
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Please select an organization from the sidebar to manage it.
-          </p>
-        </div>
+      <div className="org-admin-error">
+        <h2>Access Denied</h2>
+        <p>{error}</p>
       </div>
     );
   }
@@ -176,392 +127,276 @@ export default function OrgAdminDashboard() {
   return (
     <div className="org-admin-dashboard">
       <div className="org-admin-header">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1>Organization Settings</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {currentOrganization?.name || 'Organization'} • {currentOrganization?.slug}
-            </p>
-          </div>
-          <button
-            onClick={handleManualRefresh}
-            disabled={isRefreshing || isFetching}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            title="Refresh data"
-          >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing || isFetching ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        <h1>⚙️ Organization Administration</h1>
+        <p className="org-admin-subtitle">
+          {currentOrganization?.name || 'Organization'} • Admin Controls
+        </p>
       </div>
 
-      {/* Live Status Indicator */}
-      {isFetching && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg flex items-center gap-2">
-          <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></div>
-          <span className="text-sm text-blue-800 dark:text-blue-200">Updating data...</span>
+      <div className="org-admin-nav-tabs">
+        <button
+          className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          📊 Overview
+        </button>
+        <button
+          className={`tab ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          👥 Users
+        </button>
+        <button
+          className={`tab ${activeTab === 'api-keys' ? 'active' : ''}`}
+          onClick={() => setActiveTab('api-keys')}
+        >
+          🔑 API Keys
+        </button>
+        <button
+          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          ⚙️ Settings
+        </button>
+      </div>
+
+      {successMessage && (
+        <div className="org-success-message">{successMessage}</div>
+      )}
+
+      {error && activeTab !== 'overview' && (
+        <div className="org-error-message">{error}</div>
+      )}
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="org-overview">
+          <div className="org-info-card">
+            <h3>Organization Information</h3>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Organization Name:</span>
+                <span className="value">{currentOrganization?.name}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Organization Slug:</span>
+                <span className="value">{currentOrganization?.slug}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Your Role:</span>
+                <span className="badge role">{user?.org_role?.toUpperCase()}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Joined:</span>
+                <span className="value">{currentOrganization?.joined_at ? new Date(currentOrganization.joined_at).toLocaleDateString() : 'Unknown'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="org-admin-guide">
+            <h3>Admin Responsibilities</h3>
+            <ul>
+              <li>👥 Manage organization members (invite, remove, change roles)</li>
+              <li>🔑 Create and manage API keys for your organization</li>
+              <li>🔄 Rotate API keys when needed</li>
+              <li>🔐 Reset passwords for team members</li>
+              <li>⚙️ Configure organization settings</li>
+            </ul>
+          </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="org-admin-tabs">
-        <button
-          className={`org-admin-tab ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          className={`org-admin-tab ${activeTab === 'members' ? 'active' : ''}`}
-          onClick={() => setActiveTab('members')}
-        >
-          Members
-        </button>
-        <button
-          className={`org-admin-tab ${activeTab === 'api-keys' ? 'active' : ''}`}
-          onClick={() => setActiveTab('api-keys')}
-        >
-          API Keys
-        </button>
-        <button
-          className={`org-admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          Settings
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="org-admin-content">
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div>
-            {orgLoading && !org ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-blue-600" />
-              </div>
-            ) : orgError ? (
-              <div className="p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg flex gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-red-900 dark:text-red-100">Failed to load organization</p>
-                  <p className="text-sm text-red-800 dark:text-red-200">{orgError.message}</p>
-                </div>
-              </div>
-            ) : org ? (
-              <div className="org-admin-stats-grid">
-                <div className="org-admin-stat-card">
-                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Members</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {org.stats?.memberCount || 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="org-admin-stat-card">
-                  <MessageSquare className="w-6 h-6 text-green-600 dark:text-green-400" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Conversations</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {org.stats?.conversationCount || 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="org-admin-stat-card">
-                  <Key className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">API Keys</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {org.stats?.apiKeyCount || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-600 dark:text-gray-400">No organization data available</p>
-              </div>
-            )}
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <div className="org-users">
+          <div className="users-header">
+            <h2>Organization Members</h2>
+            <button className="btn-primary" onClick={() => setShowInviteForm(!showInviteForm)}>
+              + Invite User
+            </button>
           </div>
-        )}
 
-        {/* Members Tab */}
-        {activeTab === 'members' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Members</h3>
-              <button
-                onClick={() => setShowAddUser(!showAddUser)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Invite Member
-              </button>
-            </div>
-
-            {/* Invite Form */}
-            {showAddUser && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="user@example.com"
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Role
-                    </label>
-                    <select
-                      value={newUserRole}
-                      onChange={(e) => setNewUserRole(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="member">Member</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleInviteUser}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Send Invitation
-                    </button>
-                    <button
-                      onClick={() => setShowAddUser(false)}
-                      className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
+          {showInviteForm && (
+            <form className="invite-form" onSubmit={handleInviteUser}>
+              <h3>Invite User to Organization</h3>
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
               </div>
-            )}
-
-            {/* Members List */}
-            {(usersLoading || orgLoading) && members.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-blue-600" />
+              <div className="form-group">
+                <label>Role</label>
+                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                  <option value="owner">Owner</option>
+                </select>
               </div>
-            ) : members.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {members.length} member{members.length !== 1 ? 's' : ''} in this organization
-                </p>
-                {members.map((member) => (
-                  <div
-                    key={member.user_id}
-                    className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{member.full_name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{member.email}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        Joined {new Date(member.joined_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {member.role}
-                    </span>
-                  </div>
-                ))}
+              <div className="form-actions">
+                <button type="submit" className="btn-submit">Send Invitation</button>
+                <button type="button" className="btn-cancel" onClick={() => setShowInviteForm(false)}>Cancel</button>
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">No members yet</p>
-              </div>
-            )}
-          </div>
-        )}
+            </form>
+          )}
 
-        {/* API Keys Tab */}
-        {activeTab === 'api-keys' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h3>
-              <button
-                onClick={() => setShowAddKey(!showAddKey)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create Key
-              </button>
-            </div>
-
-            {/* Create Key Form */}
-            {showAddKey && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Key Label
-                    </label>
-                    <input
-                      type="text"
-                      value={newKeyLabel}
-                      onChange={(e) => setNewKeyLabel(e.target.value)}
-                      placeholder="e.g., Production API Key"
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCreateApiKey}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Create Key
-                    </button>
-                    <button
-                      onClick={() => setShowAddKey(false)}
-                      className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* API Keys List */}
-            {(keysLoading || orgLoading) && apiKeys.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-blue-600" />
-              </div>
-            ) : apiKeys.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {apiKeys.length} API key{apiKeys.length !== 1 ? 's' : ''} for this organization
-                </p>
-                {apiKeys.map((key) => (
-                  <div
-                    key={key.id}
-                    className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{key.keyLabel}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Service: {key.serviceName}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          Created {new Date(key.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        key.isActive
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}>
-                        {key.isActive ? 'Active' : 'Revoked'}
-                      </span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-3">
-                      {key.isActive && (
-                        <>
+          {loading ? (
+            <p className="loading">Loading users...</p>
+          ) : users.length === 0 ? (
+            <p className="no-data">No users in this organization</p>
+          ) : (
+            <div className="users-table-container">
+              <table className="org-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Conversations</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(user => (
+                    <tr key={user.id}>
+                      <td className="user-name">{user.full_name}</td>
+                      <td>{user.email}</td>
+                      <td>
+                        <span className={`badge role-${user.org_role}`}>
+                          {user.org_role?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${user.is_active ? 'active' : 'inactive'}`}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>{new Date(user.joined_at).toLocaleDateString()}</td>
+                      <td className="number">{user.conversation_count || 0}</td>
+                      <td>
+                        <button
+                          className="btn-action"
+                          onClick={() => handleResetPassword(user.id)}
+                          title="Send password reset email"
+                        >
+                          Reset PWD
+                        </button>
+                        {user.org_role !== 'owner' && (
                           <button
-                            onClick={() => handleRevokeKey(key.id)}
-                            className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded transition-colors"
+                            className="btn-action btn-danger"
+                            onClick={() => handleDeleteUser(user.id)}
+                            title="Deactivate user"
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Revoke
+                            Remove
                           </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Key className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">No API keys created yet</p>
-              </div>
-            )}
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* API Keys Tab */}
+      {activeTab === 'api-keys' && (
+        <div className="org-api-keys">
+          <div className="keys-header">
+            <h2>Organization API Keys</h2>
+            <button className="btn-primary" onClick={() => setShowNewKeyForm(!showNewKeyForm)}>
+              + Add New Key
+            </button>
           </div>
-        )}
 
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
-              Organization Settings
-            </h3>
-
-            {orgLoading && !org ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-blue-600" />
+          {showNewKeyForm && (
+            <form className="new-key-form" onSubmit={(e) => {
+              e.preventDefault();
+              // Handle new key creation
+              setShowNewKeyForm(false);
+            }}>
+              <h3>Add New API Key</h3>
+              <div className="form-group">
+                <label>Service</label>
+                <select defaultValue="">
+                  <option value="">Select a service...</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="google">Google/Gemini</option>
+                  <option value="anthropic">Anthropic</option>
+                </select>
               </div>
-            ) : org ? (
-              <div className="space-y-6">
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-4">Organization Info</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Organization Name
-                      </label>
-                      <p className="text-gray-900 dark:text-white font-medium">{org.name}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Slug
-                      </label>
-                      <p className="text-gray-900 dark:text-white font-mono text-sm">{org.slug}</p>
-                    </div>
-                    {org.description && (
-                      <div>
-                        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                          Description
-                        </label>
-                        <p className="text-gray-900 dark:text-white">{org.description}</p>
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Created
-                      </label>
-                      <p className="text-gray-900 dark:text-white">
-                        {new Date(org.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Status
-                      </label>
-                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                        org.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}>
-                        {org.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Additional organization settings and customization options will be available soon.
-                  </p>
-                </div>
+              <div className="form-group">
+                <label>Key Label</label>
+                <input type="text" placeholder="e.g., Production OpenAI Key" />
               </div>
-            ) : null}
-          </div>
-        )}
-      </div>
+              <div className="form-group">
+                <label>API Key Value</label>
+                <input type="password" placeholder="Paste your API key here" />
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="btn-submit">Add Key</button>
+                <button type="button" className="btn-cancel" onClick={() => setShowNewKeyForm(false)}>Cancel</button>
+              </div>
+            </form>
+          )}
+
+          {loading ? (
+            <p className="loading">Loading API keys...</p>
+          ) : apiKeys.length === 0 ? (
+            <p className="no-data">No API keys configured for this organization</p>
+          ) : (
+            <div className="keys-table-container">
+              <table className="org-table">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Label</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apiKeys.map(key => (
+                    <tr key={key.id}>
+                      <td className="service-name">{key.service_name}</td>
+                      <td>{key.key_label}</td>
+                      <td>
+                        <span className={`badge ${key.is_active ? 'active' : 'inactive'}`}>
+                          {key.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>{new Date(key.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <button className="btn-action">View</button>
+                        <button className="btn-action">Rotate</button>
+                        <button className="btn-action btn-danger">Revoke</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="org-settings">
+          <h2>Organization Settings</h2>
+          <div className="coming-soon-section">Coming soon - Organization settings and configuration</div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default OrgAdminDashboard;

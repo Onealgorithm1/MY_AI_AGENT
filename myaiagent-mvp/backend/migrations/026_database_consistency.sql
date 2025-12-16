@@ -77,7 +77,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'api_secrets') THEN
     CREATE TABLE api_secrets (
       id SERIAL PRIMARY KEY,
-      key_name VARCHAR(255) UNIQUE NOT NULL,
+      key_name VARCHAR(255),
       key_label VARCHAR(255),
       key_value TEXT NOT NULL,
       key_type VARCHAR(50) DEFAULT 'api_key',
@@ -89,9 +89,12 @@ BEGIN
       metadata JSONB DEFAULT '{}',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_used_at TIMESTAMP
+      last_used_at TIMESTAMP,
+      UNIQUE (service_name, key_label)
     );
     CREATE INDEX idx_api_secrets_name ON api_secrets(key_name);
+    CREATE INDEX idx_api_secrets_service_name ON api_secrets(service_name);
+    CREATE INDEX idx_api_secrets_is_active ON api_secrets(is_active);
     RAISE NOTICE 'Created api_secrets table';
   END IF;
 END $$;

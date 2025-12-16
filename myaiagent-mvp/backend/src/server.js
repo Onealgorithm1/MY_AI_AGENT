@@ -64,6 +64,7 @@ import companyDashboardRoutes from './routes/companyDashboard.js';
 import aiAgentsRoutes from './routes/aiAgents.js';
 import organizationsRoutes from './routes/organizations.js';
 import adminOrganizationsRoutes from './routes/admin-organizations.js';
+import orgAdminRoutes from './routes/org-admin.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -344,6 +345,7 @@ app.use('/api/company', companyDashboardRoutes);
 app.use('/api/ai-agents', aiAgentsRoutes);
 app.use('/api/organizations', organizationsRoutes);
 app.use('/api/admin/organizations', adminOrganizationsRoutes);
+app.use('/api/org', orgAdminRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

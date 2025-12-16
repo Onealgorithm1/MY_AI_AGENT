@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Building2, Settings, Shield, User, Grid, X } from 'lucide-react';
+import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrganizationSelector from './OrganizationSelector';
 
@@ -133,7 +133,30 @@ const AppLayout = ({ children }) => {
             >
               <Settings className="w-4 h-4" />
             </button>
+            {/* Master Admin Dashboard */}
             {(user?.role === 'master_admin' || user?.role === 'superadmin') && (
+              <button
+                onClick={() => navigate('/admin/system')}
+                className="hidden lg:block p-1 text-purple-600 hover:text-purple-700 dark:hover:text-purple-400"
+                title="System Admin Dashboard"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Organization Admin Dashboard */}
+            {user?.org_role === 'admin' || user?.org_role === 'owner' ? (
+              <button
+                onClick={() => navigate('/admin/org')}
+                className="hidden lg:block p-1 text-blue-600 hover:text-blue-700 dark:hover:text-blue-400"
+                title="Organization Admin"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            ) : null}
+
+            {/* Legacy Admin Panel */}
+            {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button
                 onClick={() => navigate('/admin/system')}
                 className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
