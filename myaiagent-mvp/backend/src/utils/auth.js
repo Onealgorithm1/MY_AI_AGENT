@@ -46,9 +46,10 @@ export function generateWebSocketToken(user) {
     id: user.id,
     email: user.email,
     role: user.role,
+    organization_id: user.organization_id || null,
     ws: true, // Mark as WebSocket token
   };
-  
+
   return jwt.sign(payload, getJwtSecret(), {
     expiresIn: '5m', // 5 minutes
   });
