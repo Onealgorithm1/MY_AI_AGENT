@@ -93,14 +93,17 @@ export default function OrgAdminDashboard() {
     }
 
     try {
-      // TODO: Implement invite user endpoint in backend
-      // This requires: POST /api/org/:orgId/users with email and role
-      toast.success('User invitation sent (feature coming soon)');
+      await organizations.inviteUser(orgId, {
+        email: newUserEmail,
+        role: newUserRole
+      });
+      toast.success('User invitation sent');
       setNewUserEmail('');
+      setNewUserRole('member');
       setShowAddUser(false);
-      // refetchOrg();
+      refetchUsers();
     } catch (error) {
-      toast.error('Failed to send invitation');
+      toast.error(error.response?.data?.error || 'Failed to send invitation');
       console.error('Invite error:', error);
     }
   };
@@ -112,14 +115,20 @@ export default function OrgAdminDashboard() {
     }
 
     try {
-      // TODO: Implement create API key endpoint in backend
-      // This requires: POST /api/org/:orgId/api-keys with label
-      toast.success('API key created (feature coming soon)');
+      // Generate a random key value (in real implementation, should be from user input or backend)
+      const randomKey = 'sk-' + Math.random().toString(36).substring(2, 15);
+
+      await organizations.createApiKey(orgId, {
+        serviceName: 'Custom',
+        keyLabel: newKeyLabel,
+        keyValue: randomKey
+      });
+      toast.success('API key created');
       setNewKeyLabel('');
       setShowAddKey(false);
-      // refetchOrg();
+      refetchKeys();
     } catch (error) {
-      toast.error('Failed to create API key');
+      toast.error(error.response?.data?.error || 'Failed to create API key');
       console.error('Create key error:', error);
     }
   };
@@ -130,12 +139,11 @@ export default function OrgAdminDashboard() {
     }
 
     try {
-      // TODO: Implement revoke API key endpoint in backend
-      // This requires: DELETE /api/org/:orgId/api-keys/:keyId
-      toast.success('API key revoked (feature coming soon)');
-      // refetchOrg();
+      await organizations.revokeApiKey(orgId, keyId);
+      toast.success('API key revoked');
+      refetchKeys();
     } catch (error) {
-      toast.error('Failed to revoke API key');
+      toast.error(error.response?.data?.error || 'Failed to revoke API key');
       console.error('Revoke error:', error);
     }
   };
