@@ -242,12 +242,16 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     // Get user's memory facts (50 most relevant with scoring)
     const memoryResult = await query(
-      `SELECT fact, category, times_referenced, confidence 
-       FROM memory_facts 
+      `SELECT
+         fact_text as fact,
+         fact_type as category,
+         times_referenced,
+         COALESCE(relevance_score, confidence, 1.0) as confidence
+       FROM memory_facts
        WHERE user_id = $1 AND approved = true
-       ORDER BY 
+       ORDER BY
          times_referenced DESC,
-         confidence DESC,
+         COALESCE(relevance_score, confidence, 1.0) DESC,
          last_referenced_at DESC
        LIMIT 50`,
       [req.user.id]
