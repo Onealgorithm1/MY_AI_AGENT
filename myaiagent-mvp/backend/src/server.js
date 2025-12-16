@@ -76,9 +76,6 @@ import { performanceMonitoringMiddleware } from './middleware/performanceMonitor
 // Import Email Queue Processor
 import { startQueueProcessor } from './services/emailQueueProcessor.js';
 
-// Import Migration Runner
-import runMigrations from './utils/migrations.js';
-
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 5000 : 3000);
 
