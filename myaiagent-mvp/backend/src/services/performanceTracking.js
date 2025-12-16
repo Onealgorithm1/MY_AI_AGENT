@@ -345,10 +345,10 @@ async function getMemoryMetrics(userId) {
     );
 
     const categoryResult = await query(
-      `SELECT category, COUNT(*) as count
+      `SELECT fact_type as category, COUNT(*) as count
        FROM memory_facts
        WHERE user_id = $1 AND approved = true
-       GROUP BY category
+       GROUP BY fact_type
        ORDER BY count DESC
        LIMIT 5`,
       [userId]

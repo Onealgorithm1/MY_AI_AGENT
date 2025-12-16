@@ -12,6 +12,7 @@ CREATE TABLE memory_facts (
     conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
     source_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
     confidence FLOAT DEFAULT 1.0,
+    relevance_score FLOAT DEFAULT 1.0,
     manually_added BOOLEAN DEFAULT false,
     approved BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -22,7 +23,7 @@ CREATE TABLE memory_facts (
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_memory_facts_user_id ON memory_facts(user_id);
-CREATE INDEX IF NOT EXISTS idx_memory_facts_category ON memory_facts(category);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_fact_type ON memory_facts(fact_type);
 CREATE INDEX IF NOT EXISTS idx_memory_facts_approved ON memory_facts(approved);
 CREATE INDEX IF NOT EXISTS idx_memory_facts_user_referenced ON memory_facts(user_id, last_referenced_at DESC);
 

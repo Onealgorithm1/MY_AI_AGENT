@@ -56,5 +56,3 @@ CREATE INDEX IF NOT EXISTS idx_api_secrets_service_name ON api_secrets(service_n
 CREATE INDEX IF NOT EXISTS idx_api_secrets_is_active ON api_secrets(is_active);
 CREATE INDEX IF NOT EXISTS idx_api_secrets_is_default ON api_secrets(is_default);
 CREATE INDEX IF NOT EXISTS idx_api_secrets_key_type ON api_secrets(key_type);
-
-RAISE NOTICE '✅ Migration 036: Properly fixed api_secrets unique constraint';
