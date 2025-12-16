@@ -218,23 +218,29 @@ router.post('/', async (req, res) => {
       );
     }
 
-    // Upsert secret using (service_name, key_label) uniqueness
-    const result = await query(
-      `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, docs_url, is_active, is_default)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (service_name, key_label)
-       DO UPDATE SET
-         key_value = EXCLUDED.key_value,
-         key_name = EXCLUDED.key_name,
-         key_type = EXCLUDED.key_type,
-         description = EXCLUDED.description,
-         docs_url = EXCLUDED.docs_url,
-         is_active = EXCLUDED.is_active,
-         is_default = EXCLUDED.is_default,
-         updated_at = CURRENT_TIMESTAMP
+    // Upsert secret using update-then-insert approach (works with or without unique constraint)
+    // First, try to update existing record by service_name and key_label
+    const updateResult = await query(
+      `UPDATE api_secrets
+       SET key_value = $1, key_name = $2, key_type = $3, description = $4, docs_url = $5, is_active = $6, is_default = $7, updated_at = CURRENT_TIMESTAMP
+       WHERE service_name = $8 AND key_label = $9
        RETURNING id, key_name, service_name, key_label, key_type, is_active, is_default`,
-      [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault]
+      [encryptedValue, finalKeyName, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault, finalServiceName, finalKeyLabel]
     );
+
+    let result;
+    if (updateResult.rows.length > 0) {
+      // Record was updated
+      result = updateResult;
+    } else {
+      // Record doesn't exist, insert it
+      result = await query(
+        `INSERT INTO api_secrets (key_name, key_value, service_name, key_label, key_type, description, docs_url, is_active, is_default)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, key_name, service_name, key_label, key_type, is_active, is_default`,
+        [finalKeyName, encryptedValue, finalServiceName, finalKeyLabel, finalKeyType, finalDescription, finalDocsUrl, isActive, isDefault]
+      );
+    }
 
     res.status(201).json({
       message: 'Secret saved successfully',
