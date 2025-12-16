@@ -223,6 +223,22 @@ function App() {
               </AdminRoute>
             }
           />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/org/:slug/settings"
+            element={
+              <OrgAdminRoute>
+                <OrganizationSettingsPage />
+              </OrgAdminRoute>
+            }
+          />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="*" element={<Navigate to="/" />} />
