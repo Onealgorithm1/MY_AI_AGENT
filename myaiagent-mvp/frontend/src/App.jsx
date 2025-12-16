@@ -95,10 +95,12 @@ function MasterAdminRoute({ children }) {
 
 function OrgAdminRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore();
+  const isMasterAdmin = user?.role === 'master_admin' || user?.role === 'superadmin';
   const isOrgAdmin = user && (user.org_role === 'admin' || user.org_role === 'owner');
+  const hasAccess = isMasterAdmin || isOrgAdmin;
 
   if (!isAuthenticated) return <Navigate to="/login" />;
-  if (!isOrgAdmin) return <Navigate to="/" />;
+  if (!hasAccess) return <Navigate to="/" />;
 
   return (
     <Suspense fallback={<LoadingFallback />}>

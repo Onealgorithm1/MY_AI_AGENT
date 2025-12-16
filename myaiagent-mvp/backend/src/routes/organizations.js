@@ -37,14 +37,16 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Get organization details
+// Get organization details with stats
 router.get('/:orgId', authenticate, async (req, res) => {
   try {
+    const orgId = parseInt(req.params.orgId);
+
     // Verify user has access to this organization
     const accessCheck = await query(
       `SELECT ou.role as user_role FROM organization_users ou
        WHERE ou.user_id = $1 AND ou.organization_id = $2 AND ou.is_active = TRUE`,
-      [req.user.id, parseInt(req.params.orgId)]
+      [req.user.id, orgId]
     );
 
     if (accessCheck.rows.length === 0) {
@@ -52,18 +54,45 @@ router.get('/:orgId', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `SELECT id, name, slug, logo_url, description, website_url, industry, size, 
+      `SELECT id, name, slug, logo_url, description, website_url, industry, size,
               owner_id, is_active, created_at, updated_at, settings
        FROM organizations WHERE id = $1 AND is_active = TRUE`,
-      [parseInt(req.params.orgId)]
+      [orgId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
+    const organization = result.rows[0];
+
+    // Get member count
+    const memberResult = await query(
+      'SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = TRUE',
+      [orgId]
+    );
+
+    // Get conversation count
+    const conversationResult = await query(
+      'SELECT COUNT(*) as count FROM conversations WHERE organization_id = $1',
+      [orgId]
+    );
+
+    // Get API key count
+    const apiKeyResult = await query(
+      'SELECT COUNT(*) as count FROM api_secrets WHERE (organization_id = $1 OR organization_id IS NULL) AND is_active = TRUE',
+      [orgId]
+    );
+
     res.json({
-      organization: result.rows[0],
+      organization: {
+        ...organization,
+        stats: {
+          memberCount: parseInt(memberResult.rows[0].count) || 0,
+          conversationCount: parseInt(conversationResult.rows[0].count) || 0,
+          apiKeyCount: parseInt(apiKeyResult.rows[0].count) || 0,
+        },
+      },
     });
   } catch (error) {
     console.error('Get organization error:', error);
@@ -636,6 +665,148 @@ router.post('/password-reset/:token', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// ============================================
+// API Key Management (Organization-level)
+// ============================================
+
+// Get organization API keys
+router.get('/:orgId/api-keys', authenticate, requireOrgAdmin, async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+
+    const result = await query(
+      `SELECT id, service_name, key_label, is_active, key_type, created_at, updated_at
+       FROM api_secrets
+       WHERE (organization_id = $1 OR organization_id IS NULL) AND is_active = TRUE
+       ORDER BY created_at DESC`,
+      [orgId]
+    );
+
+    res.json({
+      apiKeys: result.rows.map(key => ({
+        id: key.id,
+        serviceName: key.service_name,
+        keyLabel: key.key_label,
+        isActive: key.is_active,
+        keyType: key.key_type,
+        createdAt: key.created_at,
+        updatedAt: key.updated_at,
+      })),
+    });
+  } catch (error) {
+    console.error('Get organization API keys error:', error);
+    res.status(500).json({ error: 'Failed to fetch API keys' });
+  }
+});
+
+// Create organization API key
+router.post('/:orgId/api-keys', authenticate, requireOrgAdmin, async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const { serviceName, keyLabel, keyValue } = req.body;
+
+    if (!serviceName || !keyLabel || !keyValue) {
+      return res.status(400).json({ error: 'Service name, label, and key value are required' });
+    }
+
+    const result = await query(
+      `INSERT INTO api_secrets (organization_id, service_name, key_label, key_value, is_active, key_type)
+       VALUES ($1, $2, $3, $4, true, 'api_key')
+       RETURNING id, service_name, key_label, is_active, created_at`,
+      [orgId, serviceName, keyLabel, keyValue]
+    );
+
+    res.json({
+      status: 'success',
+      apiKey: {
+        id: result.rows[0].id,
+        serviceName: result.rows[0].service_name,
+        keyLabel: result.rows[0].key_label,
+        isActive: result.rows[0].is_active,
+        createdAt: result.rows[0].created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Create API key error:', error);
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+// Revoke organization API key
+router.delete('/:orgId/api-keys/:keyId', authenticate, requireOrgAdmin, async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const keyId = parseInt(req.params.keyId);
+
+    // Verify key belongs to this organization
+    const keyCheck = await query(
+      'SELECT id FROM api_secrets WHERE id = $1 AND organization_id = $2',
+      [keyId, orgId]
+    );
+
+    if (keyCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+
+    await query(
+      'UPDATE api_secrets SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [keyId]
+    );
+
+    res.json({
+      status: 'success',
+      message: 'API key revoked',
+    });
+  } catch (error) {
+    console.error('Revoke API key error:', error);
+    res.status(500).json({ error: 'Failed to revoke API key' });
+  }
+});
+
+// Rotate organization API key
+router.post('/:orgId/api-keys/:keyId/rotate', authenticate, requireOrgAdmin, async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const keyId = parseInt(req.params.keyId);
+    const { newKeyValue } = req.body;
+
+    if (!newKeyValue) {
+      return res.status(400).json({ error: 'New key value is required' });
+    }
+
+    // Verify key belongs to this organization
+    const keyCheck = await query(
+      'SELECT id, key_label, service_name FROM api_secrets WHERE id = $1 AND organization_id = $2',
+      [keyId, orgId]
+    );
+
+    if (keyCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+
+    const oldKey = keyCheck.rows[0];
+
+    // Update key value
+    await query(
+      'UPDATE api_secrets SET key_value = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newKeyValue, keyId]
+    );
+
+    res.json({
+      status: 'success',
+      message: 'API key rotated successfully',
+      apiKey: {
+        id: oldKey.id,
+        keyLabel: oldKey.key_label,
+        serviceName: oldKey.service_name,
+      },
+    });
+  } catch (error) {
+    console.error('Rotate API key error:', error);
+    res.status(500).json({ error: 'Failed to rotate API key' });
   }
 });
 

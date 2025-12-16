@@ -158,9 +158,18 @@ const AppLayout = ({ children }) => {
             {/* Legacy Admin Panel */}
             {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin/system')}
                 className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                title="Admin Panel"
+                title="System Admin"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
+            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
+              <button
+                onClick={() => navigate('/admin/org')}
+                className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                title="Organization Admin"
               >
                 <Shield className="w-4 h-4" />
               </button>
@@ -176,11 +185,20 @@ const AppLayout = ({ children }) => {
             >
               <Settings className="w-5 h-5" />
             </button>
-            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            {(user?.role === 'master_admin' || user?.role === 'superadmin') && (
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin/system')}
                 className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
-                title="Admin"
+                title="System Admin"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+            )}
+            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
+              <button
+                onClick={() => navigate('/admin/org')}
+                className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
+                title="Organization Admin"
               >
                 <Shield className="w-5 h-5" />
               </button>
