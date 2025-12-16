@@ -91,20 +91,54 @@ export const useAuthStore = create(
           localStorage.removeItem('auth-storage');
           set({
             user: null,
+            organizations: [],
+            currentOrganization: null,
             isAuthenticated: false,
             error: null,
           });
         }
       },
 
-      // Refresh user data
+      // Refresh user data and organizations
       refreshUser: async () => {
         try {
           const response = await authApi.me();
-          set({ user: response.data.user });
+          const { user, organizations } = response.data;
+
+          // Preserve current organization if still valid
+          let currentOrg = get().currentOrganization;
+          if (currentOrg && !organizations.some(o => o.id === currentOrg.id)) {
+            currentOrg = organizations.length > 0 ? organizations[0] : null;
+          } else if (!currentOrg && organizations.length > 0) {
+            currentOrg = organizations[0];
+          }
+
+          set({
+            user,
+            organizations: organizations || [],
+            currentOrganization: currentOrg,
+          });
         } catch (error) {
           console.error('Failed to refresh user:', error);
         }
+      },
+
+      // Switch to a different organization
+      switchOrganization: (orgId) => {
+        const organizations = get().organizations;
+        const org = organizations.find(o => o.id === orgId);
+
+        if (!org) {
+          throw new Error('Organization not found');
+        }
+
+        set({
+          currentOrganization: org,
+          user: {
+            ...get().user,
+            organization_id: org.id,
+          },
+        });
       },
 
       // Clear error
@@ -114,6 +148,8 @@ export const useAuthStore = create(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
+        organizations: state.organizations,
+        currentOrganization: state.currentOrganization,
         isAuthenticated: state.isAuthenticated,
       }),
     }
