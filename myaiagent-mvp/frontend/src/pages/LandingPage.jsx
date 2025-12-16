@@ -54,6 +54,14 @@ const LandingPage = () => {
     },
   ];
 
+  const handleNavClick = (href) => {
+    setMobileMenuOpen(false);
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -64,6 +72,8 @@ const LandingPage = () => {
               <MessageSquare className="w-8 h-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">werkules</span>
             </div>
+
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
               <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
               <a href="#benefits" className="text-gray-600 hover:text-gray-900">Benefits</a>
@@ -81,7 +91,65 @@ const LandingPage = () => {
                 Get Started
               </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden pb-4 space-y-2">
+              <a
+                href="#features"
+                onClick={() => handleNavClick('#features')}
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+              >
+                Features
+              </a>
+              <a
+                href="#benefits"
+                onClick={() => handleNavClick('#benefits')}
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+              >
+                Benefits
+              </a>
+              <a
+                href="#pricing"
+                onClick={() => handleNavClick('#pricing')}
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+              >
+                Pricing
+              </a>
+              <button
+                onClick={() => {
+                  navigate('/login');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/signup');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Get Started
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 
