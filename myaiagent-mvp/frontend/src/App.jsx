@@ -13,6 +13,8 @@ import LandingPage from './pages/LandingPage';
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const OrgAdminDashboard = lazy(() => import('./pages/OrgAdminDashboard'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
@@ -69,6 +71,20 @@ function AdminRoute({ children }) {
 
   if (!isAuthenticated) return <Navigate to="/login" />;
   if (!isAdmin) return <Navigate to="/" />;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppLayout>{children}</AppLayout>
+    </Suspense>
+  );
+}
+
+function MasterAdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuthStore();
+  const isMasterAdmin = user?.role === 'master_admin' || user?.role === 'superadmin';
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isMasterAdmin) return <Navigate to="/" />;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -229,6 +245,22 @@ function App() {
               <AdminRoute>
                 <AdminDashboardPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/system"
+            element={
+              <MasterAdminRoute>
+                <AdminDashboard />
+              </MasterAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/org"
+            element={
+              <OrgAdminRoute>
+                <OrgAdminDashboard />
+              </OrgAdminRoute>
             }
           />
           <Route

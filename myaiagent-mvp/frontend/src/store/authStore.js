@@ -143,6 +143,27 @@ export const useAuthStore = create(
 
       // Clear error
       clearError: () => set({ error: null }),
+
+      // Role checking helpers
+      isMasterAdmin: () => {
+        const user = get().user;
+        return user && (user.role === 'master_admin' || user.role === 'superadmin');
+      },
+
+      isOrgAdmin: () => {
+        const user = get().user;
+        return user && (user.org_role === 'admin' || user.org_role === 'owner');
+      },
+
+      isOrgOwner: () => {
+        const user = get().user;
+        return user && user.org_role === 'owner';
+      },
+
+      canManageOrg: () => {
+        const user = get().user;
+        return user && (user.org_role === 'admin' || user.org_role === 'owner');
+      },
     }),
     {
       name: 'auth-storage',
