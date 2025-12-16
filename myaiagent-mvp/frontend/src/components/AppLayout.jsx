@@ -142,7 +142,7 @@ const AppLayout = ({ children }) => {
                 <Shield className="w-4 h-4" />
               </button>
             )}
-            {user?.org_role === 'admin' || user?.org_role === 'owner' ? (
+            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
               <button
                 onClick={() => navigate('/admin/org')}
                 className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
@@ -150,7 +150,7 @@ const AppLayout = ({ children }) => {
               >
                 <Shield className="w-4 h-4" />
               </button>
-            ) : null}
+            )}
           </div>
 
           {/* Mobile: Icons only */}
