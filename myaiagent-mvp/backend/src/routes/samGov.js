@@ -253,8 +253,6 @@ router.post('/batch-fetch-all', async (req, res) => {
  */
 router.get('/departments', async (req, res) => {
   try {
-    const { query } = require('../utils/database.js');
-
     const result = await query(
       `SELECT DISTINCT contracting_office as department
        FROM samgov_opportunities_cache
