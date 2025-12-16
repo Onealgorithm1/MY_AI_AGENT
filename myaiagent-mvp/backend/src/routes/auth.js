@@ -105,12 +105,12 @@ router.post('/signup', async (req, res) => {
     };
     const token = generateToken(tokenPayload);
 
-    // Initialize usage tracking for today (signup always has organization)
+    // Initialize usage tracking for today
     await query(
-      `INSERT INTO usage_tracking (user_id, organization_id, date)
-       VALUES ($1, $2, CURRENT_DATE)
-       ON CONFLICT (user_id, organization_id, date) DO NOTHING`,
-      [user.id, organization.id]
+      `INSERT INTO usage_tracking (user_id, date)
+       VALUES ($1, CURRENT_DATE)
+       ON CONFLICT (user_id, date) DO NOTHING`,
+      [user.id]
     );
 
     // Set JWT as HTTP-only cookie (SECURITY: XSS protection)
