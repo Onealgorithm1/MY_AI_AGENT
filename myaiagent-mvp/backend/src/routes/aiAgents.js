@@ -855,34 +855,21 @@ async function initializeAIAgentTables() {
           }
 
           // Extract and execute the remaining SQL statements
-          const remainingSQL = migrationSQL.substring(doBlockMatch[0].length);
+          const remainingSQL = migrationSQL.substring(doBlockMatch[0].length).trim();
 
-          if (remainingSQL.trim().length > 0) {
+          if (remainingSQL.length > 0) {
             console.log('📝 Executing remaining migration statements...');
-
-            // Split by semicolon but filter out comments and empty statements
-            const statements = remainingSQL
-              .split(';')
-              .map(stmt => stmt.trim())
-              .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
-
-            console.log(`📝 Found ${statements.length} remaining statements to execute`);
-
-            for (const statement of statements) {
-              try {
-                await query(statement + ';');
-              } catch (stmtError) {
-                // Ignore idempotent errors
-                if (stmtError.message?.includes('already exists') || stmtError.code === '42P07' || stmtError.code === '42710') {
-                  console.log(`⏭️  Skipped (already exists): ${statement.substring(0, 50)}...`);
-                } else if (stmtError.message?.includes('Duplicate key') || stmtError.code === '23505') {
-                  console.log(`⏭️  Skipped (duplicate): ${statement.substring(0, 50)}...`);
-                } else if (stmtError.message?.includes('no results to fetch') || stmtError.code === '34000') {
-                  console.log(`⏭️  Skipped (no results): ${statement.substring(0, 50)}...`);
-                } else {
-                  console.error(`❌ Error in statement: ${statement.substring(0, 100)}`);
-                  throw stmtError;
-                }
+            try {
+              await query(remainingSQL);
+              console.log('✅ Remaining migration statements executed successfully');
+            } catch (remainingError) {
+              // Ignore idempotent errors that indicate objects already exist
+              if (remainingError.message?.includes('already exists') || remainingError.code === '42P07' || remainingError.code === '42710') {
+                console.log('⏭️  Migration objects already exist (skipping)');
+              } else if (remainingError.message?.includes('duplicate key') || remainingError.code === '23505') {
+                console.log('⏭️  Duplicate key error (skipping)');
+              } else {
+                throw remainingError;
               }
             }
           }
