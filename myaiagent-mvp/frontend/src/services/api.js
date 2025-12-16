@@ -264,6 +264,8 @@ export const feedback = {
 export const admin = {
   stats: () =>
     api.get('/admin/stats'),
+  getStats: () =>
+    api.get('/admin/stats'),
   users: (limit, offset, search) =>
     api.get('/admin/users', { params: { limit, offset, search } }),
   getUser: (id) =>
@@ -280,6 +282,43 @@ export const admin = {
     api.get('/admin/health'),
   apiKeys: () =>
     api.get('/admin/api-keys'),
+  getApiKeys: () =>
+    api.get('/admin/api-keys'),
+  // Master admin endpoints
+  getOrganizations: () =>
+    api.get('/admin/organizations'),
+  getOrganization: (orgId) =>
+    api.get(`/admin/organizations/${orgId}`),
+  getOrgUsers: (orgId, limit = 50, offset = 0) =>
+    api.get(`/admin/organizations/${orgId}/users`, { params: { limit, offset } }),
+  getOrgApiKey: (keyId) =>
+    api.get(`/admin/api-keys/${keyId}`),
+  getMasterStats: () =>
+    api.get('/admin/master-stats'),
+};
+
+// Organization Admin endpoints
+export const org = {
+  getUsers: (orgId, limit = 50, offset = 0, search = '') =>
+    api.get(`/org/${orgId}/users`, { params: { limit, offset, search } }),
+  inviteUser: (orgId, data) =>
+    api.post(`/org/${orgId}/users`, data),
+  updateUserRole: (orgId, userId, role) =>
+    api.put(`/org/${orgId}/users/${userId}/role`, { role }),
+  resetPassword: (orgId, userId) =>
+    api.post(`/org/${orgId}/users/${userId}/reset-password`),
+  deleteUser: (orgId, userId) =>
+    api.delete(`/org/${orgId}/users/${userId}`),
+  getApiKeys: (orgId) =>
+    api.get(`/org/${orgId}/api-keys`),
+  createApiKey: (orgId, data) =>
+    api.post(`/org/${orgId}/api-keys`, data),
+  updateApiKey: (orgId, keyId, data) =>
+    api.put(`/org/${orgId}/api-keys/${keyId}`, data),
+  deleteApiKey: (orgId, keyId) =>
+    api.delete(`/org/${orgId}/api-keys/${keyId}`),
+  rotateApiKey: (orgId, keyId, newKeyValue) =>
+    api.post(`/org/${orgId}/api-keys/${keyId}/rotate`, { newKeyValue }),
 };
 
 // Secrets endpoints
