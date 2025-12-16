@@ -13,6 +13,8 @@ import LandingPage from './pages/LandingPage';
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const OrgAdminDashboard = lazy(() => import('./pages/OrgAdminDashboard'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
