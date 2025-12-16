@@ -181,6 +181,12 @@ const SAMGovPage = () => {
     if (filters.naicsCode && !opp.naics_code?.includes(filters.naicsCode)) return false;
     if (filters.noticeType && opp.type !== filters.noticeType) return false;
 
+    // Department filter
+    if (departmentFilter) {
+      const oppDept = opp.contracting_office || '';
+      if (!oppDept.toLowerCase().includes(departmentFilter.toLowerCase())) return false;
+    }
+
     // Domain filter
     if (selectedDomain) {
       const oppDomain = opp.raw_data?.fullParentPathName?.split('.')[0] || opp.contracting_office?.split(',')[0] || '';
