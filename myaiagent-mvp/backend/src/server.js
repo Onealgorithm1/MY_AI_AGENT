@@ -64,6 +64,7 @@ import companyDashboardRoutes from './routes/companyDashboard.js';
 import aiAgentsRoutes from './routes/aiAgents.js';
 import organizationsRoutes from './routes/organizations.js';
 import adminOrganizationsRoutes from './routes/admin-organizations.js';
+import orgAdminRoutes from './routes/org-admin.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
