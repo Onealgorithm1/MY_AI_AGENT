@@ -12,9 +12,8 @@ BEGIN
     -- Step 2: Drop the old UNIQUE constraint on key_name if it exists
     BEGIN
       ALTER TABLE api_secrets DROP CONSTRAINT api_secrets_key_name_key;
-      RAISE NOTICE 'Dropped UNIQUE constraint on key_name';
     EXCEPTION WHEN undefined_object THEN
-      RAISE NOTICE 'UNIQUE constraint on key_name does not exist (skipping)';
+      NULL;
     END;
 
     -- Step 3: Add the new UNIQUE constraint on (service_name, key_label) if it doesn't exist
@@ -26,9 +25,6 @@ BEGIN
       ALTER TABLE api_secrets
       ADD CONSTRAINT api_secrets_service_name_key_label_key
       UNIQUE (service_name, key_label);
-      RAISE NOTICE 'Added UNIQUE constraint on (service_name, key_label)';
-    ELSE
-      RAISE NOTICE 'UNIQUE constraint on (service_name, key_label) already exists';
     END IF;
 
     -- Step 4: Verify the table has all required columns
@@ -47,20 +43,9 @@ BEGIN
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP,
       ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
-      RAISE NOTICE 'Verified all required columns exist';
     EXCEPTION WHEN OTHERS THEN
-      RAISE NOTICE 'Column verification completed (some columns may have already existed)';
+      NULL;
     END;
 
-  ELSE
-    RAISE NOTICE 'api_secrets table does not exist (will be created by migration 026)';
   END IF;
 END $$;
-
--- Create or verify indexes
-CREATE INDEX IF NOT EXISTS idx_api_secrets_service_name ON api_secrets(service_name);
-CREATE INDEX IF NOT EXISTS idx_api_secrets_is_active ON api_secrets(is_active);
-CREATE INDEX IF NOT EXISTS idx_api_secrets_is_default ON api_secrets(is_default);
-CREATE INDEX IF NOT EXISTS idx_api_secrets_key_type ON api_secrets(key_type);
-
-RAISE NOTICE '✅ Migration 035: Fixed api_secrets constraints successfully';
