@@ -86,7 +86,7 @@ api.interceptors.request.use(
     // Add CSRF token to POST, PUT, PATCH, DELETE requests
     if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
       if (csrfToken) {
-        config.headers['X-CSRF-Token'] = csrfToken;
+        config.headers['x-csrf-token'] = csrfToken;
         console.log('✅ CSRF token added to request:', config.method, config.url);
       } else {
         console.error('❌ CSRF token missing for state-changing request:', config.method, config.url);
