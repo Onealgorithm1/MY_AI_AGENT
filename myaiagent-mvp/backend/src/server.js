@@ -479,6 +479,7 @@ async function initializeDatabaseMigrationsOnStartup() {
         // Skip idempotent errors (object already exists)
         const isIdempotentError = error.code === '42P07' || error.code === '42710' ||
             error.code === '42701' || // duplicate column
+            error.code === '42703' || // column does not exist (create index on missing column)
             error.message?.includes('already exists') ||
             error.message?.includes('duplicate key') ||
             error.message?.includes('migration is disabled'); // our custom skip marker
