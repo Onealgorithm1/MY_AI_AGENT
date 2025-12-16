@@ -304,7 +304,14 @@ app.use('/api/auth', googleAuthRoutes);
 
 // Apply CSRF protection to all state-changing API requests
 // NOTE: GET, HEAD, OPTIONS are automatically excluded by csrf-csrf
-app.use('/api/', doubleCsrfProtection);
+// NOTE: Auth routes are excluded because they're initial authentication endpoints
+app.use('/api/', (req, res, next) => {
+  // Skip CSRF protection for auth routes
+  if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  doubleCsrfProtection(req, res, next);
+});
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memory', memoryRoutes);
