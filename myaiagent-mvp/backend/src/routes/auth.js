@@ -241,6 +241,7 @@ router.post('/login', async (req, res) => {
         fullName: user.full_name,
         role: user.role,
         organization_id: selectedOrgId || null,
+        org_role: selectedOrgRole || null,
       },
       organizations: orgResult.rows.map(org => ({
         id: org.organization_id,
