@@ -6,26 +6,38 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
+      organizations: [],
+      currentOrganization: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
 
       // Login
-      login: async (email, password) => {
+      login: async (email, password, organizationId = null) => {
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.login(email, password);
-          const { user } = response.data;
-          
+          const { user, organizations } = response.data;
+
           // SECURITY: Token is now stored in HTTP-only cookie (set by backend)
           // No need to store in localStorage
-          
+
+          // Select organization: use provided, first from list, or null
+          let selectedOrg = null;
+          if (organizationId && organizations.some(o => o.id === organizationId)) {
+            selectedOrg = organizations.find(o => o.id === organizationId);
+          } else if (organizations.length > 0) {
+            selectedOrg = organizations[0];
+          }
+
           set({
             user,
+            organizations: organizations || [],
+            currentOrganization: selectedOrg,
             isAuthenticated: true,
             isLoading: false,
           });
-          
+
           return { success: true };
         } catch (error) {
           const errorMessage = error.response?.data?.error || 'Login failed';
@@ -35,21 +47,29 @@ export const useAuthStore = create(
       },
 
       // Signup
-      signup: async (email, password, fullName) => {
+      signup: async (email, password, fullName, organizationName = null) => {
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.signup(email, password, fullName);
           const { user } = response.data;
-          
+
           // SECURITY: Token is now stored in HTTP-only cookie (set by backend)
           // No need to store in localStorage
-          
+
+          // New user will have one organization created by default
+          const organization = {
+            id: user.organization_id,
+            name: user.organization_name,
+          };
+
           set({
             user,
+            organizations: [organization],
+            currentOrganization: organization,
             isAuthenticated: true,
             isLoading: false,
           });
-          
+
           return { success: true };
         } catch (error) {
           const errorMessage = error.response?.data?.error || 'Signup failed';
