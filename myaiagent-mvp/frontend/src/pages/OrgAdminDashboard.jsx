@@ -40,12 +40,32 @@ export default function OrgAdminDashboard() {
     queryKey: ['orgDetails', orgId],
     queryFn: () => organizations.get(orgId),
     enabled: !!orgId,
-    staleTime: 15000, // Refresh every 15 seconds
-    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    staleTime: 15000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: true,
   });
 
+  // Fetch organization members
+  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
+    queryKey: ['orgUsers', orgId],
+    queryFn: () => organizations.getUsers(orgId),
+    enabled: !!orgId,
+    staleTime: 15000,
+    refetchInterval: 30000,
+  });
+
+  // Fetch organization API keys
+  const { data: keysData, isLoading: keysLoading, refetch: refetchKeys } = useQuery({
+    queryKey: ['orgApiKeys', orgId],
+    queryFn: () => organizations.getApiKeys(orgId),
+    enabled: !!orgId,
+    staleTime: 15000,
+    refetchInterval: 30000,
+  });
+
   const org = orgData?.data?.organization;
+  const members = usersData?.data?.users || [];
+  const apiKeys = keysData?.data?.apiKeys || [];
 
   // Auto-refetch when organization changes
   useEffect(() => {
