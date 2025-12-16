@@ -220,10 +220,10 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     // Save user message
     const userMessage = await query(
-      `INSERT INTO messages (conversation_id, role, content, model)
+      `INSERT INTO messages (conversation_id, user_id, role, content)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [conversationId, 'user', content, selectedModel]
+      [conversationId, req.user.id, 'user', content]
     );
 
     // Get extended conversation history (100 messages for deeper context)
