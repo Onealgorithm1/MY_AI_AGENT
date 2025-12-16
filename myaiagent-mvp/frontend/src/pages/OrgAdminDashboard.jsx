@@ -349,18 +349,32 @@ export default function OrgAdminDashboard() {
             )}
 
             {/* Members List */}
-            {orgLoading && !org ? (
+            {(usersLoading || orgLoading) && members.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader className="w-6 h-6 animate-spin text-blue-600" />
               </div>
-            ) : org?.stats?.memberCount > 0 ? (
+            ) : members.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {org.stats.memberCount} member{org.stats.memberCount !== 1 ? 's' : ''} in this organization
+                  {members.length} member{members.length !== 1 ? 's' : ''} in this organization
                 </p>
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center text-gray-600 dark:text-gray-400">
-                  Member list details coming soon - backend endpoint pending
-                </div>
+                {members.map((member) => (
+                  <div
+                    key={member.user_id}
+                    className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-between"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{member.full_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{member.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Joined {new Date(member.joined_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {member.role}
+                    </span>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-12">
