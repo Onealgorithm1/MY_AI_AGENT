@@ -263,10 +263,10 @@ router.delete('/', authenticate, async (req, res) => {
 router.get('/categories', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT DISTINCT category, COUNT(*) as count 
-       FROM memory_facts 
+      `SELECT DISTINCT fact_type as category, COUNT(*) as count
+       FROM memory_facts
        WHERE user_id = $1 AND approved = true
-       GROUP BY category
+       GROUP BY fact_type
        ORDER BY count DESC`,
       [req.user.id]
     );
