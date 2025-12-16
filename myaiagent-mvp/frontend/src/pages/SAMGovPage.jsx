@@ -79,6 +79,26 @@ const SAMGovPage = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Load user profile
+  const loadUserProfile = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      setUser(response.data);
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    }
+  };
+
+  // Load departments
+  const loadDepartments = async () => {
+    try {
+      const response = await samGov.getDepartments();
+      setDepartments(response.departments || []);
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    }
+  };
+
   // Load saved searches from localStorage
   const loadSavedSearches = () => {
     try {
@@ -99,12 +119,31 @@ const SAMGovPage = () => {
         setLoading(true);
       }
 
-      const cachedRes = await samGov.getCachedOpportunities({ limit: 1000, offset: 0 });
-      setOpportunities(cachedRes.opportunities || []);
+      // Check cached count first
+      const cachedRes = await samGov.getCachedOpportunities({ limit: 10, offset: 0 });
+      const cachedCount = cachedRes.total || 0;
+
+      // If we have fewer than 100 cached opportunities, batch-fetch more
+      if (cachedCount < 100 && !isBackgroundRefresh) {
+        console.log(`📥 Only ${cachedCount} cached opportunities, batch-fetching from SAM.gov...`);
+        setLoadingBatch(true);
+        try {
+          await samGov.batchFetchAll({ keyword: '' });
+          await loadDepartments(); // Reload departments after batch fetch
+        } catch (batchError) {
+          console.warn('Batch fetch failed, using cached data:', batchError);
+        } finally {
+          setLoadingBatch(false);
+        }
+      }
+
+      // Now load full cached opportunities
+      const fullRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
+      setOpportunities(fullRes.opportunities || []);
       setLastRefreshTime(new Date());
 
       if (isBackgroundRefresh) {
-        console.log(`✅ Auto-refresh: ${cachedRes.opportunities?.length || 0} opportunities`);
+        console.log(`✅ Auto-refresh: ${fullRes.opportunities?.length || 0} opportunities`);
       }
     } catch (error) {
       console.error('Failed to load opportunities:', error);
