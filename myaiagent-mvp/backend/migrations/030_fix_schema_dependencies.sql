@@ -220,11 +220,34 @@ BEGIN
 END $$;
 
 -- ============================================
+-- Ensure usage_tracking table exists
+-- ============================================
+CREATE TABLE IF NOT EXISTS usage_tracking (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  messages_sent INTEGER DEFAULT 0,
+  messages_received INTEGER DEFAULT 0,
+  tokens_consumed INTEGER DEFAULT 0,
+  api_calls INTEGER DEFAULT 0,
+  storage_used BIGINT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_user ON usage_tracking(user_id);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_date ON usage_tracking(date DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_org ON usage_tracking(organization_id);
+
+-- ============================================
 -- Ensure opportunities table exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS opportunities (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
   title VARCHAR(500) NOT NULL,
   type VARCHAR(100),
   posted_date TIMESTAMP,
@@ -239,7 +262,9 @@ CREATE TABLE IF NOT EXISTS opportunities (
 
 CREATE INDEX IF NOT EXISTS idx_opportunities_user ON opportunities(user_id);
 CREATE INDEX IF NOT EXISTS idx_opportunities_deadline ON opportunities(deadline);
+CREATE INDEX IF NOT EXISTS idx_opportunities_org ON opportunities(organization_id);
 
 COMMENT ON TABLE memory_facts IS 'User memory facts extracted from conversations';
 COMMENT ON TABLE samgov_opportunities_cache IS 'Cache of SAM.gov opportunities';
+COMMENT ON TABLE usage_tracking IS 'Daily usage statistics and token consumption';
 COMMENT ON TABLE opportunities IS 'User tracked opportunities';
