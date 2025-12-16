@@ -335,6 +335,7 @@ app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/company', companyDashboardRoutes);
 app.use('/api/ai-agents', aiAgentsRoutes);
 app.use('/api/organizations', organizationsRoutes);
+app.use('/api/admin/organizations', adminOrganizationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
