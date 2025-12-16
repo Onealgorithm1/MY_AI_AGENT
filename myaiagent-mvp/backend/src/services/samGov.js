@@ -182,8 +182,8 @@ export async function searchOpportunities(options = {}, userId = null) {
           break;
         }
 
-        // Add a small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Add delay to respect SAM.gov rate limits (2 second minimum between requests)
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } while (true);
 
       return {
