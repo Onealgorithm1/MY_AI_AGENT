@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock } from 'lucide-react';
+import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrganizationSelector from './OrganizationSelector';
 
 const AppLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [showConnectedApps, setShowConnectedApps] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const connectedApps = [
     {
@@ -37,7 +43,7 @@ const AppLayout = ({ children }) => {
     },
   ];
 
-  const navItems = [
+  const mainNavItems = [
     {
       path: '/chat',
       icon: MessageSquare,
@@ -52,6 +58,31 @@ const AppLayout = ({ children }) => {
     },
   ];
 
+  // Admin Links - shown in main nav if user has access
+  const adminNavItems = [];
+
+  if (user?.role === 'master_admin' || user?.role === 'superadmin') {
+    adminNavItems.push({
+      path: '/admin/system',
+      icon: Lock,
+      label: 'System Admin',
+      title: 'Master Admin Dashboard',
+      color: 'text-purple-600 dark:text-purple-400'
+    });
+  }
+
+  if (user?.org_role === 'admin' || user?.org_role === 'owner') {
+    adminNavItems.push({
+      path: '/admin/org',
+      icon: Shield,
+      label: 'Org Admin',
+      title: 'Organization Admin',
+      color: 'text-blue-600 dark:text-blue-400'
+    });
+  }
+
+  const navItems = [...mainNavItems, ...adminNavItems];
+
   const isActive = (path) => {
     return location.pathname === path || (path === '/chat' && location.pathname === '/');
   };
@@ -59,26 +90,32 @@ const AppLayout = ({ children }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <div className="hidden md:flex md:flex-col md:w-20 lg:w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+      <div
+        className={`hidden md:flex md:flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out z-20 ${isHovered ? 'w-64' : 'w-20'
+          }`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {/* Logo/Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-center lg:justify-start">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 h-18 flex items-center justify-between overflow-hidden whitespace-nowrap">
+          <div className="flex items-center min-w-0">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-xl">W</span>
             </div>
-            <span className="hidden lg:block ml-3 text-lg font-semibold text-gray-900 dark:text-white">
+            <span className={`ml-3 text-lg font-semibold text-gray-900 dark:text-white transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0'
+              }`}>
               werkules
             </span>
           </div>
         </div>
 
         {/* Organization Selector */}
-        <div className="hidden lg:block p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className={`p-4 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 h-0 p-0 overflow-hidden'}`}>
           <OrganizationSelector />
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -87,17 +124,26 @@ const AppLayout = ({ children }) => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center justify-center lg:justify-start px-4 py-3 rounded-lg transition-colors ${
-                  active
-                    ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                title={item.title}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors whitespace-nowrap relative ${active
+                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                title={!isHovered ? item.title : ''}
               >
-                <Icon className="w-5 h-5" />
-                <span className="hidden lg:block ml-3 font-medium">
+                <div className={`flex-shrink-0 ${item.color || ''}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={`ml-3 font-medium transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'
+                  } ${item.color || ''}`}>
                   {item.label}
                 </span>
+
+                {/* Tooltip for collapsed state */}
+                {!isHovered && (
+                  <div className="absolute left-full ml-2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                    {item.label}
+                  </div>
+                )}
               </button>
             );
           })}
@@ -105,104 +151,50 @@ const AppLayout = ({ children }) => {
           {/* Dashboards Button */}
           <button
             onClick={() => setShowConnectedApps(true)}
-            className="w-full flex items-center justify-center lg:justify-start px-4 py-3 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 mt-4"
-            title="Connected Apps & Dashboards"
+            className="w-full flex items-center px-4 py-3 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 mt-4 whitespace-nowrap relative"
+            title={!isHovered ? "Connected Apps" : ""}
           >
-            <Grid className="w-5 h-5" />
-            <span className="hidden lg:block ml-3 font-medium">
+            <div className="flex-shrink-0">
+              <Grid className="w-5 h-5" />
+            </div>
+            <span className={`ml-3 font-medium transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'
+              }`}>
               Dashboards
             </span>
           </button>
         </nav>
 
-        {/* User Menu */}
+        {/* User Menu & Logout */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-center lg:justify-start gap-3">
-            <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-white dark:text-gray-900" />
-            </div>
-            <div className="hidden lg:block flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.fullName || 'User'}
-              </p>
-            </div>
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => navigate('/profile')}
-              className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              title="Profile Settings"
+              className={`flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap ${isHovered ? 'justify-start' : 'justify-center'}`}
+              title={!isHovered ? "Profile" : ""}
             >
-              <Settings className="w-4 h-4" />
+              <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-white dark:text-gray-900" />
+              </div>
+              <div className={`ml-3 min-w-0 flex-1 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {user?.fullName || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">View Profile</p>
+              </div>
             </button>
-            {/* Master Admin Dashboard */}
-            {(user?.role === 'master_admin' || user?.role === 'superadmin') && (
-              <button
-                onClick={() => navigate('/admin/system')}
-                className="hidden lg:block p-1 text-purple-600 hover:text-purple-700 dark:hover:text-purple-400"
-                title="System Admin Dashboard"
-              >
-                <Lock className="w-4 h-4" />
-              </button>
-            )}
 
-            {/* Organization Admin Dashboard */}
-            {user?.org_role === 'admin' || user?.org_role === 'owner' ? (
-              <button
-                onClick={() => navigate('/admin/org')}
-                className="hidden lg:block p-1 text-blue-600 hover:text-blue-700 dark:hover:text-blue-400"
-                title="Organization Admin"
-              >
-                <Shield className="w-4 h-4" />
-              </button>
-            ) : null}
-
-            {/* Legacy Admin Panel */}
-            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-              <button
-                onClick={() => navigate('/admin/system')}
-                className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                title="System Admin"
-              >
-                <Shield className="w-4 h-4" />
-              </button>
-            )}
-            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
-              <button
-                onClick={() => navigate('/admin/org')}
-                className="hidden lg:block p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                title="Organization Admin"
-              >
-                <Shield className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Mobile: Icons only */}
-          <div className="lg:hidden flex flex-col gap-2 mt-3">
             <button
-              onClick={() => navigate('/profile')}
-              className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
-              title="Profile"
+              onClick={handleLogout}
+              className={`flex items-center p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors whitespace-nowrap ${isHovered ? 'justify-start' : 'justify-center'}`}
+              title={!isHovered ? "Logout" : ""}
             >
-              <Settings className="w-5 h-5" />
+              <div className="flex-shrink-0">
+                <LogOut className="w-5 h-5" />
+              </div>
+              <span className={`ml-3 font-medium transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
+                Logout
+              </span>
             </button>
-            {(user?.role === 'master_admin' || user?.role === 'superadmin') && (
-              <button
-                onClick={() => navigate('/admin/system')}
-                className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
-                title="System Admin"
-              >
-                <Shield className="w-5 h-5" />
-              </button>
-            )}
-            {(user?.org_role === 'admin' || user?.org_role === 'owner') && (
-              <button
-                onClick={() => navigate('/admin/org')}
-                className="w-full p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center"
-                title="Organization Admin"
-              >
-                <Shield className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -258,13 +250,12 @@ const AppLayout = ({ children }) => {
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                           {app.description}
                         </p>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          app.status === 'connected'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : app.status === 'configured'
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${app.status === 'connected'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : app.status === 'configured'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                             : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                        }`}>
+                          }`}>
                           {app.status}
                         </span>
                       </div>

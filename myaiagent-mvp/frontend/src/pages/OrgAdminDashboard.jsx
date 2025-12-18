@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import './OrgAdminDashboard.css';
+import AuditLogs from '../components/AuditLogs';
+import AddApiKeyModal from '../components/AddApiKeyModal';
 
-export function OrgAdminDashboard() {
+const OrgAdminDashboard = () => {
   const { user, currentOrganization } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
@@ -75,7 +78,7 @@ export function OrgAdminDashboard() {
       setInviteEmail('');
       setInviteRole('member');
       setShowInviteForm(false);
-      
+
       // Reload users
       const response = await api.org.getUsers(currentOrganization.id);
       setUsers(response.data.users || []);
@@ -103,7 +106,7 @@ export function OrgAdminDashboard() {
         setError(null);
         await api.org.deleteUser(currentOrganization.id, userId);
         setSuccessMessage('User deactivated');
-        
+
         // Reload users
         const response = await api.org.getUsers(currentOrganization.id);
         setUsers(response.data.users || []);
@@ -151,6 +154,12 @@ export function OrgAdminDashboard() {
           onClick={() => setActiveTab('api-keys')}
         >
           🔑 API Keys
+        </button>
+        <button
+          className={`tab ${activeTab === 'audit-logs' ? 'active' : ''}`}
+          onClick={() => setActiveTab('audit-logs')}
+        >
+          📜 Audit Logs
         </button>
         <button
           className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -317,34 +326,34 @@ export function OrgAdminDashboard() {
           </div>
 
           {showNewKeyForm && (
-            <form className="new-key-form" onSubmit={(e) => {
-              e.preventDefault();
-              // Handle new key creation
-              setShowNewKeyForm(false);
-            }}>
-              <h3>Add New API Key</h3>
-              <div className="form-group">
-                <label>Service</label>
-                <select defaultValue="">
-                  <option value="">Select a service...</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="google">Google/Gemini</option>
-                  <option value="anthropic">Anthropic</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Key Label</label>
-                <input type="text" placeholder="e.g., Production OpenAI Key" />
-              </div>
-              <div className="form-group">
-                <label>API Key Value</label>
-                <input type="password" placeholder="Paste your API key here" />
-              </div>
-              <div className="form-actions">
-                <button type="submit" className="btn-submit">Add Key</button>
-                <button type="button" className="btn-cancel" onClick={() => setShowNewKeyForm(false)}>Cancel</button>
-              </div>
-            </form>
+            <AddApiKeyModal
+              onClose={() => setShowNewKeyForm(false)}
+              onSave={async (data) => {
+                // data is { provider, apiKey, keyLabel }
+                try {
+                  // Backend expects: serviceName, keyLabel, keyValue
+                  // Map provider -> serviceName, apiKey -> keyValue
+                  await api.org.createApiKey(currentOrganization.id, {
+                    serviceName: data.provider,
+                    keyLabel: data.keyLabel,
+                    keyValue: data.apiKey
+                  });
+                  setShowNewKeyForm(false);
+                  loadApiKeys();
+                } catch (err) {
+                  console.error('Failed to add org key', err);
+                  throw err;
+                }
+              }}
+              providers={[
+                { providerName: 'openai', displayName: 'OpenAI', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png', authType: 'api_key', docsUrl: 'https://platform.openai.com/api-keys' },
+                { providerName: 'gemini', displayName: 'Google Gemini', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', authType: 'api_key', docsUrl: 'https://makersuite.google.com/app/apikey' },
+                { providerName: 'anthropic', displayName: 'Anthropic', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg', authType: 'api_key', docsUrl: 'https://console.anthropic.com/settings/keys' },
+                { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://yt3.googleusercontent.com/ytc/AIdro_kKx8_A5pXp7Jc4t4o4q4q4q4q4q4q4q4q4q4q4q4q4q4q4=s900-c-k-c0x00ffffff-no-rj', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
+                { providerName: 'stripe', displayName: 'Stripe', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg', authType: 'api_key', docsUrl: 'https://dashboard.stripe.com/apikeys' },
+                { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' }
+              ]}
+            />
           )}
 
           {loading ? (
@@ -388,11 +397,23 @@ export function OrgAdminDashboard() {
         </div>
       )}
 
+      {/* Audit Logs Tab */}
+      {activeTab === 'audit-logs' && (
+        <div className="p-6">
+          <AuditLogs orgId={currentOrganization?.id} />
+        </div>
+      )}
+
       {/* Settings Tab */}
       {activeTab === 'settings' && (
         <div className="org-settings">
           <h2>Organization Settings</h2>
-          <div className="coming-soon-section">Coming soon - Organization settings and configuration</div>
+          <div className="coming-soon-section">
+            <p>Please use the dedicated settings page accessed via the sidebar.</p>
+            <a href="/admin/org/settings" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block mt-4">
+              Go to Settings
+            </a>
+          </div>
         </div>
       )}
     </div>

@@ -1,9 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
@@ -11,8 +11,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (handled by import 'dotenv/config')
+
 
 // SECURITY: Validate required secrets immediately after loading .env
 if (!process.env.JWT_SECRET) {
@@ -93,9 +93,9 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: [
-        "'self'", 
-        'wss:', 
-        'ws:', 
+        "'self'",
+        'wss:',
+        'ws:',
         'https://api.openai.com',
         'https://generativelanguage.googleapis.com',
         'https://speech.googleapis.com',
@@ -119,7 +119,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
   }
-  
+
   // Cache control for static assets
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$/)) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
@@ -127,7 +127,7 @@ app.use((req, res, next) => {
     // No cache for API responses
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   }
-  
+
   next();
 });
 
@@ -166,9 +166,9 @@ const corsOptions = {
 
     // Allow Builder.io preview domains
     if (origin.includes('.fly.dev') ||
-        origin.includes('.builder.io') ||
-        origin.includes('.projects.builder.codes') ||
-        origin.includes('.projects.builder.my')) {
+      origin.includes('.builder.io') ||
+      origin.includes('.projects.builder.codes') ||
+      origin.includes('.projects.builder.my')) {
       console.log('✅ CORS: Allowing Builder.io preview domain:', origin);
       return callback(null, true);
     }
@@ -351,16 +351,16 @@ app.use('/api/org', orgAdminRoutes);
 if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, '../../frontend/dist');
   app.use(express.static(frontendPath));
-  
+
   // Fallback to index.html for React Router (catch-all)
   app.get('*', (req, res, next) => {
     // Skip API routes, WebSocket endpoints, and static resources
-    if (req.path.startsWith('/api') || 
-        req.path.startsWith('/health') || 
-        req.path.startsWith('/voice') || 
-        req.path.startsWith('/ws') ||
-        req.path.startsWith('/uploads') ||
-        req.path.startsWith('/stt-stream')) {
+    if (req.path.startsWith('/api') ||
+      req.path.startsWith('/health') ||
+      req.path.startsWith('/voice') ||
+      req.path.startsWith('/ws') ||
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/stt-stream')) {
       return next();
     }
     res.sendFile(path.join(frontendPath, 'index.html'));
@@ -400,7 +400,7 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
-  
+
   // Log to database
   if (req.user) {
     import('./utils/database.js').then(({ query }) => {
@@ -488,11 +488,11 @@ async function initializeDatabaseMigrationsOnStartup() {
       } catch (error) {
         // Skip idempotent errors (object already exists)
         const isIdempotentError = error.code === '42P07' || error.code === '42710' ||
-            error.code === '42701' || // duplicate column
-            error.code === '42703' || // column does not exist (create index on missing column)
-            error.message?.includes('already exists') ||
-            error.message?.includes('duplicate key') ||
-            error.message?.includes('migration is disabled'); // our custom skip marker
+          error.code === '42701' || // duplicate column
+          error.code === '42703' || // column does not exist (create index on missing column)
+          error.message?.includes('already exists') ||
+          error.message?.includes('duplicate key') ||
+          error.message?.includes('migration is disabled'); // our custom skip marker
 
         if (isIdempotentError) {
           skipped++;

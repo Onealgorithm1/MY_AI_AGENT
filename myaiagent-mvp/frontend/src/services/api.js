@@ -11,11 +11,18 @@ const getApiBaseUrl = () => {
       return '/api';
     }
 
+    // Explicit localhost check - DEFAULT TO LOCAL BACKEND
+    if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+      const localApi = 'http://localhost:3000/api';
+      console.log('🏠 Detected localhost - using local API:', localApi);
+      return localApi;
+    }
+
     // If on fly.dev or Builder.io preview, use full VITE_API_URL
     if (hostname.includes('fly.dev') ||
-        hostname.includes('builder.io') ||
-        hostname.includes('projects.builder.codes') ||
-        hostname.includes('projects.builder.my')) {
+      hostname.includes('builder.io') ||
+      hostname.includes('projects.builder.codes') ||
+      hostname.includes('projects.builder.my')) {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://werkules.com/api';
       console.log('🎯 Detected preview domain - using full API URL:', apiUrl);
       return apiUrl;
@@ -28,9 +35,9 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Development fallback - use relative path (proxied through Vite to werkules.com)
-  console.log('🔧 Using relative /api path (proxied to werkules.com)');
-  return '/api';
+  // Development fallback - use local API by default instead of production
+  console.log('🔧 Using fallback to http://localhost:3000/api');
+  return 'http://localhost:3000/api';
 };
 
 // Get base URL or force /api for production
@@ -93,6 +100,21 @@ api.interceptors.request.use(
         console.error('   Please refresh the page to fetch CSRF token');
       }
     }
+    // Add Organization Context Header
+    // try {
+    //   const authStorage = localStorage.getItem('auth-storage');
+    //   if (authStorage) {
+    //     const parsed = JSON.parse(authStorage);
+    //     // Zustand persist structure: { state: { ... } }
+    //     const currentOrgId = parsed.state?.currentOrganization?.id;
+    //     if (currentOrgId) {
+    //       config.headers['X-Organization-ID'] = currentOrgId;
+    //     }
+    //   }
+    // } catch (e) {
+    //   // Ignore storage read errors
+    // }
+
     return config;
   },
   (error) => {
@@ -121,21 +143,21 @@ api.interceptors.response.use(
       config.__isRetry = true;
       return api(config);
     }
-    
+
     // Unauthorized - JWT invalid/expired
     if (error.response?.status === 401) {
       // Don't redirect if already on login/signup pages or if this is a login attempt
       const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/signup';
       const isLoginAttempt = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup');
-      
+
       // Don't logout on TTS errors (ElevenLabs quota exceeded returns 401)
       const isTTSError = error.config?.url?.includes('/tts/');
-      
+
       if (!isAuthPage && !isLoginAttempt && !isTTSError) {
         // Clear all auth-related storage
         localStorage.removeItem('user');
         localStorage.removeItem('auth-storage');
-        
+
         // Force a full redirect to login (this will clear all state)
         window.location.href = '/login';
       }
@@ -165,7 +187,7 @@ export const auth = {
   uploadProfilePicture: (file) => {
     const formData = new FormData();
     formData.append('profilePicture', file);
-    
+
     return api.post('/auth/profile/upload-picture', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -235,7 +257,7 @@ export const attachments = {
     formData.append('file', file);
     if (conversationId) formData.append('conversationId', conversationId);
     if (messageId) formData.append('messageId', messageId);
-    
+
     return api.post('/attachments', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -270,8 +292,12 @@ export const admin = {
     api.get('/admin/users', { params: { limit, offset, search } }),
   getUser: (id) =>
     api.get(`/admin/users/${id}`),
+  createUser: (data) =>
+    api.post('/admin/users', data),
   updateUser: (id, data) =>
     api.put(`/admin/users/${id}`, data),
+  resetUserPassword: (id, password) =>
+    api.put(`/admin/users/${id}/password`, { password }),
   errors: (limit, resolved) =>
     api.get('/admin/errors', { params: { limit, resolved } }),
   resolveError: (id) =>
@@ -284,6 +310,8 @@ export const admin = {
     api.get('/admin/api-keys'),
   getApiKeys: () =>
     api.get('/admin/api-keys'),
+  createApiKey: (data) =>
+    api.post('/admin/api-keys', data),
   // Master admin endpoints
   getOrganizations: () =>
     api.get('/admin/organizations'),
@@ -319,6 +347,12 @@ export const org = {
     api.delete(`/org/${orgId}/api-keys/${keyId}`),
   rotateApiKey: (orgId, keyId, newKeyValue) =>
     api.post(`/org/${orgId}/api-keys/${keyId}/rotate`, { newKeyValue }),
+  getAuditLogs: (orgId, params) =>
+    api.get(`/org/${orgId}/audit-logs`, { params }),
+  getSettings: (orgId) =>
+    api.get(`/org/${orgId}/settings`),
+  updateSettings: (orgId, data) =>
+    api.put(`/org/${orgId}/settings`, data),
 };
 
 // Secrets endpoints
@@ -405,13 +439,13 @@ export const stt = {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
     formData.append('languageCode', languageCode);
-    
+
     const response = await api.post('/stt/transcribe', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    
+
     return response.data.transcript;
   },
 };
@@ -640,6 +674,24 @@ export const adminOrganizations = {
   getStatistics: () =>
     api.get('/admin/organizations/stats/overview'),
 };
+
+// Attach sub-modules to the main api instance for unified access (e.g., api.admin.getStats)
+api.auth = auth;
+api.conversations = conversations;
+api.messages = messages;
+api.memory = memory;
+api.attachments = attachments;
+api.feedback = feedback;
+api.admin = admin;
+api.org = org;
+api.secrets = secrets;
+api.tts = tts;
+api.stt = stt;
+api.webSearch = webSearch;
+api.samGov = samGov;
+api.aiAgents = aiAgents;
+api.organizations = organizations;
+api.adminOrganizations = adminOrganizations;
 
 // Export both default and named export for flexibility
 export { api };

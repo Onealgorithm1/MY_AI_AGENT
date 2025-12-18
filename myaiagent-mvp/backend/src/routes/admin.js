@@ -149,11 +149,50 @@ router.get('/users/:id', async (req, res) => {
   }
 });
 
+// Create new user (admin/superadmin)
+router.post('/users', async (req, res) => {
+  try {
+    const { email, password, fullName, role } = req.body;
+
+    if (!email || !password || !fullName || !role) {
+      return res.status(400).json({ error: 'All fields (email, password, fullName, role) are required' });
+    }
+
+    if (!['user', 'admin', 'superadmin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Check if user exists
+    const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    const { hashPassword } = await import('../utils/auth.js');
+    const hashedPassword = await hashPassword(password);
+
+    const result = await query(
+      `INSERT INTO users (email, password_hash, full_name, role, is_active)
+       VALUES ($1, $2, $3, $4, true)
+       RETURNING id, email, full_name, role`,
+      [email, hashedPassword, fullName, role]
+    );
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
 // Update user (activate/deactivate, change role)
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { isActive, role } = req.body;
+    const { isActive, role, email, fullName } = req.body;
 
     const updates = [];
     const values = [];
@@ -172,11 +211,29 @@ router.put('/users/:id', async (req, res) => {
       values.push(role);
     }
 
+    if (email !== undefined) {
+      updates.push(`email = $${paramCount++}`);
+      values.push(email);
+    }
+
+    if (fullName !== undefined) {
+      updates.push(`full_name = $${paramCount++}`);
+      values.push(fullName);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
     }
 
     values.push(id);
+
+    // If updating email, check for duplicates
+    if (email) {
+      const existingUser = await query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, id]);
+      if (existingUser.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already in use by another user' });
+      }
+    }
 
     await query(
       `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramCount}`,
@@ -187,6 +244,31 @@ router.put('/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Update user password
+router.put('/users/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const { hashPassword } = await import('../utils/auth.js');
+    const hashedPassword = await hashPassword(password);
+
+    await query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2`,
+      [hashedPassword, id]
+    );
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Update password error:', error);
+    res.status(500).json({ error: 'Failed to update password' });
   }
 });
 
@@ -296,7 +378,7 @@ router.get('/api-keys', async (req, res) => {
         preview: openaiConfigured ? 'sk-...****' : null,
       },
       elevenlabs: {
-        configured: elevenLabsConfigured, 
+        configured: elevenLabsConfigured,
         preview: elevenLabsConfigured ? 'xi-...****' : null,
       },
     });
@@ -307,30 +389,27 @@ router.get('/api-keys', async (req, res) => {
 });
 
 // Save API keys
+// Save API keys
 router.post('/api-keys', async (req, res) => {
   try {
-    const { provider, apiKey } = req.body;
-    
+    const { provider, apiKey, keyLabel } = req.body;
+
     if (!provider || !apiKey) {
       return res.status(400).json({ error: 'Provider and API key are required' });
     }
-    
-    const allowedProviders = ['openai', 'elevenlabs'];
+
+    const allowedProviders = ['openai', 'elevenlabs', 'gemini', 'anthropic', 'stripe', 'google'];
     if (!allowedProviders.includes(provider)) {
       return res.status(400).json({ error: 'Invalid provider' });
     }
-    
+
     const { saveApiKey } = await import('../utils/apiKeys.js');
-    const success = await saveApiKey(provider, apiKey, req.user.id);
-    
-    if (success) {
-      res.json({ message: `${provider} API key saved successfully` });
-    } else {
-      res.status(500).json({ error: 'Failed to save API key' });
-    }
+    await saveApiKey(provider, apiKey, req.user.id, null, keyLabel);
+
+    res.json({ message: `${provider} API key saved successfully` });
   } catch (error) {
     console.error('Save API key error:', error);
-    res.status(500).json({ error: 'Failed to save API key' });
+    res.status(500).json({ error: error.message || 'Failed to save API key' });
   }
 });
 

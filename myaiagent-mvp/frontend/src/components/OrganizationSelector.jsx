@@ -1,16 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Settings } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { organizations as orgApi } from '../services/api';
+import { organizations as orgApi, adminOrganizations as adminOrgsApi } from '../services/api';
+
 import { toast } from 'sonner';
 
 export default function OrganizationSelector() {
-  const { user, organizations, currentOrganization, switchOrganization } = useAuthStore();
+  const { user, organizations: userOrgs, currentOrganization, switchOrganization, isMasterAdmin } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
   const [orgName, setOrgName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [adminOrgs, setAdminOrgs] = useState([]);
   const dropdownRef = useRef(null);
+
+  // Combine user orgs and admin fetched orgs, removing duplicates by ID
+  const displayOrganizations = isMasterAdmin()
+    ? [...new Map([...userOrgs, ...adminOrgs].map(item => [item.id, item])).values()]
+    : userOrgs;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -22,6 +29,23 @@ export default function OrganizationSelector() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch all organizations for master admin
+  useEffect(() => {
+    if (isMasterAdmin() && isOpen) {
+      const fetchAllOrgs = async () => {
+        try {
+          // Fetch first 100 orgs for the dropdown (pagination could be added later if needed)
+          const response = await adminOrgsApi.list(undefined, 100, 0);
+          setAdminOrgs(response.data.organizations || []);
+        } catch (error) {
+          console.error('Failed to fetch admin organizations:', error);
+          toast.error('Failed to load all organizations');
+        }
+      };
+      fetchAllOrgs();
+    }
+  }, [isMasterAdmin, isOpen]);
 
   const handleCreateOrganization = async (e) => {
     e.preventDefault();
@@ -57,6 +81,16 @@ export default function OrganizationSelector() {
   };
 
   const handleSwitchOrganization = (org) => {
+    // If the org isn't in the global store's list (which switchOrganization checks), add it temporarily
+    const storeState = useAuthStore.getState();
+    const exists = storeState.organizations.find(o => o.id === org.id);
+
+    if (!exists) {
+      useAuthStore.setState(state => ({
+        organizations: [...state.organizations, org]
+      }));
+    }
+
     switchOrganization(org.id);
     setIsOpen(false);
     toast.success(`Switched to ${org.name}`);
@@ -92,17 +126,16 @@ export default function OrganizationSelector() {
         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
           {/* Organization List */}
           <div className="p-2 border-b border-gray-200 dark:border-gray-700">
-            {organizations.length > 0 ? (
-              <div className="space-y-1">
-                {organizations.map((org) => (
+            {displayOrganizations.length > 0 ? (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {displayOrganizations.map((org) => (
                   <button
                     key={org.id}
                     onClick={() => handleSwitchOrganization(org)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                      currentOrganization.id === org.id
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
-                    }`}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${currentOrganization.id === org.id
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
+                      }`}
                   >
                     <div className="flex flex-col">
                       <span className="font-medium text-sm">{org.name}</span>

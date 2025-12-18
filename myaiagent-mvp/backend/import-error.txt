@@ -1,0 +1,9 @@
+
+CAUGHT IMPORT ERROR:
+Message: CRITICAL: ENCRYPTION_KEY environment variable is required for OAuth security. Please add it to your secrets.
+Code: undefined
+Stack: Error: CRITICAL: ENCRYPTION_KEY environment variable is required for OAuth security. Please add it to your secrets.
+    at file:///D:/ai%20agent/MY_AI_AGENT-1/myaiagent-mvp/backend/src/services/googleOAuth.js:8:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:222:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:316:24)
+    

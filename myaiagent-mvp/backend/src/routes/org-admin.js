@@ -124,6 +124,31 @@ router.post('/:orgId/users', requireOrgAdmin, async (req, res) => {
       [parseInt(orgId), userId, role]
     );
 
+    // Send invitation email
+    const orgResult = await query('SELECT name FROM organizations WHERE id = $1', [parseInt(orgId)]);
+    const inviterName = req.user.full_name || req.user.email;
+    const orgName = orgResult.rows[0].name;
+    const acceptLink = `${process.env.FRONTEND_URL || 'https://werkules.com'}/auth/invitation?token=${encodeURIComponent(email)}`; // Placeholder token
+
+    import('../services/emailService.js').then(({ default: emailService }) => {
+      emailService.sendInvitationEmail(email, orgName, inviterName, acceptLink)
+        .catch(err => console.error('Failed to send invitation email:', err));
+    });
+
+    // Log activity
+    import('../services/auditService.js').then(({ default: auditService }) => {
+      auditService.log({
+        userId: req.user.id,
+        organizationId: parseInt(orgId),
+        action: 'user.invite',
+        resourceType: 'user',
+        resourceId: result.rows[0].user_id,
+        details: { email, role },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    });
+
     res.status(201).json({
       message: 'User invited to organization',
       orgUser: result.rows[0]
@@ -180,6 +205,20 @@ router.put('/:orgId/users/:userId/role', requireOrgAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found in organization' });
     }
 
+    // Log activity
+    import('../services/auditService.js').then(({ default: auditService }) => {
+      auditService.log({
+        userId: req.user.id,
+        organizationId: parseInt(orgId),
+        action: 'user.update_role',
+        resourceType: 'user',
+        resourceId: parseInt(userId),
+        details: { newRole: role },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    });
+
     res.json({
       message: 'User role updated',
       orgUser: result.rows[0]
@@ -222,9 +261,13 @@ router.post('/:orgId/users/:userId/reset-password', requireOrgAdmin, async (req,
       [user.id, resetToken, expiresAt]
     );
 
-    // TODO: Send email with reset link
-    // For now, return token in response (in production, use email service)
-    console.log(`Password reset token for ${user.email}: ${resetToken}`);
+    const resetLink = `${process.env.FRONTEND_URL || 'https://werkules.com'}/auth/reset-password?token=${resetToken}`;
+
+    // Send email asynchronously
+    import('../services/emailService.js').then(({ default: emailService }) => {
+      emailService.sendPasswordResetEmail(user.email, resetLink)
+        .catch(err => console.error('Failed to send password reset email:', err));
+    });
 
     res.json({
       message: 'Password reset link sent',
@@ -276,6 +319,20 @@ router.delete('/:orgId/users/:userId', requireOrgAdmin, async (req, res) => {
       [parseInt(userId), parseInt(orgId)]
     );
 
+    // Log activity
+    import('../services/auditService.js').then(({ default: auditService }) => {
+      auditService.log({
+        userId: req.user.id,
+        organizationId: parseInt(orgId),
+        action: 'user.deactivate',
+        resourceType: 'user',
+        resourceId: parseInt(userId),
+        details: {},
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    });
+
     res.json({ message: 'User deactivated' });
   } catch (error) {
     console.error('Error deactivating user:', error);
@@ -323,14 +380,22 @@ router.post('/:orgId/api-keys', requireOrgAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Service name, label, and key value required' });
     }
 
-    const result = await query(
-      `INSERT INTO api_secrets (organization_id, service_name, key_label, key_value, is_active)
-       VALUES ($1, $2, $3, $4, TRUE)
-       RETURNING id, key_label, service_name, organization_id, is_active, created_at`,
-      [parseInt(orgId), serviceName, keyLabel, keyValue]
-    );
+    const { saveApiKey } = await import('../utils/apiKeys.js');
+    const success = await saveApiKey(serviceName, keyValue, req.user.id, parseInt(orgId), keyLabel);
 
-    res.status(201).json({ apiKey: result.rows[0] });
+    if (success) {
+      // Fetch the created key to return consistent response format
+      const result = await query(
+        `SELECT id, key_label, service_name, organization_id, is_active, created_at 
+         FROM api_secrets 
+         WHERE service_name = $1 AND organization_id = $2 
+         ORDER BY created_at DESC LIMIT 1`,
+        [serviceName, parseInt(orgId)]
+      );
+      res.status(201).json({ apiKey: result.rows[0] });
+    } else {
+      res.status(500).json({ error: 'Failed to save API key' });
+    }
   } catch (error) {
     console.error('Error creating API key:', error);
     res.status(500).json({ error: 'Failed to create API key' });
@@ -459,6 +524,133 @@ router.post('/:orgId/api-keys/:keyId/rotate', requireOrgAdmin, async (req, res) 
   } catch (error) {
     console.error('Error rotating API key:', error);
     res.status(500).json({ error: 'Failed to rotate API key' });
+  }
+});
+
+// ============================================
+// ORGANIZATION SETTINGS
+// ============================================
+
+/**
+ * GET /api/org/:orgId/settings
+ * Get organization settings (org admin only)
+ */
+router.get('/:orgId/settings', requireOrgAdmin, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+
+    const result = await query(
+      `SELECT id, name, slug, branding_settings, created_at
+       FROM organizations
+       WHERE id = $1`,
+      [parseInt(orgId)]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    res.json({ settings: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching org settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+/**
+ * PUT /api/org/:orgId/settings
+ * Update organization settings (org admin only)
+ */
+router.put('/:orgId/settings', requireOrgAdmin, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    const { name, brandingSettings } = req.body;
+
+    // Validate input
+    if (name && name.trim().length === 0) {
+      return res.status(400).json({ error: 'Organization name cannot be empty' });
+    }
+
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (name) {
+      updates.push(`name = $${paramCount++}`);
+      values.push(name.trim());
+    }
+
+    if (brandingSettings) {
+      // Merge with existing settings or overwrite? Let's overwrite specific fields
+      // But first we need valid JSON
+      updates.push(`branding_settings = $${paramCount++}`);
+      values.push(JSON.stringify(brandingSettings));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(parseInt(orgId));
+
+    const result = await query(
+      `UPDATE organizations
+       SET ${updates.join(', ')}
+       WHERE id = $${paramCount}
+       RETURNING id, name, slug, branding_settings, updated_at`,
+      values
+    );
+
+    // Log activity
+    import('../services/auditService.js').then(({ default: auditService }) => {
+      auditService.log({
+        userId: req.user.id,
+        organizationId: parseInt(orgId),
+        action: 'organization.update_settings',
+        resourceType: 'organization',
+        resourceId: parseInt(orgId),
+        details: { updates: Object.keys(req.body) },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    });
+
+    res.json({
+      message: 'Settings updated',
+      settings: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating org settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+/**
+ * GET /api/org/:orgId/audit-logs
+ * Get organization audit logs (org admin only)
+ */
+router.get('/:orgId/audit-logs', requireOrgAdmin, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    const { limit, offset, action, userId } = req.query;
+
+    const auditService = (await import('../services/auditService.js')).default;
+    const result = await auditService.getOrganizationLogs(parseInt(orgId), {
+      limit: limit ? parseInt(limit) : 50,
+      offset: offset ? parseInt(offset) : 0,
+      action,
+      userId: userId ? parseInt(userId) : null
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching audit logs:', error);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
 

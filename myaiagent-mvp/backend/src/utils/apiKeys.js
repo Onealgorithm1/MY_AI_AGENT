@@ -8,17 +8,17 @@ const ALGORITHM = 'aes-256-gcm';
 // Encrypt value (using same method as secrets service)
 export function encrypt(text) {
   if (!text) return null;
-  
+
   const iv = crypto.randomBytes(16);
   const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
-  
+
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  
+
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
+
   const authTag = cipher.getAuthTag();
-  
+
   // Return IV + authTag + encrypted data as single string
   return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
 }
@@ -26,26 +26,26 @@ export function encrypt(text) {
 // Decrypt value (using same method as secrets service)
 export function decrypt(encryptedText) {
   if (!encryptedText) return null;
-  
+
   try {
     const parts = encryptedText.split(':');
     if (parts.length !== 3) {
       console.error('Invalid encrypted data format');
       return null;
     }
-    
+
     const iv = Buffer.from(parts[0], 'hex');
     const authTag = Buffer.from(parts[1], 'hex');
     const encrypted = parts[2];
-    
+
     const key = Buffer.from(ENCRYPTION_KEY.substring(0, 64), 'hex');
-    
+
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
-    
+
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   } catch (error) {
     console.error('Decryption error:', error);
@@ -54,7 +54,7 @@ export function decrypt(encryptedText) {
 }
 
 // Get API key from database with support for multiple keys per service
-export async function getApiKey(provider, keyType = 'project') {
+export async function getApiKey(provider, keyType = 'project', organizationId = null) {
   try {
     // Map provider to service_name format
     const serviceNameMap = {
@@ -79,56 +79,34 @@ export async function getApiKey(provider, keyType = 'project') {
       return null;
     }
 
-    console.log(`🔑 getApiKey: Looking for ${provider} (service: ${serviceName})`);
+    console.log(`🔑 getApiKey: Looking for ${provider} (service: ${serviceName})`, organizationId ? `for Org ${organizationId}` : 'System-wide');
 
-    // Try to get key in this order:
-    // 1. Default key of matching type (if specified)
-    // 2. Any default key
-    // 3. Any active key of matching type
-    // 4. Any active key
     let result;
-    
-    // Try default key of matching type first
-    result = await query(
-      `SELECT key_value FROM api_secrets 
-       WHERE service_name = $1 AND is_active = true AND is_default = true AND key_type = $2
-       LIMIT 1`,
-      [serviceName, keyType]
-    );
-    
-    // If not found, try any default key
-    if (result.rows.length === 0) {
+
+    // 1. If organizationId is provided, try to find an active key for that organization
+    if (organizationId) {
       result = await query(
         `SELECT key_value FROM api_secrets 
-         WHERE service_name = $1 AND is_active = true AND is_default = true
-         LIMIT 1`,
-        [serviceName]
-      );
-    }
-    
-    // If still not found, try any key of matching type
-    if (result.rows.length === 0) {
-      result = await query(
-        `SELECT key_value FROM api_secrets 
-         WHERE service_name = $1 AND is_active = true AND key_type = $2
+         WHERE service_name = $1 AND is_active = true AND organization_id = $2
          ORDER BY created_at DESC LIMIT 1`,
-        [serviceName, keyType]
+        [serviceName, organizationId]
       );
     }
-    
-    // Last resort: any active key
-    if (result.rows.length === 0) {
+
+    // 2. If no org key found (or no orgId provided), try System Default key (organization_id IS NULL)
+    if (!result || result.rows.length === 0) {
       result = await query(
         `SELECT key_value FROM api_secrets 
-         WHERE service_name = $1 AND is_active = true
+         WHERE service_name = $1 AND is_active = true AND organization_id IS NULL
          ORDER BY created_at DESC LIMIT 1`,
         [serviceName]
       );
     }
-    
+
     // If no key found in database, fall back to environment variable
-    if (result.rows.length === 0) {
-      console.log(`⚠️  No database key found for ${serviceName}, checking environment variables`);
+    if (!result || result.rows.length === 0) {
+      // Only log if we were really expecting a key (optional to reduce noise)
+      // console.log(`⚠️  No database key found for ${serviceName}, checking environment variables`);
 
       const envKeyMap = {
         'openai': 'OPENAI_API_KEY',
@@ -141,7 +119,7 @@ export async function getApiKey(provider, keyType = 'project') {
 
       const envKey = envKeyMap[provider.toLowerCase()];
       if (envKey && process.env[envKey]) {
-        console.log(`✅ Using ${provider} API key from environment variable: ${envKey}`);
+        console.log(`✅ Using ${provider} API key from environment variable`);
         return process.env[envKey];
       }
 
@@ -154,8 +132,6 @@ export async function getApiKey(provider, keyType = 'project') {
     const decrypted = decrypt(encryptedValue);
     if (!decrypted) {
       console.error(`❌ Failed to decrypt ${provider} API key`);
-    } else {
-      console.log(`✅ Successfully decrypted ${provider} API key`);
     }
     return decrypted;
   } catch (error) {
@@ -165,33 +141,50 @@ export async function getApiKey(provider, keyType = 'project') {
 }
 
 // Save API key to database
-export async function saveApiKey(provider, apiKey, userId) {
-  try {
-    // Deactivate old keys
+// Save API key to database
+export async function saveApiKey(provider, apiKey, userId, organizationId = null, keyLabel = null) {
+  // Deactivate old keys for this specific scope (System or Organization)
+  // If organizationId is provided, deactivate only that org's keys
+  // If organizationId is null, deactivate only system keys (where organization_id IS NULL)
+  if (organizationId) {
     await query(
-      'UPDATE api_secrets SET is_active = false WHERE service_name = $1',
+      'UPDATE api_secrets SET is_active = false WHERE service_name = $1 AND organization_id = $2',
+      [provider, organizationId]
+    );
+  } else {
+    await query(
+      'UPDATE api_secrets SET is_active = false WHERE service_name = $1 AND organization_id IS NULL',
       [provider]
     );
-    
-    // Insert new key
-    const encryptedValue = encrypt(apiKey);
-    await query(
-      'INSERT INTO api_secrets (service_name, key_name, key_value, created_by, is_active) VALUES ($1, $2, $3, $4, true)',
-      [provider, `${provider}_api_key`, encryptedValue, userId]
-    );
-    
-    return true;
-  } catch (error) {
-    console.error(`Error saving ${provider} API key:`, error);
-    return false;
   }
+
+  // Insert new key
+  const encryptedValue = encrypt(apiKey);
+  const label = keyLabel || `${provider} API Key`;
+
+  await query(
+    'INSERT INTO api_secrets (service_name, key_label, key_value, created_by, is_active, organization_id) VALUES ($1, $2, $3, $4, true, $5)',
+    [provider, label, encryptedValue, userId, organizationId]
+  );
+
+  return true;
 }
 
 // Check if API key is configured
-export async function hasApiKey(provider) {
+export async function hasApiKey(provider, organizationId = null) {
   try {
-    const result = await query(
-      'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true LIMIT 1',
+    let result;
+    if (organizationId) {
+      result = await query(
+        'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true AND organization_id = $2 LIMIT 1',
+        [provider, organizationId]
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Check system key
+    result = await query(
+      'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true AND organization_id IS NULL LIMIT 1',
       [provider]
     );
     return result.rows.length > 0;

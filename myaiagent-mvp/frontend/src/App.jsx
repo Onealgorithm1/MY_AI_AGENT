@@ -266,7 +266,7 @@ function App() {
             }
           />
           <Route
-            path="/org/:slug/settings"
+            path="/admin/org/settings"
             element={
               <OrgAdminRoute>
                 <OrganizationSettingsPage />

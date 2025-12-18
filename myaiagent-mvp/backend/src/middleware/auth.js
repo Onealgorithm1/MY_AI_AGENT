@@ -37,14 +37,26 @@ export async function authenticate(req, res, next) {
       return res.status(403).json({ error: 'Account is inactive' });
     }
 
-    // Load user's organization if one was stored in JWT
-    if (decoded.organization_id) {
+    // Load user's organization:
+    // 1. Initialize with JWT token default
+    let targetOrgId = decoded.organization_id;
+
+    // 2. Override with X-Organization-ID header (explicit switch) if valid
+    const headerOrgId = req.headers['x-organization-id'];
+    if (headerOrgId) {
+      const parsedId = parseInt(headerOrgId, 10);
+      if (!Number.isNaN(parsedId)) {
+        targetOrgId = parsedId;
+      }
+    }
+
+    if (targetOrgId) {
       const orgResult = await query(
         `SELECT ou.organization_id, ou.role as org_role, o.name as org_name, o.slug as org_slug
          FROM organization_users ou
          JOIN organizations o ON o.id = ou.organization_id
          WHERE ou.user_id = $1 AND ou.organization_id = $2 AND ou.is_active = TRUE`,
-        [user.id, decoded.organization_id]
+        [user.id, targetOrgId]
       );
 
       if (orgResult.rows.length > 0) {
@@ -99,6 +111,11 @@ export function requireOrgAccess(req, res, next) {
 
 // Require organization admin or owner role
 export function requireOrgAdmin(req, res, next) {
+  // Master Admin and Super Admin have access to all organizations
+  if (req.user.role === 'master_admin' || req.user.role === 'superadmin') {
+    return next();
+  }
+
   if (!req.user.organization_id) {
     return res.status(403).json({ error: 'Organization access required' });
   }
