@@ -15,6 +15,7 @@ const getApiBaseUrl = () => {
     if (hostname.includes('fly.dev') ||
         hostname.includes('builder.io') ||
         hostname.includes('projects.builder.codes') ||
+        hostname.includes('werkules.com') ||
         hostname.includes('projects.builder.my')) {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://werkules.com/api';
       console.log('🎯 Detected preview domain - using full API URL:', apiUrl);
