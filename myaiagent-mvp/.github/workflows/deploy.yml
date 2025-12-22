@@ -32,5 +32,5 @@ jobs:
             chmod +x update-ec2.sh
             
             # Run the update script
-            # We use 'yes' to automatically answer 'y' to the confirmation prompt in the script
-            yes | ./update-ec2.sh
+            # Run the update script with sudo (as requested: "make it root")
+            sudo ./update-ec2.sh

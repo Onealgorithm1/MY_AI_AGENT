@@ -33,11 +33,8 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then
-    print_error "Please do not run this script as root. Run as ubuntu user."
-    exit 1
-fi
+# Root check removed for CI/CD compatibility
+# Interactive confirmation removed for CI/CD compatibility
 
 # Detect project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,14 +46,9 @@ print_info "Project root: $PROJECT_ROOT"
 print_info "Backend: $BACKEND_DIR"
 print_info "Frontend: $FRONTEND_DIR"
 
-# Confirmation
-print_warning "This will update your production deployment."
-read -p "Continue? (y/n) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    print_info "Update cancelled."
-    exit 0
-fi
+# Ensure we are in the project root
+cd "$PROJECT_ROOT"
+
 
 # Pull latest code from git
 print_info "Pulling latest code from git..."
