@@ -1,0 +1,36 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to EC2 Instance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to project directory (adjust if you cloned strictly to home or elsewhere)
+            cd ~/myaiagent-mvp || { echo "Directory not found! Please clone the repo first."; exit 1; }
+            
+            # Ensure we have the latest version of the update script
+            git fetch origin
+            git pull origin deployment
+            
+            # Make the script executable
+            chmod +x update-ec2.sh
+            
+            # Run the update script
+            # We use 'yes' to automatically answer 'y' to the confirmation prompt in the script
+            yes | ./update-ec2.sh
