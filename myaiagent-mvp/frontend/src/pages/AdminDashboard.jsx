@@ -150,7 +150,21 @@ const AdminDashboard = () => {
       setSelectedUser(null);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reset password');
+      setError(err.response?.data?.error || 'Failed to update password');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to PERMANENTLY delete this user and all their data? This cannot be undone.')) {
+      try {
+        setError(null);
+        await api.admin.deleteUser(userId);
+        setSuccessMessage('User deleted successfully');
+        loadUsers();
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to delete user');
+      }
     }
   };
 
@@ -726,6 +740,13 @@ const AdminDashboard = () => {
                             onClick={() => openPasswordModal(user)}
                           >
                             Reset PWD
+                          </button>
+                          <button
+                            className="btn-small"
+                            style={{ backgroundColor: '#d32f2f', color: 'white', border: 'none' }}
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            Delete
                           </button>
                         </div>
                       </td>

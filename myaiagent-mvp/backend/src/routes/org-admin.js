@@ -195,7 +195,7 @@ router.put('/:orgId/users/:userId/role', requireOrgAdmin, async (req, res) => {
 
     const result = await query(
       `UPDATE organization_users
-       SET role = $1, updated_at = CURRENT_TIMESTAMP
+       SET role = $1
        WHERE organization_id = $2 AND user_id = $3
        RETURNING *`,
       [role, parseInt(orgId), parseInt(userId)]
@@ -311,10 +311,9 @@ router.delete('/:orgId/users/:userId', requireOrgAdmin, async (req, res) => {
       }
     }
 
-    // Deactivate in organization (soft delete)
+    // Remove from organization (hard delete relationship)
     await query(
-      `UPDATE organization_users
-       SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+      `DELETE FROM organization_users
        WHERE user_id = $1 AND organization_id = $2`,
       [parseInt(userId), parseInt(orgId)]
     );

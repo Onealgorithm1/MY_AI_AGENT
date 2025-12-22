@@ -202,7 +202,8 @@ router.post('/batch-fetch-all', async (req, res) => {
             limit: pageSize,
             offset: currentOffset,
           },
-          req.user?.id || null
+          req.user?.id || null,
+          req.user?.organization_id // Critical: Use org key if available
         );
 
         if (!batchResult.opportunities || batchResult.opportunities.length === 0) {
@@ -247,7 +248,8 @@ router.post('/batch-fetch-all', async (req, res) => {
                 limit: pageSize,
                 offset: currentOffset,
               },
-              req.user?.id || null
+              req.user?.id || null,
+              req.user?.organization_id // Critical: Use org key if available
             );
             allOpportunities = allOpportunities.concat(retryResult.opportunities || []);
             totalRecords = retryResult.totalRecords || 0;

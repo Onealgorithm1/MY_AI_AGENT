@@ -269,8 +269,28 @@ const csrfLimiter = rateLimit({
 });
 
 app.get('/api/csrf-token', csrfLimiter, (req, res) => {
-  const token = generateCsrfToken(req, res);
-  res.json({ csrfToken: token });
+  try {
+    const token = generateCsrfToken(req, res);
+    res.json({ csrfToken: token });
+  } catch (err) {
+    if (err.code === 'EBADCSRFTOKEN') {
+      console.log('🔄 Stale CSRF cookie detected, clearing and generating new token');
+      res.clearCookie('csrf-token');
+      // CRITICAL: Manually strip from request so the re-call doesn't see it
+      if (req.cookies) delete req.cookies['csrf-token'];
+      if (req.signedCookies) delete req.signedCookies['csrf-token'];
+
+      try {
+        const token = generateCsrfToken(req, res);
+        return res.json({ csrfToken: token });
+      } catch (retryErr) {
+        console.error('❌ Token generation failed even after clearing cookie:', retryErr);
+        return res.status(500).json({ error: 'Token generation failed after reset' });
+      }
+    }
+    console.error('❌ Token generation failed:', err);
+    res.status(500).json({ error: 'Token generation failed' });
+  }
 });
 
 // Strict rate limiting for authentication endpoints only

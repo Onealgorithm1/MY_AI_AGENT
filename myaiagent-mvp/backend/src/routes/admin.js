@@ -272,6 +272,37 @@ router.put('/users/:id/password', async (req, res) => {
   }
 });
 
+// Delete user (Master Admin only)
+router.delete('/users/:id', requireMasterAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Don't allow deleting self
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    // Check if user exists
+    const userResult = await query('SELECT email FROM users WHERE id = $1', [id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { email } = userResult.rows[0];
+
+    // Perform global deletion
+    // ON DELETE CASCADE in schema handles cleanup for:
+    // organization_users, conversations, messages, memory_facts, etc.
+    await query('DELETE FROM users WHERE id = $1', [id]);
+
+    console.log(`🗑️ Deleted user ${email} (ID: ${id})`);
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 // Get error logs
 router.get('/errors', async (req, res) => {
   try {

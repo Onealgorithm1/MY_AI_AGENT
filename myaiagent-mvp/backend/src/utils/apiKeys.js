@@ -48,8 +48,8 @@ export function decrypt(encryptedText) {
 
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
-    return null;
+    console.error('Decryption error:', error.message);
+    return '[DECRYPTION_ERROR]';
   }
 }
 

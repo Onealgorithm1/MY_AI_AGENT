@@ -97,10 +97,17 @@ export const fetchCsrfToken = async () => {
 export const getCsrfToken = () => csrfToken;
 
 // Request interceptor - add CSRF token to state-changing requests
+// Request interceptor - add CSRF token to state-changing requests
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Add CSRF token to POST, PUT, PATCH, DELETE requests
     if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      // Auto-fetch if missing (handles race conditions on app load)
+      if (!csrfToken) {
+        console.log('🔄 CSRF token missing in interceptor, fetching now...');
+        await fetchCsrfToken();
+      }
+
       if (csrfToken) {
         config.headers['x-csrf-token'] = csrfToken;
         console.log('✅ CSRF token added to request:', config.method, config.url);
@@ -307,6 +314,8 @@ export const admin = {
     api.put(`/admin/users/${id}`, data),
   resetUserPassword: (id, password) =>
     api.put(`/admin/users/${id}/password`, { password }),
+  deleteUser: (id) =>
+    api.delete(`/admin/users/${id}`),
   errors: (limit, resolved) =>
     api.get('/admin/errors', { params: { limit, resolved } }),
   resolveError: (id) =>
