@@ -1,0 +1,50 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to EC2 Instance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to project directory
+            # Assuming 'myaiagent-mvp' is the folder containing the app on EC2
+            cd ~/myaiagent-mvp || { echo "Directory not found! Please clone the repo first."; exit 1; }
+            
+            # Ensure we have the latest version of the update script
+            git fetch origin
+            git pull origin development
+            
+            # Make the script executable
+            # Using the nested path if the repo root is '~/myaiagent-mvp' but it contains 'myaiagent-mvp' folder?
+            # User said "open myaiagent-mvp". 
+            # If the user cloned the repo contents INTO ~/myaiagent-mvp, then update-ec2.sh is at ./update-ec2.sh
+            # If the user cloned the REPO into ~/myaiagent-mvp, then update-ec2.sh is at ./myaiagent-mvp/update-ec2.sh
+            # Based on previous context, update-ec2.sh was in 'myaiagent-mvp/update-ec2.sh' LOCALLY.
+            # I will look for it in the current directory and the subdir.
+            
+            if [ -f "./update-ec2.sh" ]; then
+              chmod +x update-ec2.sh
+              sudo ./update-ec2.sh
+            elif [ -f "./myaiagent-mvp/update-ec2.sh" ]; then
+              cd myaiagent-mvp
+              chmod +x update-ec2.sh
+              sudo ./update-ec2.sh
+            else
+              echo "Error: update-ec2.sh not found in $(pwd) or $(pwd)/myaiagent-mvp"
+              exit 1
+            fi
