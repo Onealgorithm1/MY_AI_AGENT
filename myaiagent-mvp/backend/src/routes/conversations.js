@@ -4,32 +4,70 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get all conversations for user
+// Get all conversations
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { limit = 20, offset = 0, archived = false } = req.query;
+    const { limit = 20, offset = 0, archived = false, userId } = req.query;
 
     // Validate and sanitize pagination parameters
     const validatedLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
     const validatedOffset = Math.max(0, parseInt(offset) || 0);
 
-    const result = await query(
-      `SELECT c.id, c.user_id, c.title, c.model, c.is_archived,
-              c.created_at, c.updated_at,
-              COUNT(m.id) as message_count
-       FROM conversations c
-       LEFT JOIN messages m ON m.conversation_id = c.id
-       WHERE c.user_id = $1 AND c.is_archived = $2
-       GROUP BY c.id, c.user_id, c.title, c.model, c.is_archived,
-                c.created_at, c.updated_at
-       ORDER BY c.updated_at DESC
-       LIMIT $3 OFFSET $4`,
-      [req.user.id, archived === 'true', validatedLimit, validatedOffset]
-    );
+    let queryText = `
+      SELECT c.id, c.user_id, c.title, c.model, c.is_archived,
+             c.created_at, c.updated_at,
+             COUNT(m.id) as message_count,
+             u.email as user_email, u.full_name as user_name
+      FROM conversations c
+      LEFT JOIN messages m ON m.conversation_id = c.id
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE 1=1
+    `;
+
+    const queryParams = [];
+    let paramIndex = 1;
+
+    // Check permissions
+    if (req.user.role === 'master_admin' || req.user.role === 'superadmin') {
+      // Master admin can see all or filter by specific user
+      if (userId) {
+        queryText += ` AND c.user_id = $${paramIndex}`;
+        queryParams.push(userId);
+        paramIndex++;
+      }
+    } else {
+      // Regular users can only see their own
+      queryText += ` AND c.user_id = $${paramIndex}`;
+      queryParams.push(req.user.id);
+      paramIndex++;
+    }
+
+    // Filter by archived status
+    queryText += ` AND c.is_archived = $${paramIndex}`;
+    queryParams.push(archived === 'true');
+    paramIndex++;
+
+    // Group by and Order
+    queryText += `
+      GROUP BY c.id, c.user_id, c.title, c.model, c.is_archived, c.created_at, c.updated_at, u.email, u.full_name
+      ORDER BY c.updated_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    queryParams.push(validatedLimit, validatedOffset);
+
+    const result = await query(queryText, queryParams);
+
+    // Get total count (approximation for performance)
+    const countQuery = `
+      SELECT COUNT(*) as total FROM conversations c WHERE 1=1
+      ${(req.user.role !== 'master_admin' && req.user.role !== 'superadmin') ? `AND c.user_id = '${req.user.id}'` : (userId ? `AND c.user_id = '${userId}'` : '')}
+      AND c.is_archived = ${archived === 'true'}
+    `;
+    const countResult = await query(countQuery);
 
     res.json({
       conversations: result.rows,
-      total: result.rows.length,
+      total: parseInt(countResult.rows[0]?.total || 0),
     });
   } catch (error) {
     console.error('Get conversations error:', error);
@@ -41,11 +79,17 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const isMasterAdmin = req.user.role === 'master_admin' || req.user.role === 'superadmin';
 
-    const result = await query(
-      `SELECT * FROM conversations WHERE id = $1 AND user_id = $2`,
-      [id, req.user.id]
-    );
+    let queryText = 'SELECT * FROM conversations WHERE id = $1';
+    const queryParams = [id];
+
+    if (!isMasterAdmin) {
+      queryText += ' AND user_id = $2';
+      queryParams.push(req.user.id);
+    }
+
+    const result = await query(queryText, queryParams);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -162,22 +206,36 @@ router.get('/:id/messages', authenticate, async (req, res) => {
     const { limit = 50, offset = 0 } = req.query;
 
     // Get messages and verify ownership in one query
-    const result = await query(
-      `SELECT m.* 
-       FROM messages m
-       INNER JOIN conversations c ON c.id = m.conversation_id
-       WHERE m.conversation_id = $1 AND c.user_id = $2
-       ORDER BY m.created_at ASC
-       LIMIT $3 OFFSET $4`,
-      [id, req.user.id, parseInt(limit), parseInt(offset)]
-    );
+    let queryText = `
+      SELECT m.* 
+      FROM messages m
+      INNER JOIN conversations c ON c.id = m.conversation_id
+      WHERE m.conversation_id = $1
+    `;
+    const queryParams = [id];
+
+    // Master Admin can see any conversation's messages
+    if (req.user.role !== 'master_admin' && req.user.role !== 'superadmin') {
+      queryText += ' AND c.user_id = $2';
+      queryParams.push(req.user.id);
+    }
+
+    queryText += ' ORDER BY m.created_at ASC LIMIT $' + (queryParams.length + 1) + ' OFFSET $' + (queryParams.length + 2);
+    queryParams.push(parseInt(limit), parseInt(offset));
+
+    const result = await query(queryText, queryParams);
 
     if (result.rows.length === 0) {
       // Check if conversation exists to distinguish between "not found" and "no messages"
-      const check = await query(
-        'SELECT id FROM conversations WHERE id = $1 AND user_id = $2',
-        [id, req.user.id]
-      );
+      let checkQuery = 'SELECT id FROM conversations WHERE id = $1';
+      const checkParams = [id];
+
+      if (req.user.role !== 'master_admin' && req.user.role !== 'superadmin') {
+        checkQuery += ' AND user_id = $2';
+        checkParams.push(req.user.id);
+      }
+
+      const check = await query(checkQuery, checkParams);
       if (check.rows.length === 0) {
         return res.status(404).json({ error: 'Conversation not found' });
       }
@@ -311,7 +369,7 @@ export function generateTitleFromMessages(messages) {
     .map(([word]) => word);
 
   // Take top 2-4 words and capitalize them
-  const keyWords = sortedWords.slice(0, 4).map(word => 
+  const keyWords = sortedWords.slice(0, 4).map(word =>
     word.charAt(0).toUpperCase() + word.slice(1)
   );
 
@@ -360,7 +418,7 @@ router.post('/:id/auto-name', authenticate, async (req, res) => {
     // (We'll consider it manual if it's not a default title)
     const defaultTitles = ['New Conversation', 'New Chat', 'Untitled Chat'];
     if (!defaultTitles.includes(currentTitle)) {
-      return res.json({ 
+      return res.json({
         message: 'Conversation already has a custom title',
         title: currentTitle,
         renamed: false
@@ -377,7 +435,7 @@ router.post('/:id/auto-name', authenticate, async (req, res) => {
     );
 
     if (messages.rows.length === 0) {
-      return res.json({ 
+      return res.json({
         message: 'No messages found to generate title',
         title: currentTitle,
         renamed: false
@@ -425,7 +483,7 @@ export async function autoNameConversation(conversationId, userId) {
     // Don't auto-rename if user has manually changed the title
     const defaultTitles = ['New Conversation', 'New Chat', 'Untitled Chat'];
     if (!defaultTitles.includes(currentTitle)) {
-      return { 
+      return {
         success: false,
         message: 'Conversation already has a custom title',
         title: currentTitle
@@ -442,7 +500,7 @@ export async function autoNameConversation(conversationId, userId) {
     );
 
     if (messages.rows.length === 0) {
-      return { 
+      return {
         success: false,
         message: 'No messages found to generate title',
         title: currentTitle

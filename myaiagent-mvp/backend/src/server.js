@@ -215,9 +215,9 @@ const {
   getSecret: () => csrfSecret,
   cookieName: 'csrf-token',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false', // HTTPS only in production, unless explicitly disabled
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' allows cross-origin (Builder.io)
+    sameSite: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false' ? 'none' : 'lax', // 'none' requires secure: true. Fallback to 'lax' if insecure.
     path: '/',
   },
   size: 64,

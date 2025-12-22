@@ -360,7 +360,16 @@ router.get('/:orgId/api-keys', requireOrgAdmin, async (req, res) => {
       [parseInt(orgId)]
     );
 
-    res.json({ apiKeys: result.rows });
+    res.json({
+      apiKeys: result.rows.map(key => ({
+        id: key.id,
+        keyLabel: key.key_label,
+        serviceName: key.service_name,
+        isActive: key.is_active,
+        createdAt: key.created_at,
+        updatedAt: key.updated_at
+      }))
+    });
   } catch (error) {
     console.error('Error fetching API keys:', error);
     res.status(500).json({ error: 'Failed to fetch API keys' });
@@ -392,7 +401,16 @@ router.post('/:orgId/api-keys', requireOrgAdmin, async (req, res) => {
          ORDER BY created_at DESC LIMIT 1`,
         [serviceName, parseInt(orgId)]
       );
-      res.status(201).json({ apiKey: result.rows[0] });
+      res.status(201).json({
+        apiKey: {
+          id: result.rows[0].id,
+          keyLabel: result.rows[0].key_label,
+          serviceName: result.rows[0].service_name,
+          organizationId: result.rows[0].organization_id,
+          isActive: result.rows[0].is_active,
+          createdAt: result.rows[0].created_at
+        }
+      });
     } else {
       res.status(500).json({ error: 'Failed to save API key' });
     }
@@ -434,7 +452,15 @@ router.put('/:orgId/api-keys/:keyId', requireOrgAdmin, async (req, res) => {
       [keyLabel, parseInt(keyId)]
     );
 
-    res.json({ apiKey: result.rows[0] });
+    res.json({
+      apiKey: {
+        id: result.rows[0].id,
+        keyLabel: result.rows[0].key_label,
+        serviceName: result.rows[0].service_name,
+        isActive: result.rows[0].is_active,
+        updatedAt: result.rows[0].updated_at
+      }
+    });
   } catch (error) {
     console.error('Error updating API key:', error);
     res.status(500).json({ error: 'Failed to update API key' });
@@ -468,7 +494,14 @@ router.delete('/:orgId/api-keys/:keyId', requireOrgAdmin, async (req, res) => {
       [parseInt(keyId)]
     );
 
-    res.json({ message: 'API key deactivated', apiKey: result.rows[0] });
+    res.json({
+      message: 'API key deactivated',
+      apiKey: {
+        id: result.rows[0].id,
+        isActive: result.rows[0].is_active,
+        updatedAt: result.rows[0].updated_at
+      }
+    });
   } catch (error) {
     console.error('Error deactivating API key:', error);
     res.status(500).json({ error: 'Failed to deactivate API key' });
@@ -501,13 +534,9 @@ router.post('/:orgId/api-keys/:keyId/rotate', requireOrgAdmin, async (req, res) 
 
     const oldKey = keyCheck.rows[0];
 
-    // Create new key
-    const newKeyResult = await query(
-      `INSERT INTO api_secrets (organization_id, service_name, key_label, key_value, is_active)
-       VALUES ($1, $2, $3, $4, TRUE)
-       RETURNING id, key_label, service_name, is_active, created_at`,
-      [parseInt(orgId), oldKey.service_name, oldKey.key_label, newKeyValue]
-    );
+    // Use utility to save new key (handles encryption, key_name, created_by)
+    const { saveApiKey } = await import('../utils/apiKeys.js');
+    await saveApiKey(oldKey.service_name, newKeyValue, req.user.id, parseInt(orgId), oldKey.key_label);
 
     // Deactivate old key
     await query(
@@ -517,9 +546,24 @@ router.post('/:orgId/api-keys/:keyId/rotate', requireOrgAdmin, async (req, res) 
       [parseInt(keyId)]
     );
 
+    // Fetch the newly created key
+    const newKeyResult = await query(
+      `SELECT id, key_label, service_name, is_active, created_at 
+       FROM api_secrets 
+       WHERE service_name = $1 AND organization_id = $2 AND is_active = TRUE
+       ORDER BY created_at DESC LIMIT 1`,
+      [oldKey.service_name, parseInt(orgId)]
+    );
+
     res.json({
       message: 'API key rotated successfully',
-      newKey: newKeyResult.rows[0]
+      newKey: {
+        id: newKeyResult.rows[0].id,
+        keyLabel: newKeyResult.rows[0].key_label,
+        serviceName: newKeyResult.rows[0].service_name,
+        isActive: newKeyResult.rows[0].is_active,
+        createdAt: newKeyResult.rows[0].created_at
+      }
     });
   } catch (error) {
     console.error('Error rotating API key:', error);

@@ -6,9 +6,11 @@ const SAM_API_BASE_URL = 'https://api.sam.gov';
 /**
  * Get SAM.gov API key from database or environment
  */
-async function getSamApiKey(userId = null) {
+async function getSamApiKey(organizationId = null) {
   try {
-    const apiKey = await getApiKey('samgov', userId);
+    // getApiKey signature: (provider, keyType, organizationId)
+    // We pass 'project' as keyType (default)
+    const apiKey = await getApiKey('samgov', 'project', organizationId);
     return apiKey;
   } catch (error) {
     console.error('Failed to get SAM.gov API key:', error);
@@ -25,12 +27,13 @@ async function getSamApiKey(userId = null) {
  * @param {string} options.cageCode - CAGE code
  * @param {number} options.limit - Number of results (default: 10, max: 100)
  * @param {number} options.offset - Pagination offset
- * @param {string} userId - User ID for API key lookup
+ * @param {string} userId - User ID for logging/auditing
+ * @param {number} organizationId - Organization ID for API key lookup
  * @returns {Promise<Object>} Search results
  */
-export async function searchEntities(options = {}, userId = null) {
+export async function searchEntities(options = {}, userId = null, organizationId = null) {
   try {
-    const apiKey = await getSamApiKey(userId);
+    const apiKey = await getSamApiKey(organizationId);
     const {
       ueiSAM,
       legalBusinessName,
@@ -75,9 +78,9 @@ export async function searchEntities(options = {}, userId = null) {
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Entity details
  */
-export async function getEntityByUEI(ueiSAM, userId = null) {
+export async function getEntityByUEI(ueiSAM, userId = null, organizationId = null) {
   try {
-    const apiKey = await getSamApiKey(userId);
+    const apiKey = await getSamApiKey(organizationId);
 
     const response = await axios.get(`${SAM_API_BASE_URL}/entity-information/v3/entities`, {
       params: {
@@ -119,9 +122,9 @@ export async function getEntityByUEI(ueiSAM, userId = null) {
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Opportunities
  */
-export async function searchOpportunities(options = {}, userId = null) {
+export async function searchOpportunities(options = {}, userId = null, organizationId = null) {
   try {
-    const apiKey = await getSamApiKey(userId);
+    const apiKey = await getSamApiKey(organizationId);
     const {
       keyword,
       postedFrom,
@@ -230,9 +233,9 @@ export async function searchOpportunities(options = {}, userId = null) {
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Exclusions
  */
-export async function getExclusions(options = {}, userId = null) {
+export async function getExclusions(options = {}, userId = null, organizationId = null) {
   try {
-    const apiKey = await getSamApiKey(userId);
+    const apiKey = await getSamApiKey(organizationId);
     const { name, ueiSAM, cageCode, limit = 10 } = options;
 
     const params = {

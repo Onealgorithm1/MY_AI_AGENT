@@ -44,14 +44,21 @@ const DEFAULT_PROVIDERS = [
         logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg',
         authType: 'api_key',
         docsUrl: 'https://console.cloud.google.com/apis/credentials'
+    },
+    {
+        providerName: 'samgov',
+        displayName: 'SAM.gov',
+        logoUrl: 'https://gsa.gov/sites/default/files/styles/576px_wide/public/2021-04/SAM.png',
+        authType: 'api_key',
+        docsUrl: 'https://sam.gov/content/api-key'
     }
 ];
 
-export default function AddApiKeyModal({ onClose, onSave, providers = DEFAULT_PROVIDERS }) {
-    const [step, setStep] = useState('provider'); // provider, config
-    const [selectedProvider, setSelectedProvider] = useState(null);
+export default function AddApiKeyModal({ onClose, onSave, providers = DEFAULT_PROVIDERS, initialProvider = null, initialLabel = '' }) {
+    const [step, setStep] = useState(initialProvider ? 'config' : 'provider'); // provider, config
+    const [selectedProvider, setSelectedProvider] = useState(initialProvider);
     const [formData, setFormData] = useState({
-        keyLabel: '',
+        keyLabel: initialLabel || '',
         apiKey: ''
     });
     const [loading, setLoading] = useState(false);
@@ -99,7 +106,7 @@ export default function AddApiKeyModal({ onClose, onSave, providers = DEFAULT_PR
                 {/* Header */}
                 <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        {step === 'config' && (
+                        {step === 'config' && !initialProvider && (
                             <button
                                 onClick={() => {
                                     setStep('provider');

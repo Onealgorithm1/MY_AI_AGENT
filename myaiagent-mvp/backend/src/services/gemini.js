@@ -35,47 +35,36 @@ function isAuthError(error) {
 }
 
 // Initialize Gemini client (will be set when API key is available)
-let geminiClient = null;
-let lastApiKey = null;
+// Initialize Gemini client (will be set when API key is available)
+// REMOVED SINGLETON STATE to support multi-tenancy (different keys for different orgs)
 
-async function getGeminiClient() {
+async function getGeminiClient(organizationId = null) {
   // Always check for a fresh API key to support runtime updates
   const fromEnvGemini = process.env.GEMINI_API_KEY;
   const fromEnvGoogle = process.env.GOOGLE_API_KEY;
   let fromDb = null;
 
   try {
-    fromDb = await getApiKey('gemini');
+    fromDb = await getApiKey('gemini', 'project', organizationId);
   } catch (error) {
     // Database lookup failed, but we can still proceed with env vars
     console.warn('⚠️  Could not fetch API key from database:', error.message);
   }
 
-  const apiKey = fromEnvGemini || fromEnvGoogle || fromDb;
+  const apiKey = fromDb || fromEnvGemini || fromEnvGoogle;
 
   if (!apiKey) {
-    const errorMsg = 'Gemini API key not configured. Please set GOOGLE_API_KEY or GEMINI_API_KEY environment variable. See API_CONFIGURATION.md for setup instructions.';
+    const errorMsg = 'Gemini API key not configured. Please add an API Key in Organization Settings or System Admin.';
     console.error('❌', errorMsg);
-    console.error('📋 Current configuration:', {
-      hasGEMINI_API_KEY: !!fromEnvGemini,
-      hasGOOGLE_API_KEY: !!fromEnvGoogle,
-      hasDbKey: !!fromDb,
-      NODE_ENV: process.env.NODE_ENV
-    });
     throw new Error(errorMsg);
   }
 
-  // Reinitialize if key changed or client not yet initialized
-  if (!geminiClient || lastApiKey !== apiKey) {
-    try {
-      geminiClient = new GoogleGenerativeAI(apiKey);
-    } catch (error) {
-      console.error('❌ Failed to initialize Gemini client:', error.message);
-      throw new Error('Failed to initialize Gemini client. Check your API key validity.');
-    }
+  try {
+    return new GoogleGenerativeAI(apiKey);
+  } catch (error) {
+    console.error('❌ Failed to initialize Gemini client:', error.message);
+    throw new Error('Failed to initialize Gemini client. Check your API key validity.');
   }
-
-  return geminiClient;
 }
 
 /**
@@ -85,7 +74,7 @@ async function getGeminiClient() {
  */
 function transformFunctionsToTools(functions) {
   if (!functions || functions.length === 0) return null;
-  
+
   return [{
     functionDeclarations: functions.map(func => ({
       name: func.name,
@@ -99,16 +88,16 @@ function transformFunctionsToTools(functions) {
  * Chat completion with streaming and function calling (Gemini)
  * Compatible with OpenAI interface for easy migration
  */
-export async function createChatCompletion(messages, model = 'gemini-2.5-flash', stream = false, functions = null) {
+export async function createChatCompletion(messages, model = 'gemini-2.5-flash', stream = false, functions = null, organizationId = null) {
   try {
-    const client = await getGeminiClient();
-    
+    const client = await getGeminiClient(organizationId);
+
     // Transform OpenAI function format to Gemini tools format
     const tools = transformFunctionsToTools(functions);
-    
+
     // Transform messages to Gemini format
     const geminiMessages = transformMessagesToGemini(messages);
-    
+
     console.log('🔵 Gemini API Request:', {
       model,
       messageCount: messages.length,
@@ -116,7 +105,7 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
       functionNames: functions?.map(f => f.name) || [],
       hasStream: stream
     });
-    
+
     // Get the generative model with configuration
     const modelInstance = client.getGenerativeModel({
       model,
@@ -145,18 +134,18 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
       ],
       tools: tools || undefined
     });
-    
+
     // Build request with contents
     const request = {
       contents: geminiMessages.contents
     };
-    
+
     if (stream) {
       // Streaming response with performance monitoring
       const result = await monitorExternalApi('gemini', model, async () => {
         return await modelInstance.generateContentStream(request);
       });
-      
+
       // Return stream-like object compatible with OpenAI
       return createStreamAdapter(result, model);
     } else {
@@ -164,11 +153,11 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
       const result = await monitorExternalApi('gemini', model, async () => {
         return await modelInstance.generateContent(request);
       });
-      
+
       // Transform Gemini response to OpenAI format
       return transformGeminiResponse(result, model);
     }
-    
+
   } catch (error) {
     console.error('🔴 Gemini API Error:', {
       message: error.message,
@@ -211,7 +200,7 @@ export async function createChatCompletion(messages, model = 'gemini-2.5-flash',
 function transformMessagesToGemini(messages) {
   let systemInstruction = null;
   const contents = [];
-  
+
   for (const msg of messages) {
     if (msg.role === 'system') {
       // Gemini systemInstruction must be a Content object
@@ -227,7 +216,7 @@ function transformMessagesToGemini(messages) {
       });
     }
   }
-  
+
   return { contents, systemInstruction };
 }
 
@@ -237,7 +226,7 @@ function transformMessagesToGemini(messages) {
 function transformGeminiResponse(geminiResult, model) {
   const response = geminiResult.response || geminiResult;
   const candidate = response.candidates?.[0];
-  
+
   if (!candidate) {
     console.error('🔴 No candidate in Gemini response:', {
       promptFeedback: response.promptFeedback,
@@ -245,7 +234,7 @@ function transformGeminiResponse(geminiResult, model) {
     });
     throw new Error('No response from Gemini - possibly blocked by safety filters');
   }
-  
+
   // Check if response was blocked
   if (candidate.finishReason === 'SAFETY') {
     console.error('🔴 Response blocked by safety filters:', {
@@ -254,13 +243,13 @@ function transformGeminiResponse(geminiResult, model) {
     });
     throw new Error('Response blocked by Gemini safety filters');
   }
-  
+
   const part = candidate.content?.parts?.[0];
   let message = {
     role: 'assistant',
     content: ''
   };
-  
+
   // Check for function call
   if (part?.functionCall) {
     message.function_call = {
@@ -277,7 +266,7 @@ function transformGeminiResponse(geminiResult, model) {
       partCount: candidate.content?.parts?.length || 0
     });
   }
-  
+
   // Return OpenAI-compatible format
   return {
     id: `chatcmpl-${Date.now()}`,
@@ -300,13 +289,13 @@ function transformGeminiResponse(geminiResult, model) {
  */
 function createStreamAdapter(geminiStream, model) {
   const adapter = new EventEmitter();
-  
+
   // Process stream asynchronously
   (async () => {
     try {
       for await (const chunk of geminiStream.stream) {
         const part = chunk.candidates?.[0]?.content?.parts?.[0];
-        
+
         if (part?.text) {
           // Emit text chunk in OpenAI format
           const sseData = {
@@ -332,7 +321,7 @@ function createStreamAdapter(geminiStream, model) {
           adapter.emit('data', Buffer.from(`data: ${JSON.stringify(sseData)}\n\n`));
         }
       }
-      
+
       // Signal end of stream
       adapter.emit('data', Buffer.from('data: [DONE]\n\n'));
       adapter.emit('end');
@@ -340,7 +329,7 @@ function createStreamAdapter(geminiStream, model) {
       adapter.emit('error', error);
     }
   })();
-  
+
   return adapter;
 }
 
@@ -350,12 +339,12 @@ function createStreamAdapter(geminiStream, model) {
 export async function analyzeImage(imageUrl, prompt = 'What do you see in this image?') {
   try {
     const client = await getGeminiClient();
-    
+
     // Fetch image data
     const response = await fetch(imageUrl);
     const imageBuffer = await response.arrayBuffer();
     const base64Image = Buffer.from(imageBuffer).toString('base64');
-    
+
     const result = await client.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{
@@ -371,7 +360,7 @@ export async function analyzeImage(imageUrl, prompt = 'What do you see in this i
         ]
       }]
     });
-    
+
     return result.candidates[0]?.content?.parts[0]?.text || 'Unable to analyze image';
   } catch (error) {
     console.error('Gemini vision error:', error.message);
@@ -385,7 +374,7 @@ export async function analyzeImage(imageUrl, prompt = 'What do you see in this i
 export async function extractMemoryFacts(conversationHistory) {
   try {
     const client = await getGeminiClient();
-    
+
     const systemPrompt = `You are a memory extraction system. Analyze the conversation and extract important facts about the user. 
     
 Return ONLY a JSON object with a "facts" array in this format:
@@ -414,7 +403,7 @@ Rules:
         responseMimeType: 'application/json'
       }
     });
-    
+
     const content = result.candidates[0]?.content?.parts[0]?.text;
     const parsed = JSON.parse(content);
     return parsed.facts || [];
@@ -510,7 +499,7 @@ export async function generateContent(prompt, options = {}) {
   const model = options.model || 'gemini-2.5-flash';
   const temperature = options.temperature ?? 0.7;
   const responseMimeType = options.responseMimeType || null;
-  
+
   const response = await createChatCompletion(messages, model, false, null);
   return response.content;
 }

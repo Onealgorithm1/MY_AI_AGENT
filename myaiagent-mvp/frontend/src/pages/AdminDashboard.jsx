@@ -35,6 +35,8 @@ const AdminDashboard = () => {
     provider: 'openai',
     apiKey: ''
   });
+  const [showViewKeyModal, setShowViewKeyModal] = useState(false);
+  const [selectedKey, setSelectedKey] = useState(null);
 
 
   // Verify user is master admin
@@ -179,6 +181,21 @@ const AdminDashboard = () => {
       console.error('Add System Key Error:', err);
       setError(err.response?.data?.error || 'Failed to add API key');
       throw err; // Re-throw so modal knows it failed
+    }
+  };
+
+  const handleViewKey = async (key) => {
+    try {
+      setLoading(true);
+      // Fetch full key details including decrypted value
+      const response = await api.admin.getOrgApiKey(key.id);
+      setSelectedKey(response.data.apiKey);
+      setShowViewKeyModal(true);
+    } catch (err) {
+      console.error('Error fetching API key details:', err);
+      setError('Failed to fetch API key details');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -396,7 +413,12 @@ const AdminDashboard = () => {
                             </td>
                             <td>{new Date(key.created_at).toLocaleDateString()}</td>
                             <td>
-                              <button className="btn-small">View</button>
+                              <button
+                                className="btn-small"
+                                onClick={() => handleViewKey(key)}
+                              >
+                                View
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -442,7 +464,12 @@ const AdminDashboard = () => {
                             </td>
                             <td>{new Date(key.created_at).toLocaleDateString()}</td>
                             <td>
-                              <button className="btn-small">View</button>
+                              <button
+                                className="btn-small"
+                                onClick={() => handleViewKey(key)}
+                              >
+                                View
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -722,11 +749,78 @@ const AdminDashboard = () => {
             { providerName: 'openai', displayName: 'OpenAI', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png', authType: 'api_key', docsUrl: 'https://platform.openai.com/api-keys' },
             { providerName: 'gemini', displayName: 'Google Gemini', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', authType: 'api_key', docsUrl: 'https://makersuite.google.com/app/apikey' },
             { providerName: 'anthropic', displayName: 'Anthropic', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg', authType: 'api_key', docsUrl: 'https://console.anthropic.com/settings/keys' },
-            { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://yt3.googleusercontent.com/ytc/AIdro_kKx8_A5pXp7Jc4t4o4q4q4q4q4q4q4q4q4q4q4q4q4q4q4=s900-c-k-c0x00ffffff-no-rj', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
+            { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Eleven_Labs_logo.svg/2560px-Eleven_Labs_logo.svg.png', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
             { providerName: 'stripe', displayName: 'Stripe', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg', authType: 'api_key', docsUrl: 'https://dashboard.stripe.com/apikeys' },
             { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' }
           ]}
         />
+      )}
+
+      {/* View API Key Modal */}
+      {showViewKeyModal && selectedKey && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" style={{
+            backgroundColor: 'white', padding: '30px', borderRadius: '8px', width: '500px', maxWidth: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>API Key Details</h3>
+
+            <div className="key-details" style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Service</label>
+                <div>{selectedKey.service_name}</div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Label</label>
+                <div>{selectedKey.key_label}</div>
+              </div>
+
+              {selectedKey.org_name && (
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Organization</label>
+                  <div>{selectedKey.org_name}</div>
+                </div>
+              )}
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Key Value</label>
+                <div style={{
+                  background: '#f5f5f5',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace',
+                  wordBreak: 'break-all',
+                  border: '1px solid #ddd'
+                }}>
+                  {selectedKey.key_value || '********'}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Status</label>
+                <span className={`badge ${selectedKey.is_active ? 'active' : 'inactive'}`}>
+                  {selectedKey.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+
+            <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowViewKeyModal(false);
+                  setSelectedKey(null);
+                }}
+                style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

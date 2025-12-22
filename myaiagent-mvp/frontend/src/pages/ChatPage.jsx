@@ -65,7 +65,7 @@ const WERKULES_ICON = 'https://cdn.builder.io/api/v1/image/assets%2Fb90cab62d3d3
 export default function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, currentOrganization } = useAuthStore();
   const {
     currentConversation,
     messages,
@@ -112,7 +112,7 @@ export default function ChatPage() {
   const [streamingContent, setStreamingContent] = useState('');
   const [isManualSearching, setIsManualSearching] = useState(false);
   const [manualSearchResults, setManualSearchResults] = useState(null);
-  
+
   // Typewriter for streaming message
   const { displayedText: typewriterText, isTyping, skip: skipTypewriter } = useTypewriter(
     streamingContent,
@@ -121,7 +121,7 @@ export default function ChatPage() {
       enabled: streamingContent.length > 0,
     }
   );
-  
+
   // Speech-to-text hook with enhanced features
   // Use enhanced STT (WebSocket + VAD) if enabled, otherwise use standard REST
   const useEnhancedMode = import.meta.env.VITE_ENABLE_ENHANCED_STT !== 'false'; // Default: true
@@ -148,7 +148,7 @@ export default function ChatPage() {
 
   // Get memory facts count
   const { data: memoryData } = useQuery({
-    queryKey: ['memory', 'approved'],
+    queryKey: ['memory', 'approved', user?.id],
     queryFn: async () => {
       try {
         const response = await memoryApi.list(null, true);
@@ -158,18 +158,19 @@ export default function ChatPage() {
         return [];
       }
     },
+    enabled: !!user,
   });
 
   const memoryFactsCount = memoryData?.length || 0;
 
   // Get conversations with auto-refetch to catch auto-generated titles
   const { data: conversationsData } = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', user?.id, currentOrganization?.id],
     queryFn: async () => {
       const response = await conversationsApi.list(20);
       return response.data.conversations;
     },
-    enabled: true, // Only fetch when explicitly requested
+    enabled: !!user, // Only fetch when user is logged in
     refetchInterval: false, // DISABLED: Prevent rate limiting (was causing 429 errors)
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
@@ -184,10 +185,10 @@ export default function ChatPage() {
       // Set the current conversation immediately using the response data
       const newConversation = response.data.conversation;
       useChatStore.getState().setCurrentConversation(newConversation);
-      
+
       // Clear messages for the new conversation
       setMessages([]);
-      
+
       // Invalidate and refetch conversations list
       queryClient.invalidateQueries(['conversations']);
     },
@@ -198,18 +199,18 @@ export default function ChatPage() {
     try {
       // Close mobile sidebar when selecting conversation
       setIsSidebarOpen(false);
-      
+
       // Only clear messages when switching conversations, not when refreshing
       if (clearFirst) {
         setMessages([]);
       }
-      
+
       const response = await conversationsApi.getMessages(conversationId);
       setMessages(response.data.messages);
-      
+
       // Set the current conversation - try to find in conversations array first
       let conv = conversations.find(c => c.id === conversationId);
-      
+
       // If not found (e.g., new conversation not yet in list), fetch it directly
       if (!conv) {
         try {
@@ -219,7 +220,7 @@ export default function ChatPage() {
           console.error('Failed to fetch conversation details:', err);
         }
       }
-      
+
       if (conv) {
         useChatStore.getState().setCurrentConversation(conv);
       }
@@ -231,7 +232,7 @@ export default function ChatPage() {
 
   const handleTtsToggle = async (enabled) => {
     setTtsEnabled(enabled);
-    
+
     try {
       await authApi.updatePreferences({ tts_enabled: enabled });
       toast.success(enabled ? 'Voice enabled' : 'Voice disabled');
@@ -269,7 +270,7 @@ export default function ChatPage() {
 
   const handleAutoPlayToggle = async (enabled) => {
     setTtsAutoPlay(enabled);
-    
+
     try {
       await authApi.updatePreferences({ tts_auto_play: enabled });
       toast.success(enabled ? 'Auto-play enabled' : 'Auto-play disabled');
@@ -291,7 +292,7 @@ export default function ChatPage() {
           // Validate voice ID format (Google TTS format: en-US-Neural2-F)
           const isGoogleVoice = /^[a-zA-Z]{2}-[a-zA-Z]{2}-[a-zA-Z0-9\-]+$/.test(data.tts_voice_id);
           const isOldElevenLabsVoice = /^[a-zA-Z0-9]{15,30}$/.test(data.tts_voice_id);
-          
+
           if (isGoogleVoice) {
             setSelectedVoice(data.tts_voice_id);
           } else if (isOldElevenLabsVoice) {
@@ -322,7 +323,7 @@ export default function ChatPage() {
         console.error('Failed to load preferences:', error);
       }
     };
-    
+
     loadPreferences();
   }, []);
 
@@ -413,7 +414,7 @@ export default function ChatPage() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.substring(6));
-              
+
               // Handle error events
               if (data.error) {
                 toast.error(data.error);
@@ -421,7 +422,7 @@ export default function ChatPage() {
                 setIsSending(false);
                 return;
               }
-              
+
               if (data.content) {
                 // VUI: First content chunk received, stop "Thinking" state
                 if (fullResponse === '') {
@@ -430,7 +431,7 @@ export default function ChatPage() {
                 fullResponse += data.content;
                 setStreamingContent(fullResponse);
               }
-              
+
               if (data.done) {
                 // Reload conversation to get the actual message with server-issued ID
                 // Pass false to avoid clearing messages (prevents scroll jump)
@@ -443,7 +444,7 @@ export default function ChatPage() {
                   setStreamingMessage('');
                   setStreamingContent('');
                 }, estimatedTypingTime);
-                
+
                 // Handle UI actions from AI
                 if (data.action) {
                   handleAIAction(data.action);
@@ -536,13 +537,13 @@ export default function ChatPage() {
     try {
       await conversationsApi.delete(convId);
       setDeleteConfirmId(null);
-      
+
       // If deleting the current conversation, clear it
       if (currentConversation?.id === convId) {
         useChatStore.getState().setCurrentConversation(null);
         setMessages([]);
       }
-      
+
       // Refresh conversation list
       queryClient.invalidateQueries(['conversations']);
       toast.success('Chat deleted successfully');
@@ -567,7 +568,7 @@ export default function ChatPage() {
   // Handle AI-triggered actions
   const handleAIAction = (action) => {
     console.log('🤖 Executing AI action:', action);
-    
+
     switch (action.type) {
       case 'changeModel':
         if (action.params?.model) {
@@ -575,45 +576,45 @@ export default function ChatPage() {
           toast.success(`Switched to ${action.params.model}`);
         }
         break;
-        
+
       case 'createNewChat':
         // AI already created the conversation, use it from action.result
         if (action.result?.conversation) {
           const newConv = action.result.conversation;
-          
+
           // Refresh conversations list from server to get the new chat
           queryClient.invalidateQueries(['conversations']);
-          
+
           // Switch to the new conversation
           setTimeout(() => {
             loadConversation(newConv.id);
           }, 100);
-          
+
           toast.success(`Created new chat: ${newConv.title}`);
         } else {
           // Fallback to creating new conversation
           createConversation.mutate();
         }
         break;
-        
+
       case 'deleteConversation':
         if (currentConversation) {
           handleDelete(currentConversation.id);
         }
         break;
-        
+
       case 'renameConversation':
         if (currentConversation && action.params?.title) {
           handleRename(currentConversation.id, action.params.title);
         }
         break;
-        
+
       case 'navigate':
         if (action.params?.page) {
           navigate(`/${action.params.page === 'chat' ? '' : action.params.page}`);
         }
         break;
-        
+
       default:
         console.log('Unknown action type:', action.type);
     }
@@ -661,7 +662,7 @@ export default function ChatPage() {
       sendMessage();
     }
   };
-  
+
   // Handle microphone button click for streaming STT
   const handleMicClick = async () => {
     if (isListening || isTranscribing) {
@@ -746,12 +747,12 @@ export default function ChatPage() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 relative">
       {/* Mobile Sidebar Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
@@ -824,7 +825,7 @@ export default function ChatPage() {
                       {conv.title || 'New Chat'}
                     </span>
                   </button>
-                  <div 
+                  <div
                     className="relative"
                     onMouseLeave={() => setMenuOpenId(null)}
                   >
@@ -1016,11 +1017,10 @@ export default function ChatPage() {
             {currentConversation && (
               <button
                 onClick={() => setShowInsights(!showInsights)}
-                className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
-                  showInsights
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${showInsights
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
+                  }`}
                 title="Conversation Insights"
               >
                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1030,11 +1030,10 @@ export default function ChatPage() {
             {/* SAM.gov Panel Toggle */}
             <button
               onClick={() => setShowSAMGovPanel(!showSAMGovPanel)}
-              className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${
-                showSAMGovPanel
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${showSAMGovPanel
                   ? 'bg-green-500 text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
+                }`}
               title="SAM.gov Cache"
             >
               <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1043,11 +1042,10 @@ export default function ChatPage() {
             {/* TTS Toggle Button */}
             <button
               onClick={() => handleTtsToggle(!ttsEnabled)}
-              className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 md:px-3 py-1.5 sm:py-2 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${
-                ttsEnabled
+              className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 md:px-3 py-1.5 sm:py-2 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${ttsEnabled
                   ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
-              }`}
+                }`}
               title={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
             >
               {ttsEnabled ? (
@@ -1126,16 +1124,15 @@ export default function ChatPage() {
 
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.map((message, index) => {
-              const isLastAssistantMessage = 
-                message.role === 'assistant' && 
+              const isLastAssistantMessage =
+                message.role === 'assistant' &&
                 index === messages.length - 1;
 
               return (
                 <div
                   key={message.id}
-                  className={`group flex gap-4 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`group flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
                 >
                   {message.role === 'assistant' && (
                     <BrandAvatar src={WERKULES_ICON} alt="Werkules" size="w-8 h-8" className="flex-shrink-0" />
@@ -1256,11 +1253,10 @@ export default function ChatPage() {
               <button
                 onClick={handleMicClick}
                 disabled={isTranscribing}
-                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  isListening
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${isListening
                     ? 'bg-red-500 text-white animate-pulse'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                } ${isTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${isTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={isListening ? 'Stop recording' : 'Start recording'}
               >
                 {isTranscribing ? (
@@ -1275,11 +1271,10 @@ export default function ChatPage() {
               <button
                 onClick={handleManualSearch}
                 disabled={isManualSearching}
-                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  isManualSearching
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${isManualSearching
                     ? 'text-blue-400 animate-pulse cursor-wait'
                     : 'text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                }`}
+                  }`}
                 title="Manual web search"
               >
                 {isManualSearching ? (
@@ -1301,7 +1296,7 @@ export default function ChatPage() {
                   isUsingWebSocket={isUsingWebSocket}
                   error={sttError}
                 />
-                
+
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}

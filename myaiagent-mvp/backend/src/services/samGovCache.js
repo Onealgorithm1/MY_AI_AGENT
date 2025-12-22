@@ -13,9 +13,10 @@ function getNoticeId(opp) {
  * Cache SAM.gov opportunities and identify new vs existing
  * @param {Array} opportunities - Array of SAM.gov opportunity objects
  * @param {string} userId - User ID who performed the search
+ * @param {string} organizationId - Organization ID for isolation
  * @returns {Promise<Object>} Results with new and existing opportunities categorized
  */
-export async function cacheOpportunities(opportunities, userId = null) {
+export async function cacheOpportunities(opportunities, userId = null, organizationId = null) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -31,10 +32,13 @@ export async function cacheOpportunities(opportunities, userId = null) {
         continue;
       }
 
-      // Check if opportunity already exists
+      // Check if opportunity already exists for this specific organization (or system if null)
       const existingResult = await client.query(
-        'SELECT id, notice_id, first_seen_at, seen_count FROM samgov_opportunities_cache WHERE notice_id = $1',
-        [noticeId]
+        `SELECT id, notice_id, first_seen_at, seen_count 
+         FROM samgov_opportunities_cache 
+         WHERE notice_id = $1 
+         AND (($2::INTEGER IS NULL AND organization_id IS NULL) OR organization_id = $2)`,
+        [noticeId, organizationId]
       );
 
       if (existingResult.rows.length > 0) {
@@ -45,8 +49,8 @@ export async function cacheOpportunities(opportunities, userId = null) {
            SET last_seen_at = CURRENT_TIMESTAMP,
                seen_count = seen_count + 1,
                raw_data = $1
-           WHERE notice_id = $2`,
-          [JSON.stringify(opp), noticeId]
+           WHERE id = $2`,
+          [JSON.stringify(opp), existing.id]
         );
 
         existingOpportunities.push({
@@ -75,8 +79,9 @@ export async function cacheOpportunities(opportunities, userId = null) {
             place_of_performance,
             description,
             raw_data,
-            created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            created_by,
+            organization_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING id, first_seen_at`,
           [
             noticeId,
@@ -92,7 +97,8 @@ export async function cacheOpportunities(opportunities, userId = null) {
             opp.placeOfPerformance?.city?.name || opp.place_of_performance || null,
             opp.description || null,
             JSON.stringify(opp),
-            userId
+            userId,
+            organizationId
           ]
         );
 
@@ -181,9 +187,10 @@ export async function recordSearchHistory(params, results, userId = null) {
  * @param {Object} searchParams - Search parameters for SAM.gov
  * @param {Function} searchFunction - SAM.gov search function to use
  * @param {string} userId - User ID
+ * @param {string} organizationId - Organization ID
  * @returns {Promise<Object>} Search results with new/existing categorization
  */
-export async function searchAndCache(searchParams, searchFunction, userId = null) {
+export async function searchAndCache(searchParams, searchFunction, userId = null, organizationId = null) {
   try {
     // Perform the search
     const searchResults = await searchFunction(searchParams, userId);
@@ -193,7 +200,7 @@ export async function searchAndCache(searchParams, searchFunction, userId = null
     }
 
     // Cache the results
-    const cacheResults = await cacheOpportunities(searchResults.opportunities, userId);
+    const cacheResults = await cacheOpportunities(searchResults.opportunities, userId, organizationId);
 
     // Record search history
     await recordSearchHistory(searchParams, cacheResults, userId);
@@ -263,6 +270,8 @@ export async function getRecentSearches(userId = null, limit = 10) {
  * @param {string} options.type - Filter by opportunity type
  * @param {string} options.status - Filter by active status
  * @param {string} options.userId - User ID (optional)
+ * @param {string} options.organizationId - Organization ID (optional, for isolation)
+ * @param {boolean} options.isMasterAdmin - Whether user is Master Admin (bypasses org filter)
  * @returns {Promise<Object>} Cached opportunities
  */
 export async function getCachedOpportunities(options = {}) {
@@ -273,7 +282,9 @@ export async function getCachedOpportunities(options = {}) {
       keyword,
       type,
       status,
-      userId
+      userId,
+      organizationId,
+      isMasterAdmin = false
     } = options;
 
     let queryText = 'SELECT * FROM samgov_opportunities_cache WHERE 1=1';
@@ -298,6 +309,25 @@ export async function getCachedOpportunities(options = {}) {
       params.push(userId);
       paramIndex++;
     }
+
+    // Organization Isolation Logic
+    if (!isMasterAdmin && organizationId) {
+      // Regular users only see their org's data or data with no org (system-wide)
+      /* 
+         NOTE: We allow seeing NULL organization_id records as "Public/System" data 
+         if that's the desired behavior. But typically for strict isolation 
+         we might want ONLY organization_id. 
+         Let's assume users can see their own org's data OR data they created.
+      */
+      queryText += ` AND (organization_id = $${paramIndex} OR organization_id IS NULL)`;
+      params.push(organizationId);
+      paramIndex++;
+    } else if (!isMasterAdmin && !organizationId) {
+      // No org ID (e.g. system user?) and not master admin
+      // Fallback to seeing strictly own created items or public items
+      queryText += ` AND (organization_id IS NULL)`;
+    }
+    // Master Admin sees ALL (no filter added)
 
     // Count total
     const countQuery = queryText.replace('SELECT *', 'SELECT COUNT(*)');

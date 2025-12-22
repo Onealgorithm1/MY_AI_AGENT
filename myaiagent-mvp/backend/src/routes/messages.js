@@ -22,11 +22,11 @@ const memoryExtractionInProgress = new Map(); // conversationId -> timestamp
 const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
 
 // Helper function to call the appropriate API based on provider
-async function callAPIByProvider(provider, messages, model, stream = false, functions = null) {
+async function callAPIByProvider(provider, messages, model, stream = false, functions = null, organizationId = null) {
   switch (provider?.toLowerCase()) {
     case 'gemini':
     case 'google':
-      return await createChatCompletion(messages, model, stream, functions);
+      return await createChatCompletion(messages, model, stream, functions, organizationId);
     case 'openai':
       return await createOpenAIChatCompletion(messages, model, stream, functions);
     default:
@@ -153,9 +153,9 @@ async function triggerAutoNaming(conversationId, userId) {
       'SELECT COUNT(*) as count FROM messages WHERE conversation_id = $1 AND role = $2',
       [conversationId, 'user']
     );
-    
+
     const userMessageCount = parseInt(countResult.rows[0].count);
-    
+
     // Trigger auto-naming after 2-3 user messages
     if (userMessageCount === 2 || userMessageCount === 3) {
       // Call auto-naming function directly (asynchronously, don't await)
@@ -187,10 +187,17 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     }
 
     // Verify conversation ownership
-    const convCheck = await query(
-      'SELECT id, model FROM conversations WHERE id = $1 AND user_id = $2',
-      [conversationId, req.user.id]
-    );
+    // Verify conversation ownership
+    let convCheckQuery = 'SELECT id, model FROM conversations WHERE id = $1';
+    const convCheckParams = [conversationId];
+
+    // Master Admin can reply to any conversation
+    if (req.user.role !== 'master_admin' && req.user.role !== 'superadmin') {
+      convCheckQuery += ' AND user_id = $2';
+      convCheckParams.push(req.user.id);
+    }
+
+    const convCheck = await query(convCheckQuery, convCheckParams);
 
     if (convCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -199,7 +206,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
     const conversation = convCheck.rows[0];
     let selectedModel = model || conversation.model;
     let wasAutoSelected = false;
-    
+
     // Auto model selection
     if (selectedModel === 'auto') {
       wasAutoSelected = true;
@@ -211,10 +218,10 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
          LIMIT 20`,
         [conversationId]
       );
-      
+
       const hasAttachments = req.body.attachments && req.body.attachments.length > 0;
       selectedModel = selectBestModel(content, hasAttachments, historyForSelection.rows);
-      
+
       console.log(`🤖 Auto-selected model: ${selectedModel} for query: "${content.substring(0, 50)}..."`);
     }
 
@@ -301,14 +308,14 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     // Check current message AND recent conversation history for context
     const mentionsGoogleNow = googleKeywords.some(kw => userQuery.includes(kw));
-    
+
     // Also check the last 3 messages for Google service context
     const recentMessages = conversationHistory.slice(-3).map(m => m.content.toLowerCase()).join(' ');
     const mentionsGoogleRecent = googleKeywords.some(kw => recentMessages.includes(kw));
-    
+
     // Trigger functions if current OR recent conversation mentions Google services
     const mentionsGoogle = mentionsGoogleNow || mentionsGoogleRecent;
-    
+
     // Core functions that are ALWAYS available (self-awareness, web search, UI control, SAM.gov)
     const coreFunctions = [
       'websearch', 'searchsamgov', 'getsamgoventitydetails', 'searchsamgovopportunities', 'getsamgovexclusions',
@@ -318,13 +325,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'getperformancemetrics', 'queryperformancemetrics', 'detectperformanceanomalies', 'getactiveanomalies',
       'getsamgovopportunitydetails'
     ];
-    
+
     // Start with core functions always available
     let functionsToPass = UI_FUNCTIONS.filter(f => {
       const name = f.name.toLowerCase();
       return coreFunctions.includes(name);
     });
-    
+
     // Add Google service functions only when context indicates need AND user has access
     if (mentionsGoogle && hasGoogleAccess) {
       const googleFunctions = UI_FUNCTIONS.filter(f => {
@@ -342,10 +349,10 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           name.includes('sheet')
         );
       });
-      
+
       functionsToPass = [...functionsToPass, ...googleFunctions];
     }
-    
+
     const shouldPassFunctions = functionsToPass && functionsToPass.length > 0;
 
     // Debug log
@@ -364,7 +371,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       'who won', 'what happened', 'search for', 'find', 'look up',
       'price', 'stock', 'weather', 'score', 'update', '2024', '2025'
     ];
-    
+
     const needsGrounding = groundingKeywords.some(kw => userQuery.includes(kw));
 
     // VERTEX AI IS DISABLED
@@ -409,21 +416,21 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (useVertexAI) {
         completion = await createVertexChatCompletion(messages, vertexModel, true, true);
       } else {
-        completion = await callAPIByProvider('gemini', messages, selectedModel, true, functionsToPass);
+        completion = await callAPIByProvider('gemini', messages, selectedModel, true, functionsToPass, req.user.organization_id);
       }
 
       completion.on('data', (chunk) => {
         chunkCount++;
         console.log(`📦 Chunk #${chunkCount} received from Gemini`);
         const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
-        
+
         for (const line of lines) {
           if (line.includes('[DONE]')) continue;
-          
+
           try {
             const parsed = JSON.parse(line.replace('data: ', ''));
             const delta = parsed.choices[0]?.delta;
-            
+
             // Check for function call
             if (delta?.function_call) {
               if (delta.function_call.name) {
@@ -434,7 +441,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
               }
               functionCall = { name: functionName, arguments: functionArgs };
             }
-            
+
             // Regular text content
             if (delta?.content) {
               fullResponse += delta.content;
@@ -456,7 +463,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         // Handle function call execution
         if (functionCall && functionCall.name) {
           console.log(`🎯 AI wants to call function: ${functionCall.name} with args: ${functionCall.arguments}`);
-          
+
           try {
             const parsedArgs = JSON.parse(functionCall.arguments);
             const functionResult = await executeUIFunction(functionCall.name, parsedArgs, {
@@ -464,7 +471,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
               userId: req.user.id,
               conversationId,
             });
-            
+
             // Handle PRESENT_EMAIL protocol - directly output the formatted JSON
             let responseMessage;
             if (functionResult.message === 'PRESENT_EMAIL_PROTOCOL' && functionResult.data) {
@@ -472,20 +479,20 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             } else {
               responseMessage = `✅ ${functionResult.message}`;
             }
-            
+
             // Save assistant message with search results in metadata if webSearch
             const metadataObj = wasAutoSelected ? { autoSelected: true } : {};
             if (functionCall.name === 'webSearch' && functionResult.data) {
               metadataObj.searchResults = functionResult.data;
             }
             const metadata = JSON.stringify(metadataObj);
-            
+
             await query(
               `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
                VALUES ($1, $2, $3, $4, $5, $6)`,
               [conversationId, req.user.id, 'assistant', responseMessage, tokensUsed, metadata]
             );
-            
+
             // Update usage tracking
             await query(
               `UPDATE usage_tracking 
@@ -494,40 +501,40 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
                WHERE user_id = $2 AND date = CURRENT_DATE`,
               [tokensUsed, req.user.id]
             );
-            
+
             // Send action to frontend
-            res.write(`data: ${JSON.stringify({ 
+            res.write(`data: ${JSON.stringify({
               content: responseMessage,
               action: {
                 type: functionCall.name,
                 params: parsedArgs,
                 result: functionResult.data
               },
-              done: true 
+              done: true
             })}\n\n`);
             res.end();
             return;
           } catch (error) {
             console.error('Function execution error:', error);
             const errorMessage = `❌ Failed to ${functionCall.name}: ${error.message}`;
-            
+
             const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
             await query(
               `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
                VALUES ($1, $2, $3, $4, $5, $6)`,
               [conversationId, req.user.id, 'assistant', errorMessage, tokensUsed, metadata]
             );
-            
-            res.write(`data: ${JSON.stringify({ 
+
+            res.write(`data: ${JSON.stringify({
               content: errorMessage,
               error: error.message,
-              done: true 
+              done: true
             })}\n\n`);
             res.end();
             return;
           }
         }
-        
+
         // Regular text response (no function call)
         const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
         await query(
@@ -547,7 +554,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
         // Trigger auto-naming if appropriate
         triggerAutoNaming(conversationId, req.user.id);
-        
+
         // Trigger automatic memory extraction
         triggerAutoMemoryExtraction(conversationId, req.user.id);
 
@@ -568,7 +575,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (useVertexAI) {
         completion = await createVertexChatCompletion(messages, vertexModel, false, true);
       } else {
-        completion = await callAPIByProvider('gemini', messages, selectedModel, false, functionsToPass);
+        completion = await callAPIByProvider('gemini', messages, selectedModel, false, functionsToPass, req.user.organization_id);
       }
 
       const responseMessage = completion.choices[0].message;
@@ -579,9 +586,9 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
       if (responseMessage.function_call) {
         const functionName = responseMessage.function_call.name;
         const functionArgs = JSON.parse(responseMessage.function_call.arguments);
-        
+
         console.log(`🎯 AI wants to call function: ${functionName} with args:`, functionArgs);
-        
+
         try {
           // Execute the UI function
           const functionResult = await executeUIFunction(functionName, functionArgs, {
@@ -589,7 +596,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
             userId: req.user.id,
             conversationId,
           });
-          
+
           // Handle PRESENT_EMAIL protocol - directly output the formatted JSON
           let aiResponse;
           if (functionResult.message === 'PRESENT_EMAIL_PROTOCOL' && functionResult.data) {
@@ -597,7 +604,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           } else {
             aiResponse = `✅ ${functionResult.message}`;
           }
-          
+
           // Save assistant message
           const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
           await query(
@@ -606,7 +613,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
              RETURNING *`,
             [conversationId, req.user.id, 'assistant', aiResponse, tokensUsed, metadata]
           );
-          
+
           // Update usage tracking
           await query(
             `UPDATE usage_tracking 
@@ -615,13 +622,13 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
              WHERE user_id = $2 AND date = CURRENT_DATE`,
             [tokensUsed, req.user.id]
           );
-          
+
           // Trigger auto-naming if appropriate
           triggerAutoNaming(conversationId, req.user.id);
-          
+
           // Trigger automatic memory extraction
           triggerAutoMemoryExtraction(conversationId, req.user.id);
-          
+
           res.json({
             message: aiResponse,
             action: {
@@ -634,14 +641,14 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
         } catch (error) {
           console.error('Function execution error:', error);
           const errorMessage = `❌ Failed to ${functionName}: ${error.message}`;
-          
+
           const metadata = wasAutoSelected ? JSON.stringify({ autoSelected: true }) : '{}';
           await query(
             `INSERT INTO messages (conversation_id, user_id, role, content, tokens_used, metadata)
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [conversationId, req.user.id, 'assistant', errorMessage, tokensUsed, metadata]
           );
-          
+
           res.json({
             message: errorMessage,
             action: {
@@ -653,7 +660,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
           return;
         }
       }
-      
+
       // Regular text response (no function call)
       const aiResponse = responseMessage.content;
 
@@ -677,7 +684,7 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
       // Trigger auto-naming if appropriate
       triggerAutoNaming(conversationId, req.user.id);
-      
+
       // Trigger automatic memory extraction
       triggerAutoMemoryExtraction(conversationId, req.user.id);
 

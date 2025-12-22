@@ -19,6 +19,8 @@ const OrgAdminDashboard = () => {
   const [inviteRole, setInviteRole] = useState('member');
   const [showNewKeyForm, setShowNewKeyForm] = useState(false);
 
+  const [rotationKey, setRotationKey] = useState(null);
+
   // Verify user is org admin
   useEffect(() => {
     if (user && user.org_role !== 'admin' && user.org_role !== 'owner') {
@@ -114,6 +116,26 @@ const OrgAdminDashboard = () => {
         setTimeout(() => setSuccessMessage(null), 5000);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to deactivate user');
+      }
+    }
+  };
+
+  const handleRevokeApiKey = async (keyId) => {
+    if (window.confirm('Are you sure you want to revoke this API key? This action cannot be undone and may break integrations using this key.')) {
+      try {
+        setError(null);
+        // api.org.deleteApiKey maps to DELETE /org/:orgId/api-keys/:keyId
+        await api.org.deleteApiKey(currentOrganization.id, keyId);
+        setSuccessMessage('API key revoked successfully');
+
+        // Reload keys
+        const response = await api.org.getApiKeys(currentOrganization.id);
+        setApiKeys(response.data.apiKeys || []);
+
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        console.error('Failed to revoke key:', err);
+        setError(err.response?.data?.error || 'Failed to revoke API key');
       }
     }
   };
@@ -339,7 +361,13 @@ const OrgAdminDashboard = () => {
                     keyValue: data.apiKey
                   });
                   setShowNewKeyForm(false);
-                  loadApiKeys();
+
+                  // Reload keys immediately
+                  const response = await api.org.getApiKeys(currentOrganization.id);
+                  setApiKeys(response.data.apiKeys || []);
+
+                  setSuccessMessage('API key created successfully');
+                  setTimeout(() => setSuccessMessage(null), 5000);
                 } catch (err) {
                   console.error('Failed to add org key', err);
                   throw err;
@@ -351,7 +379,41 @@ const OrgAdminDashboard = () => {
                 { providerName: 'anthropic', displayName: 'Anthropic', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg', authType: 'api_key', docsUrl: 'https://console.anthropic.com/settings/keys' },
                 { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://yt3.googleusercontent.com/ytc/AIdro_kKx8_A5pXp7Jc4t4o4q4q4q4q4q4q4q4q4q4q4q4q4q4q4=s900-c-k-c0x00ffffff-no-rj', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
                 { providerName: 'stripe', displayName: 'Stripe', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg', authType: 'api_key', docsUrl: 'https://dashboard.stripe.com/apikeys' },
-                { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' }
+                { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' },
+                { providerName: 'samgov', displayName: 'SAM.gov', logoUrl: 'https://gsa.gov/sites/default/files/styles/576px_wide/public/2021-04/SAM.png', authType: 'api_key', docsUrl: 'https://sam.gov/content/api-key' }
+              ]}
+            />
+          )}
+
+          {rotationKey && (
+            <AddApiKeyModal
+              initialProvider={rotationKey.serviceName}
+              initialLabel={rotationKey.keyLabel}
+              onClose={() => setRotationKey(null)}
+              onSave={async (data) => {
+                try {
+                  await api.org.rotateApiKey(currentOrganization.id, rotationKey.id, data.apiKey); // data.apiKey is the "newKeyValue"
+                  setRotationKey(null);
+
+                  // Reload keys immediately
+                  const response = await api.org.getApiKeys(currentOrganization.id);
+                  setApiKeys(response.data.apiKeys || []);
+
+                  setSuccessMessage('API key rotated successfully');
+                  setTimeout(() => setSuccessMessage(null), 5000);
+                } catch (err) {
+                  console.error('Failed to rotate org key', err);
+                  throw err;
+                }
+              }}
+              providers={[
+                { providerName: 'openai', displayName: 'OpenAI', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png', authType: 'api_key', docsUrl: 'https://platform.openai.com/api-keys' },
+                { providerName: 'gemini', displayName: 'Google Gemini', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', authType: 'api_key', docsUrl: 'https://makersuite.google.com/app/apikey' },
+                { providerName: 'anthropic', displayName: 'Anthropic', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg', authType: 'api_key', docsUrl: 'https://console.anthropic.com/settings/keys' },
+                { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://yt3.googleusercontent.com/ytc/AIdro_kKx8_A5pXp7Jc4t4o4q4q4q4q4q4q4q4q4q4q4q4q4q4q4=s900-c-k-c0x00ffffff-no-rj', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
+                { providerName: 'stripe', displayName: 'Stripe', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg', authType: 'api_key', docsUrl: 'https://dashboard.stripe.com/apikeys' },
+                { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' },
+                { providerName: 'samgov', displayName: 'SAM.gov', logoUrl: 'https://gsa.gov/sites/default/files/styles/576px_wide/public/2021-04/SAM.png', authType: 'api_key', docsUrl: 'https://sam.gov/content/api-key' }
               ]}
             />
           )}
@@ -375,18 +437,30 @@ const OrgAdminDashboard = () => {
                 <tbody>
                   {apiKeys.map(key => (
                     <tr key={key.id}>
-                      <td className="service-name">{key.service_name}</td>
-                      <td>{key.key_label}</td>
+                      <td className="service-name">{key.serviceName || key.service_name}</td>
+                      <td>{key.keyLabel || key.key_label}</td>
                       <td>
-                        <span className={`badge ${key.is_active ? 'active' : 'inactive'}`}>
-                          {key.is_active ? 'Active' : 'Inactive'}
+                        <span className={`badge ${(key.isActive !== undefined ? key.isActive : key.is_active) ? 'active' : 'inactive'}`}>
+                          {(key.isActive !== undefined ? key.isActive : key.is_active) ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td>{new Date(key.created_at).toLocaleDateString()}</td>
+                      <td>{new Date(key.createdAt || key.created_at).toLocaleDateString()}</td>
                       <td>
-                        <button className="btn-action">View</button>
-                        <button className="btn-action">Rotate</button>
-                        <button className="btn-action btn-danger">Revoke</button>
+                        {/* <button className="btn-action">View</button> */}
+                        <button
+                          className="btn-action"
+                          onClick={() => setRotationKey(key)}
+                          title="Rotate API Key"
+                        >
+                          Rotate
+                        </button>
+                        <button
+                          className="btn-action btn-danger"
+                          onClick={() => handleRevokeApiKey(key.id)}
+                          title="Revoke API Key"
+                        >
+                          Revoke
+                        </button>
                       </td>
                     </tr>
                   ))}

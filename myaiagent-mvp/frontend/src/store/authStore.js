@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth as authApi } from '../services/api';
+import { useChatStore } from './chatStore';
 
 export const useAuthStore = create(
   persist(
@@ -14,6 +15,9 @@ export const useAuthStore = create(
 
       // Login
       login: async (email, password, organizationId = null) => {
+        // Clear any previous chat state
+        useChatStore.getState().clearChat();
+
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.login(email, password);
@@ -48,6 +52,9 @@ export const useAuthStore = create(
 
       // Signup
       signup: async (email, password, fullName, organizationName = null) => {
+        // Clear any previous chat state
+        useChatStore.getState().clearChat();
+
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.signup(email, password, fullName);
@@ -81,6 +88,9 @@ export const useAuthStore = create(
       // Logout
       logout: async () => {
         try {
+          // Clear chat state immediately
+          useChatStore.getState().clearChat();
+
           // Call backend to clear HTTP-only cookie
           await authApi.logout();
         } catch (error) {
@@ -96,6 +106,9 @@ export const useAuthStore = create(
             isAuthenticated: false,
             error: null,
           });
+
+          // Ensure chat is cleared again to be safe
+          useChatStore.getState().clearChat();
         }
       },
 

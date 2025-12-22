@@ -21,7 +21,8 @@ router.post('/search/entities', async (req, res) => {
 
     const result = await samGovService.searchEntities(
       { ueiSAM, legalBusinessName, dbaName, cageCode, limit, offset },
-      req.user.id
+      req.user.id,
+      req.user.organization_id
     );
 
     res.json(result);
@@ -39,7 +40,8 @@ router.get('/entity/:uei', async (req, res) => {
   try {
     const { uei } = req.params;
 
-    const result = await samGovService.getEntityByUEI(uei, req.user.id);
+
+    const result = await samGovService.getEntityByUEI(uei, req.user.id, req.user.organization_id);
 
     res.json(result);
   } catch (error) {
@@ -60,7 +62,8 @@ router.post('/search/opportunities', async (req, res) => {
     if (cache === false) {
       const result = await samGovService.searchOpportunities(
         { keyword, postedFrom, postedTo, limit, offset, fetchAll },
-        req.user.id
+        req.user.id,
+        req.user.organization_id
       );
       res.json(result);
       return;
@@ -70,7 +73,8 @@ router.post('/search/opportunities', async (req, res) => {
     const result = await samGovCache.searchAndCache(
       { keyword, postedFrom, postedTo, limit, offset, fetchAll },
       samGovService.searchOpportunities,
-      req.user.id
+      req.user.id,
+      req.user.organization_id // Pass organization ID for isolation
     );
 
     res.json(result);
@@ -90,7 +94,8 @@ router.post('/exclusions', async (req, res) => {
 
     const result = await samGovService.getExclusions(
       { name, ueiSAM, cageCode, limit },
-      req.user.id
+      req.user.id,
+      req.user.organization_id
     );
 
     res.json(result);
@@ -150,7 +155,10 @@ router.get('/cached-opportunities', async (req, res) => {
       keyword,
       type,
       status,
-      // Don't filter by userId - show all opportunities to all authenticated users
+      // Pass context for isolation
+      userId: req.user.role === 'master_admin' ? undefined : req.user.id, // Optional: if we want users to see only their own searches or org-wide
+      organizationId: req.user.organization_id,
+      isMasterAdmin: req.user.role === 'master_admin' || req.user.role === 'superadmin'
     });
 
     res.json(result);
@@ -258,7 +266,8 @@ router.post('/batch-fetch-all', async (req, res) => {
 
     // Cache all fetched opportunities
     console.log(`💾 Caching ${allOpportunities.length} opportunities...`);
-    const cacheResult = await samGovCache.cacheOpportunities(allOpportunities, req.user?.id || null);
+    // Note: Batch fetch is typically done by admin, but we should still attribute to their org
+    const cacheResult = await samGovCache.cacheOpportunities(allOpportunities, req.user?.id || null, req.user?.organization_id);
 
     res.json({
       success: true,

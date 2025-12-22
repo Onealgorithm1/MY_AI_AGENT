@@ -11,9 +11,18 @@ const getApiBaseUrl = () => {
       return '/api';
     }
 
+    const port = window.location.port;
+
+    // If running on port 5000 (local production preview), use relative API
+    if (port === '5000') {
+      console.log('🏭 Detected port 5000 - using relative API');
+      return '/api';
+    }
+
     // Explicit localhost check - DEFAULT TO LOCAL BACKEND
     if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
       const localApi = 'http://localhost:3000/api';
+
       console.log('🏠 Detected localhost - using local API:', localApi);
       return localApi;
     }

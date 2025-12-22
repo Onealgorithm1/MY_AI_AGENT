@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
   console.log('🔧 Vite Config Mode:', mode);
   console.log('🔧 VITE_API_URL:', env.VITE_API_URL);
 
-  // Determine backend target - use local backend if available, otherwise werkules.com
-  const backendTarget = env.VITE_BACKEND_URL || process.env.BACKEND_URL || 'https://werkules.com';
+  // Determine backend target - use local backend if available, otherwise default to local
+  const backendTarget = env.VITE_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3000';
   console.log('🔧 Backend Target:', backendTarget);
 
   return {
