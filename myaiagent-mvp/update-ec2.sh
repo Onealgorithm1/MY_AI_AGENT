@@ -113,6 +113,16 @@ if [ ! -f .env ]; then
     print_info "Configured DATABASE_URL."
 fi
 
+# Fix ENCRYPTION_KEY validation (Fix for "got 37" error)
+# If key is missing, default, or wrong length (37 chars was likely uuidv4 + extra), regenerate it
+CURRENT_KEY=$(grep "ENCRYPTION_KEY=" .env | cut -d '=' -f2)
+if [[ "${#CURRENT_KEY}" != 64 ]] || [[ "$CURRENT_KEY" == *"your_encryption_key"* ]]; then
+    print_warning "Invalid ENCRYPTION_KEY detected (Length: ${#CURRENT_KEY}). Regenerating..."
+    NEW_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+    sed -i "s|ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$NEW_KEY|" .env
+    print_success "Regenerated Valid ENCRYPTION_KEY (64 chars)."
+fi
+
 # Ensure DATABASE_URL is correct even if .env existed (fix for previous failed runs)
 # If it contains "user:password" (default from example), replace it
 if grep -q "postgres://user:password" .env || grep -q "postgresql://user:password" .env; then
@@ -179,10 +189,45 @@ pm2 start npm --name "myaiagent-backend" -- start || pm2 restart myaiagent-backe
 pm2 save
 print_success "Backend started"
 
-# Restart Nginx
-print_info "Restarting Nginx..."
-sudo systemctl restart nginx
-print_success "Nginx restarted"
+# Configure Nginx
+print_info "Configuring Nginx..."
+sudo tee /etc/nginx/sites-available/default > /dev/null <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/myaiagent;
+    index index.html;
+
+    # Frontend (SPA)
+    location / {
+        try_files \$uri \$uri/ /index.html;
+        expires 1h;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Backend API Proxy
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    # Backend Health Check
+    location /health {
+        proxy_pass http://localhost:3000/health;
+        proxy_set_header Host \$host;
+    }
+}
+EOF
+sudo nginx -t && sudo systemctl restart nginx
+print_success "Nginx configured and restarted"
+
+# Restart Nginx (Already done above, but keeping for flow)
+print_info "Verifying Nginx status..."
 
 # Wait for services to start
 print_info "Waiting for services to start..."
