@@ -70,6 +70,24 @@ if [ ! -f .env ]; then
     fi
     print_info "Generated JWT_SECRET."
 
+    # Generate CSRF_SECRET (Required by server.js)
+    CSRF_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
+    if grep -q "CSRF_SECRET=" .env; then
+        sed -i "s|CSRF_SECRET=.*|CSRF_SECRET=$CSRF_SECRET|" .env
+    else
+        echo "CSRF_SECRET=$CSRF_SECRET" >> .env
+    fi
+    print_info "Generated CSRF_SECRET."
+
+    # Generate ENCRYPTION_KEY (Required by encryption.js, 32 bytes hex = 64 chars)
+    ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+    if grep -q "ENCRYPTION_KEY=" .env; then
+        sed -i "s|ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$ENCRYPTION_KEY|" .env
+    else
+        echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
+    fi
+    print_info "Generated ENCRYPTION_KEY."
+
     # Configure Database URL
     DB_URL="postgresql://myaiagent_user:Werkules@2025@localhost:5432/myaiagent"
     if grep -q "DATABASE_URL=" .env; then
