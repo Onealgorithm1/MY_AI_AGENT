@@ -54,6 +54,40 @@ cd "$PROJECT_ROOT"
 # Skipping git pull here to avoid conflicts and redundancy.
 print_info "Code already updated by CI/CD workflow."
 
+# Check for .env file
+print_info "Checking environment configuration..."
+cd "$BACKEND_DIR"
+if [ ! -f .env ]; then
+    print_warning ".env file not found. Creating from example..."
+    cp .env.example .env
+    # Generate a random secret for JWT
+    JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
+    # Update the JWT_SECRET in the file (simple sed, assuming key exists or appending)
+    if grep -q "JWT_SECRET=" .env; then
+        sed -i "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
+    else
+        echo "JWT_SECRET=$JWT_SECRET" >> .env
+    fi
+    print_info "Created .env file with generated JWT_SECRET."
+fi
+
+# Check and Setup Database if missing
+print_info "Checking database..."
+# Check if database exists using psql (returns 0 if exists, 1 if not)
+if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw myaiagent; then
+    print_success "Database 'myaiagent' already exists."
+else
+    print_warning "Database 'myaiagent' not found. Creating..."
+    sudo -u postgres psql <<EOF
+CREATE DATABASE myaiagent;
+CREATE USER myaiagent_user WITH PASSWORD 'CHANGE_THIS_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE myaiagent TO myaiagent_user;
+\c myaiagent
+GRANT ALL ON SCHEMA public TO myaiagent_user;
+EOF
+    print_success "Database created."
+fi
+
 # Update backend dependencies
 print_info "Updating backend dependencies..."
 cd "$BACKEND_DIR"
@@ -82,6 +116,7 @@ pm2 stop myaiagent-backend || print_warning "Backend not running"
 
 # Update frontend files
 print_info "Updating frontend files..."
+sudo mkdir -p /var/www/myaiagent
 sudo rm -rf /var/www/myaiagent/*
 sudo cp -r "$FRONTEND_DIR/dist/"* /var/www/myaiagent/
 sudo chown -R www-data:www-data /var/www/myaiagent
