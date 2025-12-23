@@ -163,6 +163,14 @@ else
     print_warning "No migrations to run or migration script not found"
 fi
 
+# Seed database (idempotent, ensures demo user exists)
+print_info "Seeding database..."
+if npm run seed 2>/dev/null; then
+    print_success "Database seeded (or user already exists)"
+else
+    print_warning "Database seeding failed"
+fi
+
 # Build frontend
 print_info "Building frontend..."
 cd "$FRONTEND_DIR"
