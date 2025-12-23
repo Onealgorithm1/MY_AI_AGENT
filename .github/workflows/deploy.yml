@@ -21,30 +21,35 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Navigate to project directory
-            # Assuming 'myaiagent-mvp' is the folder containing the app on EC2
-            cd ~/myaiagent-mvp || { echo "Directory not found! Please clone the repo first."; exit 1; }
+            # Define variables
+            REPO_URL="https://github.com/Onealgorithm1/MY_AI_AGENT.git"
+            TARGET_DIR=~/MY_AI_AGENT
             
-            # Ensure we have the latest version of the update script
+            # Check if project directory exists
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "Directory $TARGET_DIR not found. Cloning repository..."
+              git clone $REPO_URL $TARGET_DIR
+            fi
+            
+            # Navigate to project directory
+            cd $TARGET_DIR || exit 1
+            
+            # Fetch latest changes
+            echo "Pulling latest changes..."
             git fetch origin
             git pull origin development
             
-            # Make the script executable
-            # Using the nested path if the repo root is '~/myaiagent-mvp' but it contains 'myaiagent-mvp' folder?
-            # User said "open myaiagent-mvp". 
-            # If the user cloned the repo contents INTO ~/myaiagent-mvp, then update-ec2.sh is at ./update-ec2.sh
-            # If the user cloned the REPO into ~/myaiagent-mvp, then update-ec2.sh is at ./myaiagent-mvp/update-ec2.sh
-            # Based on previous context, update-ec2.sh was in 'myaiagent-mvp/update-ec2.sh' LOCALLY.
-            # I will look for it in the current directory and the subdir.
-            
-            if [ -f "./update-ec2.sh" ]; then
-              chmod +x update-ec2.sh
-              sudo ./update-ec2.sh
-            elif [ -f "./myaiagent-mvp/update-ec2.sh" ]; then
+            # Navigate to the MVP subdirectory where the script lives
+            if [ -d "myaiagent-mvp" ]; then
               cd myaiagent-mvp
+            fi
+            
+            # Execute the update script
+            if [ -f "update-ec2.sh" ]; then
               chmod +x update-ec2.sh
+              echo "Running update script..."
               sudo ./update-ec2.sh
             else
-              echo "Error: update-ec2.sh not found in $(pwd) or $(pwd)/myaiagent-mvp"
+              echo "Error: update-ec2.sh not found in $(pwd)"
               exit 1
             fi
