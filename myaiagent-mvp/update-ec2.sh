@@ -36,6 +36,21 @@ print_error() {
 # Root check removed for CI/CD compatibility
 # Interactive confirmation removed for CI/CD compatibility
 
+# Ensure Node.js v20 is installed (Required by dependencies)
+print_info "Checking Node.js version..."
+CURRENT_NODE_VER=$(node -v 2>/dev/null || echo "v0.0.0")
+REQUIRED_NODE_VER="v20"
+
+if [[ "$CURRENT_NODE_VER" != v20* ]]; then
+    print_warning "Node.js $CURRENT_NODE_VER detected. Upgrading to Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    sudo npm install -g pm2
+    print_success "Node.js upgraded to $(node -v)"
+else
+    print_success "Node.js $CURRENT_NODE_VER is compatible."
+fi
+
 # Detect project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
