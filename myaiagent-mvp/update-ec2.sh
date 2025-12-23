@@ -60,15 +60,32 @@ cd "$BACKEND_DIR"
 if [ ! -f .env ]; then
     print_warning ".env file not found. Creating from example..."
     cp .env.example .env
+    
     # Generate a random secret for JWT
     JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")
-    # Update the JWT_SECRET in the file (simple sed, assuming key exists or appending)
     if grep -q "JWT_SECRET=" .env; then
         sed -i "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
     else
         echo "JWT_SECRET=$JWT_SECRET" >> .env
     fi
-    print_info "Created .env file with generated JWT_SECRET."
+    print_info "Generated JWT_SECRET."
+
+    # Configure Database URL
+    DB_URL="postgresql://myaiagent_user:Werkules@2025@localhost:5432/myaiagent"
+    if grep -q "DATABASE_URL=" .env; then
+        sed -i "s|DATABASE_URL=.*|DATABASE_URL=$DB_URL|" .env
+    else
+        echo "DATABASE_URL=$DB_URL" >> .env
+    fi
+    print_info "Configured DATABASE_URL."
+fi
+
+# Ensure DATABASE_URL is correct even if .env existed (fix for previous failed runs)
+# If it contains "user:password" (default from example), replace it
+if grep -q "postgres://user:password" .env || grep -q "postgresql://user:password" .env; then
+    print_warning "Detected default DATABASE_URL. Updating to correct credentials..."
+    DB_URL="postgresql://myaiagent_user:Werkules@2025@localhost:5432/myaiagent"
+    sed -i "s|DATABASE_URL=.*|DATABASE_URL=$DB_URL|" .env
 fi
 
 # Check and Setup Database if missing
@@ -80,7 +97,7 @@ else
     print_warning "Database 'myaiagent' not found. Creating..."
     sudo -u postgres psql <<EOF
 CREATE DATABASE myaiagent;
-CREATE USER myaiagent_user WITH PASSWORD 'CHANGE_THIS_PASSWORD';
+CREATE USER myaiagent_user WITH PASSWORD 'Werkules@2025';
 GRANT ALL PRIVILEGES ON DATABASE myaiagent TO myaiagent_user;
 \c myaiagent
 GRANT ALL ON SCHEMA public TO myaiagent_user;
