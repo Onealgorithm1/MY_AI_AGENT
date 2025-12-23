@@ -21,6 +21,8 @@ import {
   Settings,
   ChevronRight,
   Brain,
+  Building2,
+  Target,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import GoogleConnection from '../components/GoogleConnection';
@@ -42,7 +44,7 @@ export default function UserProfilePage() {
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     const google_error = searchParams.get('google_error');
-    
+
     if (success === 'google_connected') {
       toast.success('Google account connected successfully!');
       window.history.replaceState({}, '', '/profile');
@@ -169,7 +171,7 @@ export default function UserProfilePage() {
   // Password strength calculator
   const getPasswordStrength = (password) => {
     if (!password) return { strength: 0, label: '', color: '' };
-    
+
     let strength = 0;
     if (password.length >= 8) strength++;
     if (password.length >= 12) strength++;
@@ -190,10 +192,10 @@ export default function UserProfilePage() {
   const formatPhoneNumber = (value) => {
     // Remove all non-numeric characters
     const phoneNumber = value.replace(/\D/g, '');
-    
+
     // Limit to 11 digits (1 for country code + 10 for US number)
     const limitedNumber = phoneNumber.slice(0, 11);
-    
+
     // Format as: (XXX) XXX-XXXX or +1 (XXX) XXX-XXXX
     if (limitedNumber.length === 0) return '';
     if (limitedNumber.length <= 3) return limitedNumber;
@@ -269,7 +271,7 @@ export default function UserProfilePage() {
     }
 
     setSelectedFile(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -609,6 +611,132 @@ export default function UserProfilePage() {
           )}
         </div>
 
+        {/* Organization Information Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Organization
+            </h2>
+            {(profile?.role === 'admin' || profile?.role === 'owner' || profile?.org_role === 'admin' || profile?.org_role === 'owner') && (
+              <button
+                onClick={() => navigate('/org-admin')}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+              >
+                <Building2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Manage Organization</span>
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    {profile?.organizationName || 'No Organization'}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {profile?.orgRole ? (profile.orgRole.charAt(0).toUpperCase() + profile.orgRole.slice(1)) : 'Member'} Access
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Notification Preferences Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Notification Preferences
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Customize how you receive alerts and updates
+              </p>
+            </div>
+            {/* Save Preferences Button */}
+            <button
+              onClick={() => {
+                // Logic to save preferences
+                const updatePrefs = async () => {
+                  try {
+                    await authApi.updatePreferences(profile.preferences);
+                    toast.success('Preferences saved');
+                    queryClient.invalidateQueries(['userProfile']);
+                  } catch (e) {
+                    toast.error('Failed to save preferences');
+                  }
+                };
+                updatePrefs();
+              }}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              <span className="text-sm font-medium">Save Preferences</span>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Email Alerts */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-gray-500" />
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Email Alerts</h3>
+                  <p className="text-xs text-gray-500">Receive important updates via email</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={profile?.preferences?.emailAlerts ?? true}
+                  onChange={(e) => {
+                    const newPrefs = { ...(profile?.preferences || {}), emailAlerts: e.target.checked };
+                    // Optimistic update logic would go here ideally, but for now we rely on the state from query
+                    // We need to update the query cache data locally instantly for UI responsiveness
+                    queryClient.setQueryData(['userProfile'], (old) => ({
+                      ...old,
+                      preferences: newPrefs
+                    }));
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {/* Opportunity Digests */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Target className="w-5 h-5 text-gray-500" />
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Opportunity Matches</h3>
+                  <p className="text-xs text-gray-500">Get notified when new opportunities match your profile</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={profile?.preferences?.opportunityMatches ?? true}
+                  onChange={(e) => {
+                    const newPrefs = { ...(profile?.preferences || {}), opportunityMatches: e.target.checked };
+                    queryClient.setQueryData(['userProfile'], (old) => ({
+                      ...old,
+                      preferences: newPrefs
+                    }));
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
         {/* Change Password Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-6">
@@ -678,13 +806,12 @@ export default function UserProfilePage() {
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-gray-600 dark:text-gray-400">Password Strength:</span>
-                      <span className={`font-medium ${
-                        passwordStrength.label === 'Weak' ? 'text-red-600' :
+                      <span className={`font-medium ${passwordStrength.label === 'Weak' ? 'text-red-600' :
                         passwordStrength.label === 'Fair' ? 'text-orange-600' :
-                        passwordStrength.label === 'Good' ? 'text-yellow-600' :
-                        passwordStrength.label === 'Strong' ? 'text-blue-600' :
-                        'text-green-600'
-                      }`}>
+                          passwordStrength.label === 'Good' ? 'text-yellow-600' :
+                            passwordStrength.label === 'Strong' ? 'text-blue-600' :
+                              'text-green-600'
+                        }`}>
                         {passwordStrength.label}
                       </span>
                     </div>
@@ -708,13 +835,12 @@ export default function UserProfilePage() {
                     type={showPasswords.confirm ? 'text' : 'password'}
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    className={`w-full px-4 py-2 pr-20 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 ${
-                      passwordData.confirmPassword && passwordData.newPassword
-                        ? passwordData.newPassword === passwordData.confirmPassword
-                          ? 'border-green-500 dark:border-green-500 focus:ring-green-500'
-                          : 'border-red-500 dark:border-red-500 focus:ring-red-500'
-                        : 'border-gray-300 dark:border-gray-600 focus:ring-gray-900 dark:focus:ring-gray-100'
-                    }`}
+                    className={`w-full px-4 py-2 pr-20 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 ${passwordData.confirmPassword && passwordData.newPassword
+                      ? passwordData.newPassword === passwordData.confirmPassword
+                        ? 'border-green-500 dark:border-green-500 focus:ring-green-500'
+                        : 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 dark:border-gray-600 focus:ring-gray-900 dark:focus:ring-gray-100'
+                      }`}
                   />
                   {/* Password Match Indicator */}
                   {passwordData.confirmPassword && passwordData.newPassword && (

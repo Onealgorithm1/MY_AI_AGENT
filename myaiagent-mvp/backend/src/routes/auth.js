@@ -34,7 +34,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Only allow image files
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
+
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -363,10 +363,10 @@ router.post('/logout', authenticate, async (req, res) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/',
   });
-  
-  res.json({ 
+
+  res.json({
     status: 'success',
-    message: 'Logged out successfully' 
+    message: 'Logged out successfully'
   });
 });
 
@@ -376,7 +376,7 @@ router.post('/logout', authenticate, async (req, res) => {
 router.get('/ws-token', authenticate, async (req, res) => {
   try {
     const wsToken = generateWebSocketToken(req.user);
-    
+
     res.json({
       token: wsToken,
       expiresIn: 300, // 5 minutes in seconds
@@ -390,9 +390,17 @@ router.get('/ws-token', authenticate, async (req, res) => {
 // Get full user profile
 router.get('/profile', authenticate, async (req, res) => {
   try {
+    // Join with organization info if available
     const result = await query(
-      `SELECT id, email, full_name, phone, profile_image, role, created_at, last_login_at 
-       FROM users WHERE id = $1`,
+      `SELECT u.id, u.email, u.full_name, u.phone, u.profile_image, u.role, u.created_at, u.last_login_at,
+              u.preferences,
+              o.name as organization_name, ou.role as org_role
+       FROM users u
+       LEFT JOIN organization_users ou ON u.id = ou.user_id AND ou.is_active = true
+       LEFT JOIN organizations o ON ou.organization_id = o.id AND o.is_active = true
+       WHERE u.id = $1
+       ORDER BY ou.last_accessed_at DESC NULLS LAST
+       LIMIT 1`, // Get the most recently accessed organization or just one
       [req.user.id]
     );
 
@@ -410,6 +418,9 @@ router.get('/profile', authenticate, async (req, res) => {
       role: user.role,
       createdAt: user.created_at,
       lastLoginAt: user.last_login_at,
+      organizationName: user.organization_name,
+      orgRole: user.org_role,
+      preferences: user.preferences || {}
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -618,16 +629,16 @@ router.post('/profile/upload-picture', authenticate, upload.single('profilePictu
     });
   } catch (error) {
     console.error('Upload profile picture error:', error);
-    
+
     // Delete uploaded file if database update fails
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     if (error.message && error.message.includes('Only image files')) {
       return res.status(400).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Failed to upload profile picture' });
   }
 });
@@ -652,7 +663,7 @@ router.get('/preferences', authenticate, async (req, res) => {
 
     const preferences = result.rows[0]?.preferences || {};
 
-    const response = { 
+    const response = {
       preferences,
       tts_enabled: preferences.tts_enabled || false,
       tts_voice_id: preferences.tts_voice_id || 'EXAVITQu4vr4xnSDxMaL',
@@ -682,27 +693,27 @@ router.put('/preferences', authenticate, async (req, res) => {
     );
 
     const currentPreferences = currentResult.rows[0]?.preferences || {};
-    
+
     // Merge preferences (handle both full preferences object and individual TTS settings)
     let mergedPreferences = { ...currentPreferences };
-    
+
     if (preferences && typeof preferences === 'object') {
       mergedPreferences = { ...mergedPreferences, ...preferences };
     }
-    
+
     // Handle TTS and typing settings separately to allow granular updates
     if (tts_enabled !== undefined) {
       mergedPreferences.tts_enabled = tts_enabled;
     }
-    
+
     if (tts_voice_id !== undefined) {
       mergedPreferences.tts_voice_id = tts_voice_id;
     }
-    
+
     if (tts_auto_play !== undefined) {
       mergedPreferences.tts_auto_play = tts_auto_play;
     }
-    
+
     if (typing_speed !== undefined) {
       mergedPreferences.typing_speed = typing_speed;
     }

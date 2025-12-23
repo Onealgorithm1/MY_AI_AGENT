@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { query } from '../utils/database.js';
 
 /**
  * OneAlgorithm Company Profile Service
@@ -8,7 +9,24 @@ import * as cheerio from 'cheerio';
 
 const ONEALGORITHM_BASE_URL = 'https://onealgorithm.com';
 
-// OneAlgorithm company profile based on sitemap analysis
+// Default profile template
+const DEFAULT_PROFILE = {
+  name: 'New Organization',
+  website: '',
+  capabilities: {},
+  industries: [],
+  certifications: {
+    smallBusiness: false,
+    veteran: false,
+    womanOwned: false,
+    '8a': false,
+    hubzone: false,
+    sdvosb: false
+  },
+  keywords: []
+};
+
+// OneAlgorithm company profile based on sitemap analysis (kept as fallback/template)
 const ONEALGORITHM_PROFILE = {
   name: 'OneAlgorithm',
   website: 'https://onealgorithm.com',
@@ -128,11 +146,46 @@ export async function fetchCompanyPage(url) {
 }
 
 /**
- * Get OneAlgorithm company profile
- * @returns {Object} Company profile
+ * Get Company Profile (Dynamic)
+ * @param {number} orgId - Organization ID
+ * @returns {Promise<Object>} Company profile
  */
-export function getCompanyProfile() {
-  return ONEALGORITHM_PROFILE;
+export async function getCompanyProfile(orgId) {
+  if (!orgId) {
+    // Fallback for system admin or testing context without org
+    console.warn('getCompanyProfile called without orgId, returning default OneAlgorithm profile');
+    return ONEALGORITHM_PROFILE;
+  }
+
+  try {
+    const result = await query(
+      `SELECT company_name, website_url, capabilities, certifications, naics_codes, psc_codes, keywords
+       FROM company_profile_cache
+       WHERE organization_id = $1`,
+      [orgId]
+    );
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      return {
+        name: row.company_name,
+        website: row.website_url,
+        capabilities: row.capabilities || {},
+        certifications: row.certifications || {},
+        naicsCodes: row.naics_codes || [],
+        pscCodes: row.psc_codes || [],
+        keywords: row.keywords || [],
+        industries: [] // Keep industries separate or add to schema if needed
+      };
+    }
+
+    // If not found in DB, return default template
+    // Ideally we should create one, but let the controller handle creation/initialization
+    return DEFAULT_PROFILE;
+  } catch (error) {
+    console.error('Error fetching company profile:', error);
+    return DEFAULT_PROFILE;
+  }
 }
 
 /**
@@ -140,8 +193,9 @@ export function getCompanyProfile() {
  * @param {Array} opportunities - SAM.gov opportunities
  * @returns {Object} Matched and recommended opportunities
  */
-export function matchOpportunities(opportunities) {
-  const profile = ONEALGORITHM_PROFILE;
+export function matchOpportunities(opportunities, profile = ONEALGORITHM_PROFILE) {
+  // Use passed profile or fallback to default
+
   const matched = [];
   const nearMatch = [];
   const stretch = [];
@@ -272,8 +326,8 @@ function checkCertification(setAside, certs) {
  * @param {Array} opportunities - All opportunities
  * @returns {Object} Recommendations
  */
-export function generateRecommendations(opportunities) {
-  const profile = ONEALGORITHM_PROFILE;
+export function generateRecommendations(opportunities, profile = ONEALGORITHM_PROFILE) {
+
   const recommendations = {
     certifications: [],
     naicsCodes: [],
@@ -418,8 +472,8 @@ function extractCommonKeywords(opportunities) {
  * Analyze company readiness for federal contracting
  * @returns {Object} Readiness analysis
  */
-export function analyzeCompanyReadiness() {
-  const profile = ONEALGORITHM_PROFILE;
+export function analyzeCompanyReadiness(profile = ONEALGORITHM_PROFILE) {
+
   const readiness = {
     overallScore: 0,
     categories: {}

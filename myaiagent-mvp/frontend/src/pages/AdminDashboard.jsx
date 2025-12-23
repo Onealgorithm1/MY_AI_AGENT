@@ -127,7 +127,8 @@ const AdminDashboard = () => {
       await api.admin.updateUser(selectedUser.id, {
         email: formData.email,
         fullName: formData.fullName,
-        role: formData.role
+        role: formData.role,
+        isActive: formData.isActive
       });
       setSuccessMessage('User updated successfully');
       setShowEditModal(false);
@@ -220,6 +221,7 @@ const AdminDashboard = () => {
       email: user.email,
       fullName: user.full_name,
       role: user.role,
+      isActive: user.is_active,
       password: '' // Password not editable here
     });
     setShowEditModal(true);
@@ -641,6 +643,18 @@ const AdminDashboard = () => {
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
                       <option value="superadmin">Super Admin</option>
+                      <option value="master_admin">Master Admin</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Status</label>
+                    <select
+                      value={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
                     </select>
                   </div>
                   <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

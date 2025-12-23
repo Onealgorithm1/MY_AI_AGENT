@@ -75,8 +75,15 @@ const OrgAdminDashboard = () => {
     e.preventDefault();
     try {
       setError(null);
+      // Update role
       await api.org.updateUserRole(currentOrganization.id, selectedUser.id, formData.role);
-      setSuccessMessage('User role updated successfully');
+
+      // Update status if changed
+      if (formData.isActive !== selectedUser.is_active) {
+        await api.org.updateUserStatus(currentOrganization.id, selectedUser.id, formData.isActive);
+      }
+
+      setSuccessMessage('User updated successfully');
       setShowEditModal(false);
 
       // Reload users
@@ -85,7 +92,7 @@ const OrgAdminDashboard = () => {
 
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update user role');
+      setError(err.response?.data?.error || 'Failed to update user');
     }
   };
 
@@ -94,7 +101,8 @@ const OrgAdminDashboard = () => {
     setFormData({
       email: user.email,
       fullName: user.full_name,
-      role: user.role // org role
+      role: user.org_role || user.role, // check both just in case
+      isActive: user.is_active
     });
     setShowEditModal(true);
   };
@@ -409,9 +417,20 @@ const OrgAdminDashboard = () => {
                       <option value="owner">Owner</option>
                     </select>
                   </div>
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Status</label>
+                    <select
+                      value={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
                   <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', background: '#0066cc', color: 'white', cursor: 'pointer' }}>Update Role</button>
+                    <button type="submit" style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', background: '#0066cc', color: 'white', cursor: 'pointer' }}>Update User</button>
                   </div>
                 </form>
               </div>

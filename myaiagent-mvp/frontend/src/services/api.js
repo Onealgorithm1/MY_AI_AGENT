@@ -351,6 +351,8 @@ export const org = {
     api.post(`/org/${orgId}/users`, data),
   updateUserRole: (orgId, userId, role) =>
     api.put(`/org/${orgId}/users/${userId}/role`, { role }),
+  updateUserStatus: (orgId, userId, isActive) =>
+    api.put(`/org/${orgId}/users/${userId}/status`, { isActive }),
   resetPassword: (orgId, userId) =>
     api.post(`/org/${orgId}/users/${userId}/reset-password`),
   deleteUser: (orgId, userId) =>

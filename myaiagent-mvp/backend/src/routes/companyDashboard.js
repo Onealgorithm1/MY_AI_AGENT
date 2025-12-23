@@ -12,7 +12,7 @@ const router = express.Router();
  */
 router.get('/profile', authenticate, async (req, res) => {
   try {
-    const profile = companyProfile.getCompanyProfile();
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
 
     res.json({
       success: true,
@@ -28,12 +28,76 @@ router.get('/profile', authenticate, async (req, res) => {
 });
 
 /**
+ * PUT /api/company/profile
+ * Update company profile
+ */
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const { name, website, capabilities, certifications, naicsCodes, pscCodes, keywords } = req.body;
+    const orgId = req.user.organization_id;
+
+    if (!orgId) {
+      return res.status(400).json({ error: 'No organization context found' });
+    }
+
+    // Upsert into company_profile_cache
+    // Note: We use company_profile_cache as the source of truth for the analysis engine
+    await query(
+      `INSERT INTO company_profile_cache (organization_id, company_name, website_url, capabilities, certifications, naics_codes, psc_codes, keywords, last_updated)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+       ON CONFLICT (organization_id) DO UPDATE SET
+         company_name = EXCLUDED.company_name,
+         website_url = EXCLUDED.website_url,
+         capabilities = EXCLUDED.capabilities,
+         certifications = EXCLUDED.certifications,
+         naics_codes = EXCLUDED.naics_codes,
+         psc_codes = EXCLUDED.psc_codes,
+         keywords = EXCLUDED.keywords,
+         last_updated = CURRENT_TIMESTAMP`,
+      [
+        orgId,
+        name,
+        website,
+        JSON.stringify(capabilities || {}),
+        JSON.stringify(certifications || {}),
+        naicsCodes || [],
+        pscCodes || [],
+        keywords || []
+      ]
+    );
+
+    // Sync basic info to organizations table
+    if (name || website) {
+      await query(
+        'UPDATE organizations SET name = COALESCE($1, name), website_url = COALESCE($2, website_url) WHERE id = $3',
+        [name, website, orgId]
+      );
+    }
+
+    const updatedProfile = await companyProfile.getCompanyProfile(orgId);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      profile: updatedProfile
+    });
+  } catch (error) {
+    console.error('Update company profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update company profile'
+    });
+  }
+});
+
+/**
  * GET /api/company/readiness
  * Analyze company readiness for federal contracting
  */
 router.get('/readiness', authenticate, async (req, res) => {
   try {
-    const readiness = companyProfile.analyzeCompanyReadiness();
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const readiness = companyProfile.analyzeCompanyReadiness(profile);
 
     res.json({
       success: true,
@@ -54,7 +118,8 @@ router.get('/readiness', authenticate, async (req, res) => {
  */
 router.get('/eligibility-analysis', authenticate, async (req, res) => {
   try {
-    const readiness = companyProfile.analyzeCompanyReadiness();
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const readiness = companyProfile.analyzeCompanyReadiness(profile);
 
     res.json({
       success: true,
@@ -95,7 +160,8 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
     }
 
     // Match opportunities
-    const results = companyProfile.matchOpportunities(opportunities);
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const results = companyProfile.matchOpportunities(opportunities, profile);
 
     res.json({
       success: true,
@@ -139,7 +205,8 @@ router.post('/match-opportunities', authenticate, async (req, res) => {
     }
 
     // Match opportunities
-    const results = companyProfile.matchOpportunities(opportunities);
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const results = companyProfile.matchOpportunities(opportunities, profile);
 
     // Cache results
     await query(
@@ -195,7 +262,8 @@ router.post('/recommendations', authenticate, async (req, res) => {
       });
     }
 
-    const recommendations = companyProfile.generateRecommendations(opportunities);
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const recommendations = companyProfile.generateRecommendations(opportunities, profile);
 
     res.json({
       success: true,
@@ -251,16 +319,16 @@ router.post('/ai-eligibility-analysis', authenticate, async (req, res) => {
     console.log('Starting AI eligibility analysis...');
 
     // Get company profile and readiness
-    const profile = companyProfile.getCompanyProfile();
-    const readiness = companyProfile.analyzeCompanyReadiness();
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    const readiness = companyProfile.analyzeCompanyReadiness(profile);
 
     // Get opportunities for context
     const cachedOpps = await getCachedOpportunities({ limit: 100, offset: 0 });
     const opportunities = cachedOpps.opportunities || [];
 
     // Match opportunities to understand gaps
-    const matchResults = companyProfile.matchOpportunities(opportunities);
-    const recommendations = companyProfile.generateRecommendations(opportunities);
+    const matchResults = companyProfile.matchOpportunities(opportunities, profile);
+    const recommendations = companyProfile.generateRecommendations(opportunities, profile);
 
     // Prepare AI prompt
     const prompt = `You are a federal contracting expert analyzing OneAlgorithm's eligibility for government contracts.
@@ -430,20 +498,20 @@ Format your response as JSON with this structure:
 router.get('/dashboard-summary', authenticate, async (req, res) => {
   try {
     // Get company profile
-    const profile = companyProfile.getCompanyProfile();
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
 
     // Get readiness analysis
-    const readiness = companyProfile.analyzeCompanyReadiness();
+    const readiness = companyProfile.analyzeCompanyReadiness(profile);
 
     // Get opportunities
     const cachedOpps = await getCachedOpportunities({ limit: 1000, offset: 0 });
     const opportunities = cachedOpps.opportunities || [];
 
     // Match opportunities
-    const matchResults = companyProfile.matchOpportunities(opportunities);
+    const matchResults = companyProfile.matchOpportunities(opportunities, profile);
 
     // Generate recommendations
-    const recommendations = companyProfile.generateRecommendations(opportunities);
+    const recommendations = companyProfile.generateRecommendations(opportunities, profile);
 
     // Get latest match history
     const historyResult = await query(
