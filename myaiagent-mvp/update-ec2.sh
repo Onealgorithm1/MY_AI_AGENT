@@ -50,12 +50,9 @@ print_info "Frontend: $FRONTEND_DIR"
 cd "$PROJECT_ROOT"
 
 
-# Pull latest code from git
-print_info "Pulling latest code from git..."
-cd "$PROJECT_ROOT"
-git fetch origin
-git pull origin $(git rev-parse --abbrev-ref HEAD)
-print_success "Code updated"
+# Git code update is handled by the CI/CD workflow (deploy.yml)
+# Skipping git pull here to avoid conflicts and redundancy.
+print_info "Code already updated by CI/CD workflow."
 
 # Update backend dependencies
 print_info "Updating backend dependencies..."
