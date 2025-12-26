@@ -155,7 +155,7 @@ export async function searchOpportunities(options = {}, userId = null, organizat
       api_key: apiKey,
       postedFrom: postedFrom || defaultPostedFrom,
       postedTo: postedTo || defaultPostedTo,
-      limit: Math.min(limit, 100), // SAM.gov max is 100 per request
+      limit: Math.min(limit, 1000), // SAM.gov max is 1000 per request
       offset,
     };
 
@@ -166,7 +166,7 @@ export async function searchOpportunities(options = {}, userId = null, organizat
       let allOpportunities = [];
       let currentOffset = 0;
       let totalRecords = 0;
-      const pageSize = 100; // Use max page size for efficiency
+      const pageSize = 1000; // Use max page size for efficiency
 
       do {
         const pageParams = { ...params, limit: pageSize, offset: currentOffset };

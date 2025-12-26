@@ -1,53 +1,91 @@
 import nodemailer from 'nodemailer';
+import { getApiKey } from '../utils/apiKeys.js';
 
 class EmailService {
   constructor() {
-    this.fromAddress = process.env.EMAIL_FROM || 'noreply@werkules.com';
     this.transporter = null;
+    this.isConfigured = false;
+  }
 
-    // Initialize Nodemailer if credentials exist
+  async getTransporter() {
+    // 1. Check Environment Variables first (Priority)
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-      this.transporter = nodemailer.createTransport({
+      return nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: process.env.GMAIL_USER,
           pass: process.env.GMAIL_APP_PASSWORD,
         },
       });
-      console.log('✅ Email Service: Configured with Gmail');
-    } else if (process.env.SMTP_HOST) {
-      this.transporter = nodemailer.createTransport({
+    }
+
+    if (process.env.SMTP_HOST) {
+      return nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        secure: process.env.SMTP_SECURE === 'true',
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
       });
-      console.log('✅ Email Service: Configured with SMTP');
-    } else {
-      console.log('⚠️ Email Service: No credentials found, running in mock mode');
     }
+
+    // 2. Check Database (System Settings)
+    try {
+      const dbConfigStr = await getApiKey('system_email');
+      if (dbConfigStr) {
+        const config = JSON.parse(dbConfigStr);
+
+        if (config.service === 'gmail') {
+          return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: config.user,
+              pass: config.pass,
+            },
+          });
+        }
+
+        if (config.host) {
+          return nodemailer.createTransport({
+            host: config.host,
+            port: config.port || 587,
+            secure: config.secure === true,
+            auth: {
+              user: config.user,
+              pass: config.pass,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching email config from DB:', error);
+    }
+
+    // 3. No config found
+    return null;
+  }
+
+  async getFromAddress() {
+    return process.env.EMAIL_FROM || 'noreply@werkules.com';
   }
 
   /**
    * Send an email
-   * @param {Object} options
-   * @param {string} options.to - Recipient email
-   * @param {string} options.subject - Email subject
-   * @param {string} options.html - HTML content
-   * @param {string} options.text - Text content (fallback)
    */
   async sendEmail({ to, subject, html, text }) {
-    if (!this.transporter) {
+    const transporter = await this.getTransporter();
+    const fromAddress = await this.getFromAddress();
+
+    if (!transporter) {
       console.log(`\n📧 [MOCK EMAIL] To: ${to} | Subject: ${subject}`);
       return { success: true, messageId: `mock-${Date.now()}` };
     }
 
     try {
-      const info = await this.transporter.sendMail({
-        from: `Werkules Admin <${this.fromAddress}>`,
+      const info = await transporter.sendMail({
+        from: `Werkules Admin <${fromAddress}>`,
         to,
         subject,
         text,
@@ -96,7 +134,7 @@ class EmailService {
           <a href="${link}" style="display: inline-block; background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
         </div>
         <p style="color: #6b7280; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email.</p>
-        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">此 link will expire in 24 hours.</p>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">This link will expire in 24 hours.</p>
       </div>
     `;
 

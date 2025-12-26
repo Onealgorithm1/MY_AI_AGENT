@@ -53,31 +53,37 @@ export function decrypt(encryptedText) {
   }
 }
 
+// Map provider to service_name format
+const SERVICE_NAME_MAP = {
+  'openai': 'OpenAI',
+  'openai-api': 'OpenAI',  // Fallback name
+  'elevenlabs': 'ElevenLabs',
+  'anthropic': 'Anthropic',
+  'google': 'Google APIs',
+  'google-search_api': 'Google APIs',  // Google Search API uses Google APIs service
+  'gemini': 'gemini',       // Fixed: Gemini keys are stored as 'gemini', not 'Google APIs'
+  'stripe': 'Stripe',
+  'samgov': 'SAM.gov',
+  'sam-gov': 'SAM.gov',
+  'cohere': 'Cohere',
+  'groq': 'Groq'
+};
+
+// Helper to normalize provider name
+function getServiceName(provider) {
+  const normalized = provider.toLowerCase().trim();
+  return SERVICE_NAME_MAP[normalized] || provider; // Fallback to original if not found
+}
+
 // Get API key from database with support for multiple keys per service
 export async function getApiKey(provider, keyType = 'project', organizationId = null) {
   try {
-    // Map provider to service_name format
-    const serviceNameMap = {
-      'openai': 'OpenAI',
-      'openai-api': 'OpenAI',  // Fallback name
-      'elevenlabs': 'ElevenLabs',
-      'anthropic': 'Anthropic',
-      'google': 'Google APIs',
-      'google-search_api': 'Google APIs',  // Google Search API uses Google APIs service
-      'gemini': 'gemini',       // Fixed: Gemini keys are stored as 'gemini', not 'Google APIs'
-      'stripe': 'Stripe',
-      'samgov': 'SAM.gov',
-      'sam-gov': 'SAM.gov',
-      'cohere': 'Cohere',
-      'groq': 'Groq'
-    };
+    const serviceName = getServiceName(provider);
 
-    const normalizedProvider = provider.toLowerCase().trim();
-    const serviceName = serviceNameMap[normalizedProvider];
-    if (!serviceName) {
-      console.warn(`⚠️  Unknown provider: ${provider} - returning null. Available providers: ${Object.keys(serviceNameMap).join(', ')}`);
-      return null;
-    }
+    // If mapped name wasn't found in our map but provided, we warn but proceed with fallback
+    // if (!SERVICE_NAME_MAP[provider.toLowerCase().trim()]) {
+    //    console.warn(`⚠️  Unknown provider: ${provider} - using as-is: ${serviceName}`);
+    // }
 
     console.log(`🔑 getApiKey: Looking for ${provider} (service: ${serviceName})`, organizationId ? `for Org ${organizationId}` : 'System-wide');
 
@@ -95,6 +101,9 @@ export async function getApiKey(provider, keyType = 'project', organizationId = 
 
     // 2. If no org key found (or no orgId provided), try System Default key (organization_id IS NULL)
     if (!result || result.rows.length === 0) {
+      if (organizationId) {
+        console.log(`ℹ️  No Org key found for ${serviceName} (Org ${organizationId}), checking System key...`);
+      }
       result = await query(
         `SELECT key_value FROM api_secrets 
          WHERE service_name = $1 AND is_active = true AND organization_id IS NULL
@@ -141,56 +150,62 @@ export async function getApiKey(provider, keyType = 'project', organizationId = 
 }
 
 // Save API key to database
-// Save API key to database
 export async function saveApiKey(provider, apiKey, userId, organizationId = null, keyLabel = null) {
-  // Deactivate old keys for this specific scope (System or Organization)
-  // If organizationId is provided, deactivate only that org's keys
-  // If organizationId is null, deactivate only system keys (where organization_id IS NULL)
-  // Deactivate old keys for this specific scope and rename them to avoid unique constraint collisions
-  // (service_name, key_label) must be unique
-  const timestamp = Math.floor(Date.now() / 1000);
-  if (organizationId) {
-    await query(
-      `UPDATE api_secrets 
-       SET is_active = false, 
-           key_label = SUBSTRING(key_label, 1, 200) || ' (Archived ' || $3 || ')'
-       WHERE service_name = $1 AND organization_id = $2 AND is_active = true`,
-      [provider, organizationId, timestamp]
+  try {
+    // Use the helper to ensure we save with the same name we look up
+    const serviceName = getServiceName(provider);
+
+    // Deactivate old keys for this specific scope (System or Organization)
+    const timestamp = Math.floor(Date.now() / 1000).toString(); // Convert to string for SQL safety
+
+    if (organizationId) {
+      await query(
+        `UPDATE api_secrets 
+         SET is_active = false, 
+         key_label = SUBSTRING(key_label, 1, 200) || ' (Archived ' || $3::text || ')'
+         WHERE service_name = $1 AND organization_id = $2 AND is_active = true`,
+        [serviceName, organizationId, timestamp]
+      );
+    } else {
+      await query(
+        `UPDATE api_secrets 
+         SET is_active = false, 
+         key_label = SUBSTRING(key_label, 1, 200) || ' (Archived ' || $2::text || ')'
+         WHERE service_name = $1 AND organization_id IS NULL AND is_active = true`,
+        [serviceName, timestamp]
+      );
+    }
+
+    // Insert new key
+    const encryptedValue = encrypt(apiKey);
+    const label = keyLabel || `${serviceName} API Key`;
+
+    // Generate a unique key_name to satisfy legacy schema constraints
+    // Format: SERVICE_NAME_TIMESTAMP_RANDOM
+    const keyName = `${serviceName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    const result = await query(
+      'INSERT INTO api_secrets (service_name, key_name, key_label, key_value, created_by, is_active, organization_id) VALUES ($1, $2, $3, $4, $5, true, $6) RETURNING id, key_label, service_name, organization_id, is_active, created_at',
+      [serviceName, keyName, label, encryptedValue, userId, organizationId]
     );
-  } else {
-    await query(
-      `UPDATE api_secrets 
-       SET is_active = false, 
-           key_label = SUBSTRING(key_label, 1, 200) || ' (Archived ' || $2 || ')'
-       WHERE service_name = $1 AND organization_id IS NULL AND is_active = true`,
-      [provider, timestamp]
-    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error(`❌ Critical Error in saveApiKey (Provider: ${provider}, Org: ${organizationId}):`, error);
+    throw error;
   }
-
-  // Insert new key
-  const encryptedValue = encrypt(apiKey);
-  const label = keyLabel || `${provider} API Key`;
-
-  // Generate a unique key_name to satisfy legacy schema constraints
-  // Format: SERVICE_NAME_TIMESTAMP_RANDOM
-  const keyName = `${provider.toUpperCase()}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-  await query(
-    'INSERT INTO api_secrets (service_name, key_name, key_label, key_value, created_by, is_active, organization_id) VALUES ($1, $2, $3, $4, $5, true, $6)',
-    [provider, keyName, label, encryptedValue, userId, organizationId]
-  );
-
-  return true;
 }
 
 // Check if API key is configured
 export async function hasApiKey(provider, organizationId = null) {
   try {
+    const serviceName = getServiceName(provider);
     let result;
+
     if (organizationId) {
       result = await query(
         'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true AND organization_id = $2 LIMIT 1',
-        [provider, organizationId]
+        [serviceName, organizationId]
       );
       if (result.rows.length > 0) return true;
     }
@@ -198,7 +213,7 @@ export async function hasApiKey(provider, organizationId = null) {
     // Check system key
     result = await query(
       'SELECT 1 FROM api_secrets WHERE service_name = $1 AND is_active = true AND organization_id IS NULL LIMIT 1',
-      [provider]
+      [serviceName]
     );
     return result.rows.length > 0;
   } catch (error) {

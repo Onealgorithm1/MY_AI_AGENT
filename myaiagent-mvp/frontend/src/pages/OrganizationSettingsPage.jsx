@@ -9,6 +9,10 @@ const OrganizationSettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
     name: '',
+    description: '',
+    websiteUrl: '',
+    address: '',
+    phone: '',
     brandingSettings: {
       logoUrl: '',
       primaryColor: '#000000',
@@ -38,6 +42,10 @@ const OrganizationSettingsPage = () => {
 
       setSettings({
         name: data.name,
+        description: data.description || '',
+        websiteUrl: data.website_url || '',
+        address: data.address || '',
+        phone: data.phone || '',
         brandingSettings: data.branding_settings || {
           logoUrl: '',
           primaryColor: '#3B82F6', // Default blue
@@ -78,6 +86,10 @@ const OrganizationSettingsPage = () => {
       const orgId = currentOrganization?.id;
       await api.org.updateSettings(orgId, {
         name: settings.name,
+        description: settings.description,
+        websiteUrl: settings.websiteUrl,
+        address: settings.address,
+        phone: settings.phone,
         brandingSettings: settings.brandingSettings
       });
       setSuccess('Settings updated successfully');
@@ -136,6 +148,75 @@ const OrganizationSettingsPage = () => {
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Acme Corp"
                 required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={settings.description}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Brief description of your organization..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Information Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+            Contact Information
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <label htmlFor="websiteUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Website URL
+              </label>
+              <input
+                type="url"
+                id="websiteUrl"
+                name="websiteUrl"
+                value={settings.websiteUrl}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={settings.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Address
+              </label>
+              <textarea
+                id="address"
+                name="address"
+                value={settings.address}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="123 Business St, Suite 100, City, State, ZIP"
               />
             </div>
           </div>

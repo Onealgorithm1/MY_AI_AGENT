@@ -175,9 +175,12 @@ router.post('/login', async (req, res) => {
 
     // Get user's organizations
     const orgResult = await query(
-      `SELECT ou.organization_id, ou.role as org_role, o.name, o.slug
+      `SELECT ou.organization_id, ou.role as org_role, ou.joined_at, 
+              o.name, o.slug, o.description, o.website_url, o.address, o.phone,
+              u_owner.full_name as owner_name
        FROM organization_users ou
        JOIN organizations o ON o.id = ou.organization_id
+       LEFT JOIN users u_owner ON o.owner_id = u_owner.id
        WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
        ORDER BY ou.joined_at DESC`,
       [user.id]
@@ -238,6 +241,13 @@ router.post('/login', async (req, res) => {
         id: org.organization_id,
         name: org.name,
         slug: org.slug,
+        role: org.org_role,
+        joined_at: org.joined_at,
+        description: org.description,
+        website_url: org.website_url,
+        address: org.address,
+        phone: org.phone,
+        owner_name: org.owner_name,
       })),
     });
   } catch (error) {
@@ -262,9 +272,12 @@ router.get('/me', authenticate, async (req, res) => {
 
     // Get user's organizations
     const orgResult = await query(
-      `SELECT ou.organization_id, ou.role as org_role, o.name, o.slug
+      `SELECT ou.organization_id, ou.role as org_role, ou.joined_at, 
+              o.name, o.slug, o.description, o.website_url, o.address, o.phone,
+              u_owner.full_name as owner_name
        FROM organization_users ou
        JOIN organizations o ON o.id = ou.organization_id
+       LEFT JOIN users u_owner ON o.owner_id = u_owner.id
        WHERE ou.user_id = $1 AND ou.is_active = TRUE AND o.is_active = TRUE
        ORDER BY ou.joined_at DESC`,
       [req.user.id]
@@ -304,6 +317,12 @@ router.get('/me', authenticate, async (req, res) => {
         name: org.name,
         slug: org.slug,
         role: org.org_role,
+        joined_at: org.joined_at,
+        description: org.description,
+        website_url: org.website_url,
+        address: org.address,
+        phone: org.phone,
+        owner_name: org.owner_name,
       })),
       usage: todayUsage,
       limits: {

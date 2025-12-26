@@ -200,6 +200,27 @@ const OrgAdminDashboard = () => {
     }
   };
 
+  const handleDeleteApiKey = async (keyId) => {
+    if (window.confirm('Are you sure you want to PERMANENTLY DELETE this API key? This cannot be undone.')) {
+      try {
+        setError(null);
+        // Pass params: orgId, keyId, force=true
+        // We will update api.js to handle the 3rd argument as a boolean for force delete
+        await api.org.deleteApiKey(currentOrganization.id, keyId, true);
+        setSuccessMessage('API key deleted successfully');
+
+        // Reload keys
+        const response = await api.org.getApiKeys(currentOrganization.id);
+        setApiKeys(response.data.apiKeys || []);
+
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        console.error('Failed to delete key:', err);
+        setError(err.response?.data?.error || 'Failed to delete API key');
+      }
+    }
+  };
+
   if (error && error.includes('Access denied')) {
     return (
       <div className="org-admin-error">
@@ -281,6 +302,32 @@ const OrgAdminDashboard = () => {
                 <span className="label">Joined:</span>
                 <span className="value">{currentOrganization?.joined_at ? new Date(currentOrganization.joined_at).toLocaleDateString() : 'Unknown'}</span>
               </div>
+              {currentOrganization?.description && (
+                <div className="info-item full-width">
+                  <span className="label">Description:</span>
+                  <span className="value">{currentOrganization.description}</span>
+                </div>
+              )}
+              {currentOrganization?.website_url && (
+                <div className="info-item">
+                  <span className="label">Website:</span>
+                  <a href={currentOrganization.website_url} target="_blank" rel="noopener noreferrer" className="value link">
+                    {currentOrganization.website_url}
+                  </a>
+                </div>
+              )}
+              {currentOrganization?.phone && (
+                <div className="info-item">
+                  <span className="label">Phone:</span>
+                  <span className="value">{currentOrganization.phone}</span>
+                </div>
+              )}
+              {currentOrganization?.address && (
+                <div className="info-item full-width">
+                  <span className="label">Address:</span>
+                  <span className="value address">{currentOrganization.address}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -627,21 +674,34 @@ const OrgAdminDashboard = () => {
                           </span>
                         </td>
                         <td>{new Date(key.createdAt || key.created_at).toLocaleDateString()}</td>
-                        <td>
+                        <td style={{ display: 'flex', gap: '8px' }}>
                           {/* <button className="btn-action">View</button> */}
                           <button
                             className="btn-action"
                             onClick={() => setRotationKey(key)}
                             title="Rotate API Key"
+                            disabled={!(key.isActive !== undefined ? key.isActive : key.is_active)}
                           >
                             Rotate
                           </button>
+
+                          {(key.isActive !== undefined ? key.isActive : key.is_active) && (
+                            <button
+                              className="btn-action btn-danger"
+                              onClick={() => handleRevokeApiKey(key.id)}
+                              title="Revoke API Key (Soft Delete)"
+                            >
+                              Revoke
+                            </button>
+                          )}
+
                           <button
                             className="btn-action btn-danger"
-                            onClick={() => handleRevokeApiKey(key.id)}
-                            title="Revoke API Key"
+                            style={{ backgroundColor: '#dc3545', border: '1px solid #dc3545', marginLeft: '5px' }}
+                            onClick={() => handleDeleteApiKey(key.id)}
+                            title="Permanently Delete API Key"
                           >
-                            Revoke
+                            Delete
                           </button>
                         </td>
                       </tr>

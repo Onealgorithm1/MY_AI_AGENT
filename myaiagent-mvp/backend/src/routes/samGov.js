@@ -148,15 +148,39 @@ router.get('/search-history', async (req, res) => {
  */
 router.get('/cached-opportunities', async (req, res) => {
   try {
-    const { limit = 1000, offset = 0, keyword, type, status } = req.query;
+    const {
+      limit = 1000,
+      offset = 0,
+      keyword,
+      type,
+      status,
+      naicsCode,
+      setAside,
+      agency,
+      placeOfPerformance,
+      postedFrom,
+      postedTo,
+      responseFrom,
+      responseTo
+    } = req.query;
+
     const result = await samGovCache.getCachedOpportunities({
       limit: parseInt(limit),
       offset: parseInt(offset),
       keyword,
       type,
       status,
+      // New filters
+      naicsCode,
+      setAside,
+      agency,
+      placeOfPerformance,
+      postedFrom,
+      postedTo,
+      responseFrom,
+      responseTo,
       // Pass context for isolation
-      userId: req.user.role === 'master_admin' ? undefined : req.user.id, // Optional: if we want users to see only their own searches or org-wide
+      userId: req.user.role === 'master_admin' ? undefined : req.user.id,
       organizationId: req.user.organization_id,
       isMasterAdmin: req.user.role === 'master_admin' || req.user.role === 'superadmin'
     });
@@ -164,6 +188,21 @@ router.get('/cached-opportunities', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Get cached opportunities error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/sam-gov/facets/:category
+ * Get facets for a filter category
+ */
+router.get('/facets/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const facets = await samGovCache.getFacets(category);
+    res.json({ success: true, facets });
+  } catch (error) {
+    console.error('Get facets error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -477,6 +516,21 @@ router.post('/process-analysis-queue', async (req, res) => {
     });
   } catch (error) {
     console.error('Process queue error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/sam-gov/facets/:category
+ * Get unique values and counts for a filter category
+ */
+router.get('/facets/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const facets = await samGovCache.getFacets(category);
+    res.json({ success: true, facets });
+  } catch (error) {
+    console.error('Get facets error:', error);
     res.status(500).json({ error: error.message });
   }
 });

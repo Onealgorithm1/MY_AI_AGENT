@@ -22,10 +22,21 @@ const SAMGovPage = () => {
     naicsCode: '',
     noticeType: '',
     status: '', // Show all opportunities by default (active and inactive)
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: '', // Posted From
+    dateTo: '',   // Posted To
+    responseFrom: '',
+    responseTo: '',
     agency: '',
+    placeOfPerformance: '', // Zip or State
     sortBy: '-modifiedDate',
+  });
+
+  // Facets state
+  const [facets, setFacets] = useState({
+    naics: [],
+    agency: [],
+    setAside: [],
+    place: []
   });
 
   // Pagination
@@ -41,6 +52,7 @@ const SAMGovPage = () => {
     setAside: false,
     naics: false,
     agency: false,
+    place: false,
     status: true,
   });
 
@@ -59,15 +71,14 @@ const SAMGovPage = () => {
   // View mode state
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
-  // Department filter state
-  const [departments, setDepartments] = useState([]);
+  // Department filter state (Legacy, keeping for compatibility but moving to facets)
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [loadingBatch, setLoadingBatch] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     loadUserProfile();
-    loadDepartments();
+    loadFacets(); // Load initial facets
     loadData();
     loadSavedSearches();
 
@@ -89,30 +100,23 @@ const SAMGovPage = () => {
     }
   };
 
-  // Load departments - extract from cached opportunities
-  const loadDepartments = async () => {
+  // Load facets for filters
+  const loadFacets = async () => {
     try {
-      // Try API first (if backend is updated)
-      try {
-        const response = await samGov.getDepartments();
-        setDepartments(response.departments || []);
-        return;
-      } catch (apiError) {
-        console.warn('Departments API not available, extracting from cache:', apiError.message);
-      }
+      const [naicsRes, agencyRes, placeRes] = await Promise.all([
+        samGov.getFacets('naics'),
+        samGov.getFacets('agency'),
+        samGov.getFacets('place')
+      ]);
 
-      // Fallback: extract unique departments from cached opportunities
-      const cachedRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
-      const uniqueDepts = new Set();
-      (cachedRes.opportunities || []).forEach(opp => {
-        if (opp.contracting_office) {
-          uniqueDepts.add(opp.contracting_office);
-        }
+      setFacets({
+        naics: naicsRes.facets || [],
+        agency: agencyRes.facets || [],
+        place: placeRes.facets || [],
+        setAside: [] // Often static, but could fetch if needed
       });
-      setDepartments(Array.from(uniqueDepts).sort());
     } catch (error) {
-      console.error('Failed to load departments:', error);
-      setDepartments([]);
+      console.error('Failed to load facets:', error);
     }
   };
 
@@ -128,7 +132,7 @@ const SAMGovPage = () => {
     }
   };
 
-  const loadData = async (isBackgroundRefresh = false) => {
+  const loadData = async (isBackgroundRefresh = false, filterOverrides = null) => {
     try {
       if (isBackgroundRefresh) {
         setRefreshing(true);
@@ -147,7 +151,8 @@ const SAMGovPage = () => {
         setLoadingBatch(true);
         try {
           await samGov.batchFetchAll({ keyword: '' });
-          await loadDepartments(); // Reload departments after batch fetch
+          await samGov.batchFetchAll({ keyword: '' });
+          // await loadDepartments(); // Reload departments after batch fetch - Deprecated in favor of facets
         } catch (batchError) {
           const errorMessage = batchError?.response?.data?.error || batchError?.message || 'Unknown error';
           console.error('❌ Batch fetch failed:', errorMessage);
@@ -163,8 +168,25 @@ const SAMGovPage = () => {
         }
       }
 
-      // Now load full cached opportunities
-      const fullRes = await samGov.getCachedOpportunities({ limit: 10000, offset: 0 });
+      const activeFilters = filterOverrides || filters;
+
+      const fullRes = await samGov.getCachedOpportunities({
+        limit: 5000, // Fetch plenty for client-side sorting if needed, or rely on server
+        offset: 0,
+        keyword: activeFilters.keyword,
+        type: activeFilters.noticeType,
+        status: activeFilters.status === 'all' ? undefined : activeFilters.status,
+        // Pass new filters
+        naicsCode: activeFilters.naicsCode,
+        setAside: activeFilters.setAsideType,
+        agency: activeFilters.agency,
+        placeOfPerformance: activeFilters.placeOfPerformance,
+        postedFrom: activeFilters.dateFrom,
+        postedTo: activeFilters.dateTo,
+        responseFrom: activeFilters.responseFrom,
+        responseTo: activeFilters.responseTo
+      });
+
       setOpportunities(fullRes.opportunities || []);
       setLastRefreshTime(new Date());
 
@@ -182,57 +204,15 @@ const SAMGovPage = () => {
     }
   };
 
-  // Keyword matching logic
-  const matchesKeyword = (opp, keyword, keywordType) => {
-    if (!keyword) return true;
-    const searchText = `${opp.title} ${opp.solicitation_number} ${opp.description || ''}`.toLowerCase();
-    const keywords = keyword.toLowerCase().split(' ').filter(k => k);
-
-    switch (keywordType) {
-      case 'ALL':
-        return keywords.every(k => searchText.includes(k));
-      case 'ANY':
-        return keywords.some(k => searchText.includes(k));
-      case 'EXACT':
-        return searchText.includes(keyword.toLowerCase());
-      default:
-        return true;
-    }
-  };
-
-  // Apply all filters
+  // Apply extra client-side filtering if needed (though backend handles most now)
+  // We keep this lightweight or remove if backend does everything. 
+  // Let's keep it minimal for domain/keywordType which might be complex on backend
   const filteredOpps = opportunities.filter(opp => {
-    if (!matchesKeyword(opp, filters.keyword, filters.keywordType)) return false;
-    if (filters.setAsideType && opp.set_aside_type !== filters.setAsideType) return false;
-    if (filters.naicsCode && !opp.naics_code?.includes(filters.naicsCode)) return false;
-    if (filters.noticeType && opp.type !== filters.noticeType) return false;
-
-    // Department filter
-    if (departmentFilter) {
-      const oppDept = opp.contracting_office || '';
-      if (!oppDept.toLowerCase().includes(departmentFilter.toLowerCase())) return false;
-    }
-
-    // Domain filter
+    // Domain filter (client side for now as it parses raw_data)
     if (selectedDomain) {
       const oppDomain = opp.raw_data?.fullParentPathName?.split('.')[0] || opp.contracting_office?.split(',')[0] || '';
       if (!oppDomain.toLowerCase().includes(selectedDomain.toLowerCase())) return false;
     }
-
-    // Status filter
-    if (filters.status === 'active') {
-      const now = new Date();
-      if (opp.archive_date && new Date(opp.archive_date) < now) return false;
-    } else if (filters.status === 'inactive') {
-      const now = new Date();
-      if (!opp.archive_date || new Date(opp.archive_date) >= now) return false;
-    }
-
-    // Date filters
-    if (filters.dateFrom && new Date(opp.posted_date) < new Date(filters.dateFrom)) return false;
-    if (filters.dateTo && new Date(opp.posted_date) > new Date(filters.dateTo)) return false;
-    if (filters.agency && !opp.contracting_office?.toLowerCase().includes(filters.agency.toLowerCase())) return false;
-
     return true;
   });
 
@@ -528,7 +508,7 @@ What would you like to know about this opportunity?`;
           <div className="flex flex-col sm:flex-row gap-2">
             <select
               value={filters.keywordType}
-              onChange={(e) => setFilters({...filters, keywordType: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, keywordType: e.target.value })}
               className="px-2 md:px-3 py-2.5 md:py-2 border border-gray-300 rounded-lg sm:rounded-l-lg bg-white text-xs md:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
             >
               <option value="ALL">All Words</option>
@@ -542,7 +522,7 @@ What would you like to know about this opportunity?`;
                 placeholder="e.g. salesforce"
                 value={filters.keyword}
                 onChange={(e) => {
-                  setFilters({...filters, keyword: e.target.value});
+                  setFilters({ ...filters, keyword: e.target.value });
                   setCurrentPage(1);
                 }}
                 className="w-full pl-9 md:pl-10 pr-4 py-2.5 md:py-2 border border-gray-300 rounded-lg sm:rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
@@ -673,8 +653,10 @@ What would you like to know about this opportunity?`;
                         type="radio"
                         checked={filters.status === status}
                         onChange={() => {
-                          setFilters({...filters, status});
+                          const newFilters = { ...filters, status };
+                          setFilters(newFilters);
                           setCurrentPage(1);
+                          loadData(false, newFilters);
                         }}
                         className="w-4 h-4 text-blue-600"
                       />
@@ -696,7 +678,7 @@ What would you like to know about this opportunity?`;
                       type="date"
                       value={filters.dateFrom}
                       onChange={(e) => {
-                        setFilters({...filters, dateFrom: e.target.value});
+                        setFilters({ ...filters, dateFrom: e.target.value });
                         setCurrentPage(1);
                       }}
                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
@@ -708,7 +690,7 @@ What would you like to know about this opportunity?`;
                       type="date"
                       value={filters.dateTo}
                       onChange={(e) => {
-                        setFilters({...filters, dateTo: e.target.value});
+                        setFilters({ ...filters, dateTo: e.target.value });
                         setCurrentPage(1);
                       }}
                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
@@ -725,8 +707,10 @@ What would you like to know about this opportunity?`;
                 <select
                   value={filters.noticeType}
                   onChange={(e) => {
-                    setFilters({...filters, noticeType: e.target.value});
+                    const newFilters = { ...filters, noticeType: e.target.value };
+                    setFilters(newFilters);
                     setCurrentPage(1);
+                    loadData(false, newFilters);
                   }}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                 >
@@ -738,6 +722,43 @@ What would you like to know about this opportunity?`;
               </FilterSection>
 
               <FilterSection
+                title="Response Date"
+                name="responseDate"
+                count={(filters.responseFrom || filters.responseTo) ? 1 : 0}
+              >
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Offers Due After</label>
+                    <input
+                      type="date"
+                      value={filters.responseFrom}
+                      onChange={(e) => {
+                        const newFilters = { ...filters, responseFrom: e.target.value };
+                        setFilters(newFilters);
+                        setCurrentPage(1);
+                        loadData(false, newFilters);
+                      }}
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Offers Due Before</label>
+                    <input
+                      type="date"
+                      value={filters.responseTo}
+                      onChange={(e) => {
+                        const newFilters = { ...filters, responseTo: e.target.value };
+                        setFilters(newFilters);
+                        setCurrentPage(1);
+                        loadData(false, newFilters);
+                      }}
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              </FilterSection>
+
+              <FilterSection
                 title="Set Aside"
                 name="setAside"
                 count={filters.setAsideType ? 1 : 0}
@@ -745,8 +766,10 @@ What would you like to know about this opportunity?`;
                 <select
                   value={filters.setAsideType}
                   onChange={(e) => {
-                    setFilters({...filters, setAsideType: e.target.value});
+                    const newFilters = { ...filters, setAsideType: e.target.value };
+                    setFilters(newFilters);
                     setCurrentPage(1);
+                    loadData(false, newFilters);
                   }}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                 >
@@ -765,84 +788,110 @@ What would you like to know about this opportunity?`;
                 <div className="space-y-2">
                   <input
                     type="text"
-                    placeholder="e.g. 541511, 541512"
-                    value={filters.naicsCode}
+                    placeholder="Search Code or Name"
+                    value={filters.naicsCode || ''}
                     onChange={(e) => {
-                      setFilters({...filters, naicsCode: e.target.value});
-                      setCurrentPage(1);
+                      setFilters({ ...filters, naicsCode: e.target.value });
+                      // setCurrentPage(1); // Optional: trigger search on type, or wait for enter/button
                     }}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm mb-2"
                   />
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <p className="font-medium text-gray-700">Common IT NAICS:</p>
-                    <button
-                      onClick={() => {
-                        setFilters({...filters, naicsCode: '541511'});
-                        setCurrentPage(1);
-                      }}
-                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
-                    >
-                      541511 - Custom Computer Programming
-                    </button>
-                    <button
-                      onClick={() => {
-                        setFilters({...filters, naicsCode: '541512'});
-                        setCurrentPage(1);
-                      }}
-                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
-                    >
-                      541512 - Computer Systems Design
-                    </button>
-                    <button
-                      onClick={() => {
-                        setFilters({...filters, naicsCode: '541519'});
-                        setCurrentPage(1);
-                      }}
-                      className="block w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-gray-700"
-                    >
-                      541519 - Other Computer Services
-                    </button>
+
+                  <div className="text-xs text-gray-500 font-medium mb-1">Top Codes</div>
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {facets.naics.slice(0, 10).map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const newFilters = { ...filters, naicsCode: item.value };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          loadData(false, newFilters);
+                        }}
+                        className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded text-xs ${filters.naicsCode === item.value ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                      >
+                        <span className="truncate flex-1" title={item.value}>{item.value}</span>
+                        <span className="ml-2 text-gray-500 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full">{item.count}</span>
+                      </button>
+                    ))}
+                    {facets.naics.length === 0 && (
+                      <p className="text-xs text-gray-400 italic px-2">No NAICS data available.</p>
+                    )}
                   </div>
                 </div>
               </FilterSection>
 
               <FilterSection
-                title="Agency"
+                title="Federal Organizations"
                 name="agency"
                 count={filters.agency ? 1 : 0}
               >
-                <input
-                  type="text"
-                  placeholder="Search agency name..."
-                  value={filters.agency}
-                  onChange={(e) => {
-                    setFilters({...filters, agency: e.target.value});
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Filter agencies..."
+                      value={filters.agency || ''}
+                      onChange={(e) => setFilters({ ...filters, agency: e.target.value })}
+                      className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 rounded mb-2"
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {facets.agency.slice(0, 10).map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const newFilters = { ...filters, agency: item.value === filters.agency ? '' : item.value };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          loadData(false, newFilters);
+                        }}
+                        className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded text-xs ${filters.agency === item.value ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                      >
+                        <span className="truncate flex-1" title={item.value}>{item.value}</span>
+                        <span className="ml-2 text-gray-500 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full">{item.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </FilterSection>
 
               <FilterSection
-                title="Department"
-                name="department"
-                count={departmentFilter ? 1 : 0}
+                title="Place of Performance"
+                name="place"
+                count={filters.placeOfPerformance ? 1 : 0}
               >
-                <select
-                  value={departmentFilter}
-                  onChange={(e) => {
-                    setDepartmentFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Departments</option>
-                  {departments.map((dept, idx) => (
-                    <option key={idx} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="City or State"
+                    value={filters.placeOfPerformance || ''}
+                    onChange={(e) => setFilters({ ...filters, placeOfPerformance: e.target.value })}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  />
+                  <div className="text-xs text-gray-500 font-medium mt-2 mb-1">Top Locations</div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {facets.place.slice(0, 5).map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const newFilters = { ...filters, placeOfPerformance: item.value };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          loadData(false, newFilters);
+                        }}
+                        className={`w-full flex items-center justify-between text-left px-2 py-1.5 rounded text-xs ${filters.placeOfPerformance === item.value ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                      >
+                        <span className="truncate flex-1" title={item.value}>{item.value}</span>
+                        <span className="ml-2 text-gray-500 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full">{item.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </FilterSection>
 
               {/* Profile Section - Bottom of Sidebar */}
@@ -904,11 +953,10 @@ What would you like to know about this opportunity?`;
                 <div className="flex items-center gap-1 border border-gray-300 rounded overflow-hidden">
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${
-                      viewMode === 'list'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
+                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${viewMode === 'list'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
                     title="List View"
                   >
                     <List className="w-3 h-3 md:w-4 md:h-4" />
@@ -916,11 +964,10 @@ What would you like to know about this opportunity?`;
                   </button>
                   <button
                     onClick={() => setViewMode('calendar')}
-                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${
-                      viewMode === 'calendar'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
+                    className={`px-2 md:px-3 py-2 md:py-1.5 flex items-center gap-1 text-xs md:text-sm transition-colors ${viewMode === 'calendar'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
                     title="Calendar View"
                   >
                     <CalendarDays className="w-3 h-3 md:w-4 md:h-4" />
@@ -933,15 +980,15 @@ What would you like to know about this opportunity?`;
                     <label className="text-xs md:text-sm text-gray-600 hidden sm:inline">Sort by</label>
                     <select
                       value={filters.sortBy}
-                      onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+                      onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
                       className="px-2 md:px-3 py-2 md:py-1.5 border border-gray-300 rounded text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation w-full sm:w-auto"
-                      >
-                        <option value="-modifiedDate">Updated Date (Newest)</option>
-                        <option value="modifiedDate">Updated Date (Oldest)</option>
-                        <option value="-postedDate">Posted Date (Newest)</option>
-                        <option value="postedDate">Posted Date (Oldest)</option>
-                        <option value="responseDate">Response Date (Earliest)</option>
-                      </select>
+                    >
+                      <option value="-modifiedDate">Updated Date (Newest)</option>
+                      <option value="modifiedDate">Updated Date (Oldest)</option>
+                      <option value="-postedDate">Posted Date (Newest)</option>
+                      <option value="postedDate">Posted Date (Oldest)</option>
+                      <option value="responseDate">Response Date (Earliest)</option>
+                    </select>
                   </>
                 )}
               </div>
@@ -950,251 +997,251 @@ What would you like to know about this opportunity?`;
             {/* List View - Opportunity Cards */}
             {viewMode === 'list' && (
               <>
-              <div className="space-y-3 md:space-y-4">
-              {paginatedOpps.length === 0 ? (
-                <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <FileText className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-sm md:text-base text-gray-600 font-medium">No opportunities found</p>
-                  <p className="text-xs md:text-sm text-gray-500 mt-1">Try adjusting your filters</p>
-                </div>
-              ) : (
-                paginatedOpps.map((opp) => {
-                  const contractValue = formatContractValue(opp);
-                  const agencyParts = opp.raw_data?.fullParentPathName?.split('.') || [];
-
-                  return (
-                    <div
-                      key={opp.id}
-                      onClick={() => setSelectedOpportunity(opp)}
-                      className="bg-white border border-gray-200 rounded-lg p-3 md:p-5 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer touch-manipulation"
-                    >
-                      {/* Title and Notice Type */}
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-                            <span className="text-xs text-gray-600 truncate">Notice ID: {opp.notice_id || opp.solicitation_number}</span>
-                          </div>
-                          <h3
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOpportunity(opp);
-                            }}
-                            className="text-sm md:text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-3 md:line-clamp-2 cursor-pointer"
-                          >
-                            {opp.title}
-                          </h3>
-                        </div>
-                        {contractValue && (
-                          <div className="flex-shrink-0">
-                            <span className="inline-block px-2.5 md:px-3 py-1 bg-emerald-100 text-emerald-700 text-xs md:text-sm font-bold rounded">
-                              {contractValue}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Agency Info */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 text-xs md:text-sm mb-3">
-                        <div className="min-w-0">
-                          <span className="font-medium text-gray-700 block">Department/Ind.Agency</span>
-                          <p className="text-gray-600 truncate">{agencyParts[0] || opp.contracting_office}</p>
-                        </div>
-                        {agencyParts[1] && (
-                          <div className="min-w-0">
-                            <span className="font-medium text-gray-700 block">Subtier</span>
-                            <p className="text-gray-600 truncate">{agencyParts[1]}</p>
-                          </div>
-                        )}
-                        {agencyParts[2] && (
-                          <div className="min-w-0">
-                            <span className="font-medium text-gray-700 block">Office</span>
-                            <p className="text-gray-600 truncate">{agencyParts[2]}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Contract Opportunities Section */}
-                      <div className="border-t border-gray-200 pt-2 md:pt-3 mt-2 md:mt-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm">
-                          <div>
-                            <span className="font-medium text-gray-700">Notice Type</span>
-                            <p className="text-gray-900">{opp.type}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-700">Updated Date</span>
-                            <p className="text-gray-900">
-                              {new Date(opp.updated_at).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-700">Published Date</span>
-                            <p className="text-gray-900">
-                              {new Date(opp.posted_date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </p>
-                          </div>
-                          {opp.response_deadline && (
-                            <div>
-                              <span className="font-medium text-gray-700">Response Deadline</span>
-                              <p className="text-red-600 font-medium">
-                                {new Date(opp.response_deadline).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Additional Info */}
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {opp.naics_code && (
-                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded">
-                              NAICS: {opp.naics_code}
-                            </span>
-                          )}
-                          {opp.set_aside_type && (
-                            <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded">
-                              {opp.set_aside_type}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* AI Summary Section */}
-                      {aiSummaries[opp.id] && (
-                        <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-xs font-semibold text-purple-900 mb-1">AI Summary</p>
-                              <p className="text-sm text-purple-800">{aiSummaries[opp.id]}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="mt-3 md:mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            generateAISummary(opp);
-                          }}
-                          disabled={loadingSummary === opp.id}
-                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] md:min-h-0"
-                        >
-                          {loadingSummary === opp.id ? (
-                            <>
-                              <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
-                              <span>Generating...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3 h-3" />
-                              <span>AI Summary</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openInChat(opp);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Discuss in Chat</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            shareOpportunity(opp);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
-                        >
-                          <Share2 className="w-3 h-3" />
-                          <span>Share</span>
-                        </button>
-
-                        {shareStatus?.id === opp.id && (
-                          <span className="flex items-center gap-1 px-2 py-2 md:py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
-                            <CheckCircle className="w-3 h-3" />
-                            <span className="hidden sm:inline">{shareStatus.message}</span>
-                            <span className="sm:hidden">Shared!</span>
-                          </span>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOpportunity(opp);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors md:ml-auto touch-manipulation min-h-[44px] md:min-h-0"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>View Details</span>
-                        </button>
-                      </div>
+                <div className="space-y-3 md:space-y-4">
+                  {paginatedOpps.length === 0 ? (
+                    <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <FileText className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm md:text-base text-gray-600 font-medium">No opportunities found</p>
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">Try adjusting your filters</p>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  ) : (
+                    paginatedOpps.map((opp) => {
+                      const contractValue = formatContractValue(opp);
+                      const agencyParts = opp.raw_data?.fullParentPathName?.split('.') || [];
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 pt-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs md:text-sm text-gray-600 hidden sm:inline">Results per page</span>
-                  <select
-                    value={resultsPerPage}
-                    onChange={(e) => {
-                      setResultsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="px-2 md:px-2 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm touch-manipulation"
-                  >
-                    <option value="10">10 per page</option>
-                    <option value="25">25 per page</option>
-                    <option value="50">50 per page</option>
-                    <option value="100">100 per page</option>
-                  </select>
+                      return (
+                        <div
+                          key={opp.id}
+                          onClick={() => setSelectedOpportunity(opp)}
+                          className="bg-white border border-gray-200 rounded-lg p-3 md:p-5 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer touch-manipulation"
+                        >
+                          {/* Title and Notice Type */}
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5 md:mb-2">
+                                <span className="text-xs text-gray-600 truncate">Notice ID: {opp.notice_id || opp.solicitation_number}</span>
+                              </div>
+                              <h3
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOpportunity(opp);
+                                }}
+                                className="text-sm md:text-base font-semibold text-blue-700 hover:text-blue-800 mb-2 line-clamp-3 md:line-clamp-2 cursor-pointer"
+                              >
+                                {opp.title}
+                              </h3>
+                            </div>
+                            {contractValue && (
+                              <div className="flex-shrink-0">
+                                <span className="inline-block px-2.5 md:px-3 py-1 bg-emerald-100 text-emerald-700 text-xs md:text-sm font-bold rounded">
+                                  {contractValue}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Agency Info */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 text-xs md:text-sm mb-3">
+                            <div className="min-w-0">
+                              <span className="font-medium text-gray-700 block">Department/Ind.Agency</span>
+                              <p className="text-gray-600 truncate">{agencyParts[0] || opp.contracting_office}</p>
+                            </div>
+                            {agencyParts[1] && (
+                              <div className="min-w-0">
+                                <span className="font-medium text-gray-700 block">Subtier</span>
+                                <p className="text-gray-600 truncate">{agencyParts[1]}</p>
+                              </div>
+                            )}
+                            {agencyParts[2] && (
+                              <div className="min-w-0">
+                                <span className="font-medium text-gray-700 block">Office</span>
+                                <p className="text-gray-600 truncate">{agencyParts[2]}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Contract Opportunities Section */}
+                          <div className="border-t border-gray-200 pt-2 md:pt-3 mt-2 md:mt-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Notice Type</span>
+                                <p className="text-gray-900">{opp.type}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Updated Date</span>
+                                <p className="text-gray-900">
+                                  {new Date(opp.updated_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Published Date</span>
+                                <p className="text-gray-900">
+                                  {new Date(opp.posted_date).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                              {opp.response_deadline && (
+                                <div>
+                                  <span className="font-medium text-gray-700">Response Deadline</span>
+                                  <p className="text-red-600 font-medium">
+                                    {new Date(opp.response_deadline).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {opp.naics_code && (
+                                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded">
+                                  NAICS: {opp.naics_code}
+                                </span>
+                              )}
+                              {opp.set_aside_type && (
+                                <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded">
+                                  {opp.set_aside_type}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* AI Summary Section */}
+                          {aiSummaries[opp.id] && (
+                            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs font-semibold text-purple-900 mb-1">AI Summary</p>
+                                  <p className="text-sm text-purple-800">{aiSummaries[opp.id]}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="mt-3 md:mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                generateAISummary(opp);
+                              }}
+                              disabled={loadingSummary === opp.id}
+                              className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] md:min-h-0"
+                            >
+                              {loadingSummary === opp.id ? (
+                                <>
+                                  <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
+                                  <span>Generating...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-3 h-3" />
+                                  <span>AI Summary</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openInChat(opp);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Discuss in Chat</span>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                shareOpportunity(opp);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
+                            >
+                              <Share2 className="w-3 h-3" />
+                              <span>Share</span>
+                            </button>
+
+                            {shareStatus?.id === opp.id && (
+                              <span className="flex items-center gap-1 px-2 py-2 md:py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                <CheckCircle className="w-3 h-3" />
+                                <span className="hidden sm:inline">{shareStatus.message}</span>
+                                <span className="sm:hidden">Shared!</span>
+                              </span>
+                            )}
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOpportunity(opp);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors md:ml-auto touch-manipulation min-h-[44px] md:min-h-0"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>View Details</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs md:text-sm text-gray-600 px-2">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 pt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs md:text-sm text-gray-600 hidden sm:inline">Results per page</span>
+                      <select
+                        value={resultsPerPage}
+                        onChange={(e) => {
+                          setResultsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="px-2 md:px-2 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm touch-manipulation"
+                      >
+                        <option value="10">10 per page</option>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs md:text-sm text-gray-600 px-2">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -1360,8 +1407,8 @@ const DeadlineCalendar = ({ opportunities, onSelectOpportunity, formatContractVa
   const isToday = (day) => {
     const today = new Date();
     return day === today.getDate() &&
-           selectedMonth === today.getMonth() &&
-           selectedYear === today.getFullYear();
+      selectedMonth === today.getMonth() &&
+      selectedYear === today.getFullYear();
   };
 
   const getDateKey = (day) => {
@@ -1427,13 +1474,12 @@ const DeadlineCalendar = ({ opportunities, onSelectOpportunity, formatContractVa
             return (
               <div
                 key={day}
-                className={`aspect-square border rounded-lg p-1 md:p-2 transition-all ${
-                  isToday(day)
-                    ? 'bg-blue-50 border-blue-500 border-2'
-                    : hasDeadlines
+                className={`aspect-square border rounded-lg p-1 md:p-2 transition-all ${isToday(day)
+                  ? 'bg-blue-50 border-blue-500 border-2'
+                  : hasDeadlines
                     ? 'bg-red-50 border-red-300 hover:bg-red-100 cursor-pointer'
                     : 'bg-white border-gray-200 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <div className="text-xs md:text-sm font-medium text-gray-900 mb-1">
                   {day}
@@ -1521,12 +1567,12 @@ const DeadlineCalendar = ({ opportunities, onSelectOpportunity, formatContractVa
             const date = new Date(dateKey);
             return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
           }).length === 0 && (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 font-medium">No deadlines this month</p>
-              <p className="text-xs text-gray-500 mt-1">Navigate to another month to see more deadlines</p>
-            </div>
-          )}
+              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-sm text-gray-600 font-medium">No deadlines this month</p>
+                <p className="text-xs text-gray-500 mt-1">Navigate to another month to see more deadlines</p>
+              </div>
+            )}
         </div>
       </div>
     </div>
@@ -1851,24 +1897,23 @@ What would you like to know about this opportunity?`;
                 <div className="p-4 bg-white space-y-4">
                   {/* Type and Status */}
                   <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-sm font-medium rounded ${
-              opportunity.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
-              opportunity.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
-              opportunity.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
-              'bg-gray-100 text-gray-700'
-            }`}>
-              {opportunity.type}
-            </span>
-            {opportunity.set_aside_type && (
-              <span className="px-3 py-1 text-sm font-medium rounded bg-purple-100 text-purple-700">
-                {opportunity.set_aside_type}
-              </span>
-            )}
-            {opportunity.raw_data?.active && (
-              <span className="px-3 py-1 text-sm font-medium rounded bg-green-100 text-green-700 flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" />
-                Active
-              </span>
+                    <span className={`px-3 py-1 text-sm font-medium rounded ${opportunity.type === 'Combined Synopsis/Solicitation' ? 'bg-green-100 text-green-700' :
+                      opportunity.type === 'Sources Sought' ? 'bg-blue-100 text-blue-700' :
+                        opportunity.type === 'Presolicitation' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                      }`}>
+                      {opportunity.type}
+                    </span>
+                    {opportunity.set_aside_type && (
+                      <span className="px-3 py-1 text-sm font-medium rounded bg-purple-100 text-purple-700">
+                        {opportunity.set_aside_type}
+                      </span>
+                    )}
+                    {opportunity.raw_data?.active && (
+                      <span className="px-3 py-1 text-sm font-medium rounded bg-green-100 text-green-700 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Active
+                      </span>
                     )}
                   </div>
 
@@ -2032,35 +2077,35 @@ What would you like to know about this opportunity?`;
                 <div className="p-4 bg-white space-y-3">
                   {/* Classification data will go here */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                Posted Date
-              </p>
-              <p className="text-sm font-semibold text-gray-900">
-                {new Date(opportunity.posted_date).toLocaleDateString()}
-              </p>
-            </div>
-            {opportunity.response_deadline && (
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <p className="text-xs text-orange-600 mb-1 flex items-center gap-1 font-medium">
-                  <Clock className="w-3 h-3" />
-                  Response Deadline
-                </p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {new Date(opportunity.response_deadline).toLocaleDateString()}
-                </p>
-              </div>
-            )}
-            {opportunity.archive_date && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Archive Date</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {new Date(opportunity.archive_date).toLocaleDateString()}
-                </p>
-              </div>
-            )}
-          </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        Posted Date
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {new Date(opportunity.posted_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {opportunity.response_deadline && (
+                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                        <p className="text-xs text-orange-600 mb-1 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3" />
+                          Response Deadline
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {new Date(opportunity.response_deadline).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    {opportunity.archive_date && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-xs text-gray-500 mb-1">Archive Date</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {new Date(opportunity.archive_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* NAICS and PSC Codes */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2088,637 +2133,635 @@ What would you like to know about this opportunity?`;
             </div>
 
             {/* Place of Performance */}
-          {placeOfPerformance && (
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-600" />
-                Place of Performance
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
-                {placeOfPerformance.city && (
-                  <p><span className="font-medium">City:</span> {placeOfPerformance.city.name}</p>
-                )}
-                {placeOfPerformance.state && (
-                  <p><span className="font-medium">State:</span> {placeOfPerformance.state.name}</p>
-                )}
-                {placeOfPerformance.country && (
-                  <p><span className="font-medium">Country:</span> {placeOfPerformance.country.name}</p>
-                )}
-                {placeOfPerformance.zip && (
-                  <p><span className="font-medium">ZIP:</span> {placeOfPerformance.zip}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {/* Agency Hierarchy - Enhanced with Department → Sub-tier → Office Mapping */}
-            {agencyHierarchy.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-blue-600" />
-                  Federal Agency Hierarchy
-                  <span className="text-xs text-gray-500 font-normal">(Department → Sub-tier → Office)</span>
+            {placeOfPerformance && (
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-purple-600" />
+                  Place of Performance
                 </h3>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                  {/* Hierarchical Flow Visualization */}
-                  <div className="space-y-3">
-                    {agencyHierarchy.map((level, idx) => {
-                      const levelLabels = ['Department', 'Sub-tier Agency', 'Office/Division', 'Sub-Office', 'Unit'];
-                      const levelLabel = levelLabels[idx] || `Level ${idx + 1}`;
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+                  {placeOfPerformance.city && (
+                    <p><span className="font-medium">City:</span> {placeOfPerformance.city.name}</p>
+                  )}
+                  {placeOfPerformance.state && (
+                    <p><span className="font-medium">State:</span> {placeOfPerformance.state.name}</p>
+                  )}
+                  {placeOfPerformance.country && (
+                    <p><span className="font-medium">Country:</span> {placeOfPerformance.country.name}</p>
+                  )}
+                  {placeOfPerformance.zip && (
+                    <p><span className="font-medium">ZIP:</span> {placeOfPerformance.zip}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
-                      return (
-                        <div key={idx} className="relative">
-                          {/* Level Card */}
-                          <div className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${
-                            idx === 0 ? 'border-blue-600' :
-                            idx === 1 ? 'border-indigo-500' :
-                            idx === 2 ? 'border-purple-500' :
-                            'border-gray-400'
-                          }`}>
-                            <div className="flex items-start gap-3">
-                              {/* Level Indicator */}
-                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                idx === 0 ? 'bg-blue-600' :
-                                idx === 1 ? 'bg-indigo-500' :
-                                idx === 2 ? 'bg-purple-500' :
-                                'bg-gray-400'
+            <div className="space-y-4">
+              {/* Agency Hierarchy - Enhanced with Department → Sub-tier → Office Mapping */}
+              {agencyHierarchy.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Federal Agency Hierarchy
+                    <span className="text-xs text-gray-500 font-normal">(Department → Sub-tier → Office)</span>
+                  </h3>
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                    {/* Hierarchical Flow Visualization */}
+                    <div className="space-y-3">
+                      {agencyHierarchy.map((level, idx) => {
+                        const levelLabels = ['Department', 'Sub-tier Agency', 'Office/Division', 'Sub-Office', 'Unit'];
+                        const levelLabel = levelLabels[idx] || `Level ${idx + 1}`;
+
+                        return (
+                          <div key={idx} className="relative">
+                            {/* Level Card */}
+                            <div className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${idx === 0 ? 'border-blue-600' :
+                              idx === 1 ? 'border-indigo-500' :
+                                idx === 2 ? 'border-purple-500' :
+                                  'border-gray-400'
                               }`}>
-                                {idx + 1}
-                              </div>
-
-                              {/* Level Content */}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                  {levelLabel}
-                                </p>
-                                <p className="text-sm font-medium text-gray-900 leading-snug">
-                                  {level.trim()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Connector Arrow */}
-                          {idx < agencyHierarchy.length - 1 && (
-                            <div className="flex justify-center py-1">
-                              <ChevronDown className="w-5 h-5 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Full Path Display */}
-                  <div className="mt-4 pt-4 border-t border-blue-200">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Full Organizational Path:</p>
-                    <p className="text-xs text-gray-700 font-mono bg-white p-2 rounded border border-blue-100">
-                      {agencyHierarchy.join(' → ')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Past Performance History */}
-            {awardInfo && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-600" />
-                  Past Performance & Award History
-                </h3>
-                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    {/* Award Amount */}
-                    {awardInfo.amount && (
-                      <div className="bg-white rounded-lg p-3 border border-amber-200">
-                        <p className="text-xs text-gray-500 mb-1">Award Amount</p>
-                        <p className="text-lg font-bold text-amber-700">
-                          ${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          ${parseFloat(awardInfo.amount).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Award Date */}
-                    {awardInfo.date && (
-                      <div className="bg-white rounded-lg p-3 border border-amber-200">
-                        <p className="text-xs text-gray-500 mb-1">Award Date</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {new Date(awardInfo.date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24))} days ago
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Awardee */}
-                    {awardInfo.awardee && (
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 md:col-span-2">
-                        <p className="text-xs text-gray-500 mb-1">Awardee / Incumbent Contractor</p>
-                        <p className="text-sm font-semibold text-gray-900">{awardInfo.awardee.name || 'N/A'}</p>
-                        {awardInfo.awardee.location && (
-                          <p className="text-xs text-gray-600 mt-1">📍 {awardInfo.awardee.location.city}, {awardInfo.awardee.location.state}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Contract Modifications */}
-                  {opportunity.raw_data?.modifications && opportunity.raw_data.modifications.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-amber-200">
-                      <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <FileText className="w-3 h-3" />
-                        Contract Modifications ({opportunity.raw_data.modifications.length})
-                      </p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {opportunity.raw_data.modifications.map((mod, idx) => (
-                          <div key={idx} className="bg-white rounded p-2 text-xs border border-amber-100">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-semibold text-gray-900">Mod #{mod.number || idx + 1}</span>
-                              {mod.amount && (
-                                <span className="text-amber-700 font-bold">${parseFloat(mod.amount).toLocaleString()}</span>
-                              )}
-                            </div>
-                            {mod.date && (
-                              <p className="text-gray-600">Date: {new Date(mod.date).toLocaleDateString()}</p>
-                            )}
-                            {mod.description && (
-                              <p className="text-gray-700 mt-1 line-clamp-2">{mod.description}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Competitive Intelligence Dashboard */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
-                Competitive Intelligence
-              </h3>
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Market Position */}
-                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Trophy className="w-4 h-4 text-indigo-600" />
-                      <p className="text-xs font-semibold text-gray-700">Market Position</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-600">Set-Aside:</span>
-                        <span className="font-semibold text-gray-900">
-                          {opportunity.set_aside_type || 'Open Competition'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-600">Status:</span>
-                        <span className={`font-semibold ${opportunity.raw_data?.active ? 'text-green-600' : 'text-red-600'}`}>
-                          {opportunity.raw_data?.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Competition Level */}
-                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-4 h-4 text-indigo-600" />
-                      <p className="text-xs font-semibold text-gray-700">Competition Level</p>
-                    </div>
-                    <div className="text-center py-2">
-                      <p className="text-2xl font-bold text-indigo-600">
-                        {opportunity.set_aside_type ? 'Restricted' : 'Open'}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {opportunity.set_aside_type
-                          ? 'Set-aside limits competition'
-                          : 'Full and open competition'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Win Probability Indicator */}
-                  <div className="bg-white rounded-lg p-3 border border-indigo-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Award className="w-4 h-4 text-indigo-600" />
-                      <p className="text-xs font-semibold text-gray-700">Win Factors</p>
-                    </div>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${awardInfo ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
-                        <span className="text-gray-700">
-                          {awardInfo ? 'Incumbent present' : 'No incumbent data'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${opportunity.set_aside_type ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                        <span className="text-gray-700">
-                          {opportunity.set_aside_type ? 'Set-aside advantage' : 'Open competition'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${opportunity.response_deadline ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                        <span className="text-gray-700">
-                          {opportunity.response_deadline
-                            ? `${Math.floor((new Date(opportunity.response_deadline) - new Date()) / (1000 * 60 * 60 * 24))} days to respond`
-                            : 'No deadline set'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Incumbent vs New Bidder Analysis */}
-                {awardInfo?.awardee && (
-                  <div className="mt-4 pt-4 border-t border-indigo-200">
-                    <p className="text-xs font-semibold text-gray-700 mb-3">Incumbent Contractor Analysis</p>
-                    <div className="bg-white rounded-lg p-3 border border-indigo-100">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{awardInfo.awardee.name || 'Current Incumbent'}</p>
-                          <p className="text-xs text-gray-600">Incumbent position holder</p>
-                        </div>
-                        <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
-                          Incumbent
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
-                        {awardInfo.amount && (
-                          <div>
-                            <p className="text-gray-500">Contract Value</p>
-                            <p className="font-semibold text-gray-900">${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M</p>
-                          </div>
-                        )}
-                        {awardInfo.date && (
-                          <div>
-                            <p className="text-gray-500">Time as Incumbent</p>
-                            <p className="font-semibold text-gray-900">
-                              {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24 * 365))} years
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
-                        <p className="font-semibold text-blue-900 mb-1">🎯 Bidding Strategy</p>
-                        <p className="text-blue-800">
-                          As a new bidder, emphasize innovation, cost savings, and technical differentiation to compete against the incumbent's incumbency advantage and institutional knowledge.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Contact Information Section - SAM.gov Style Accordion */}
-            {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && (
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => toggleSection('contact')}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
-                >
-                  <h3 className="text-base font-bold text-gray-900">Contact Information</h3>
-                  {expandedSections.contact ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
-                {expandedSections.contact && (
-                  <div className="p-4 bg-white space-y-4">
-                    {/* Primary and Alternative Contacts Side by Side */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Primary Point of Contact */}
-                      {opportunity.raw_data.pointOfContact[0] && (
-                        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                          <h4 className="text-sm font-bold text-gray-900 mb-3">Primary Point of Contact</h4>
-                          <div className="space-y-3">
-                            <div className="bg-white p-3 rounded">
-                              <p className="text-lg font-semibold text-gray-900 mb-2">
-                                {opportunity.raw_data.pointOfContact[0].fullName || '(blank)'}
-                              </p>
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-gray-600">Email</p>
-                                  {opportunity.raw_data.pointOfContact[0].email ? (
-                                    <button
-                                      onClick={() => openEmailClient(
-                                        opportunity.raw_data.pointOfContact[0].email,
-                                        `Inquiry: ${opportunity.solicitation_number}`,
-                                        `Dear ${opportunity.raw_data.pointOfContact[0].fullName},\n\n`
-                                      )}
-                                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                                    >
-                                      {opportunity.raw_data.pointOfContact[0].email}
-                                    </button>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">(blank)</p>
-                                  )}
+                              <div className="flex items-start gap-3">
+                                {/* Level Indicator */}
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${idx === 0 ? 'bg-blue-600' :
+                                  idx === 1 ? 'bg-indigo-500' :
+                                    idx === 2 ? 'bg-purple-500' :
+                                      'bg-gray-400'
+                                  }`}>
+                                  {idx + 1}
                                 </div>
-                                <div>
-                                  <p className="text-xs text-gray-600">Phone Number</p>
-                                  {opportunity.raw_data.pointOfContact[0].phone ? (
-                                    <button
-                                      onClick={() => initiatePhoneCall(opportunity.raw_data.pointOfContact[0].phone)}
-                                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                                    >
-                                      {formatPhoneNumber(opportunity.raw_data.pointOfContact[0].phone)}
-                                    </button>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">(blank)</p>
-                                  )}
+
+                                {/* Level Content */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                    {levelLabel}
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 leading-snug">
+                                    {level.trim()}
+                                  </p>
                                 </div>
                               </div>
                             </div>
+
+                            {/* Connector Arrow */}
+                            {idx < agencyHierarchy.length - 1 && (
+                              <div className="flex justify-center py-1">
+                                <ChevronDown className="w-5 h-5 text-gray-400" />
+                              </div>
+                            )}
                           </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Full Path Display */}
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <p className="text-xs font-semibold text-gray-600 mb-2">Full Organizational Path:</p>
+                      <p className="text-xs text-gray-700 font-mono bg-white p-2 rounded border border-blue-100">
+                        {agencyHierarchy.join(' → ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Past Performance History */}
+              {awardInfo && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-600" />
+                    Past Performance & Award History
+                  </h3>
+                  <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* Award Amount */}
+                      {awardInfo.amount && (
+                        <div className="bg-white rounded-lg p-3 border border-amber-200">
+                          <p className="text-xs text-gray-500 mb-1">Award Amount</p>
+                          <p className="text-lg font-bold text-amber-700">
+                            ${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            ${parseFloat(awardInfo.amount).toLocaleString()}
+                          </p>
                         </div>
                       )}
 
-                      {/* Alternative Point of Contact */}
-                      <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                        <h4 className="text-sm font-bold text-gray-900 mb-3">Alternative Point of Contact</h4>
-                        <div className="space-y-3">
-                          {opportunity.raw_data.pointOfContact[1] ? (
-                            <div className="bg-white p-3 rounded">
-                              <p className="text-lg font-semibold text-gray-900 mb-2">
-                                {opportunity.raw_data.pointOfContact[1].fullName}
+                      {/* Award Date */}
+                      {awardInfo.date && (
+                        <div className="bg-white rounded-lg p-3 border border-amber-200">
+                          <p className="text-xs text-gray-500 mb-1">Award Date</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {new Date(awardInfo.date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24))} days ago
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Awardee */}
+                      {awardInfo.awardee && (
+                        <div className="bg-white rounded-lg p-3 border border-amber-200 md:col-span-2">
+                          <p className="text-xs text-gray-500 mb-1">Awardee / Incumbent Contractor</p>
+                          <p className="text-sm font-semibold text-gray-900">{awardInfo.awardee.name || 'N/A'}</p>
+                          {awardInfo.awardee.location && (
+                            <p className="text-xs text-gray-600 mt-1">📍 {awardInfo.awardee.location.city}, {awardInfo.awardee.location.state}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contract Modifications */}
+                    {opportunity.raw_data?.modifications && opportunity.raw_data.modifications.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-amber-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <FileText className="w-3 h-3" />
+                          Contract Modifications ({opportunity.raw_data.modifications.length})
+                        </p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {opportunity.raw_data.modifications.map((mod, idx) => (
+                            <div key={idx} className="bg-white rounded p-2 text-xs border border-amber-100">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="font-semibold text-gray-900">Mod #{mod.number || idx + 1}</span>
+                                {mod.amount && (
+                                  <span className="text-amber-700 font-bold">${parseFloat(mod.amount).toLocaleString()}</span>
+                                )}
+                              </div>
+                              {mod.date && (
+                                <p className="text-gray-600">Date: {new Date(mod.date).toLocaleDateString()}</p>
+                              )}
+                              {mod.description && (
+                                <p className="text-gray-700 mt-1 line-clamp-2">{mod.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Competitive Intelligence Dashboard */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-600" />
+                  Competitive Intelligence
+                </h3>
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Market Position */}
+                    <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Trophy className="w-4 h-4 text-indigo-600" />
+                        <p className="text-xs font-semibold text-gray-700">Market Position</p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Set-Aside:</span>
+                          <span className="font-semibold text-gray-900">
+                            {opportunity.set_aside_type || 'Open Competition'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Status:</span>
+                          <span className={`font-semibold ${opportunity.raw_data?.active ? 'text-green-600' : 'text-red-600'}`}>
+                            {opportunity.raw_data?.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Competition Level */}
+                    <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-indigo-600" />
+                        <p className="text-xs font-semibold text-gray-700">Competition Level</p>
+                      </div>
+                      <div className="text-center py-2">
+                        <p className="text-2xl font-bold text-indigo-600">
+                          {opportunity.set_aside_type ? 'Restricted' : 'Open'}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {opportunity.set_aside_type
+                            ? 'Set-aside limits competition'
+                            : 'Full and open competition'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Win Probability Indicator */}
+                    <div className="bg-white rounded-lg p-3 border border-indigo-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Award className="w-4 h-4 text-indigo-600" />
+                        <p className="text-xs font-semibold text-gray-700">Win Factors</p>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${awardInfo ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-gray-700">
+                            {awardInfo ? 'Incumbent present' : 'No incumbent data'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${opportunity.set_aside_type ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-gray-700">
+                            {opportunity.set_aside_type ? 'Set-aside advantage' : 'Open competition'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${opportunity.response_deadline ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-gray-700">
+                            {opportunity.response_deadline
+                              ? `${Math.floor((new Date(opportunity.response_deadline) - new Date()) / (1000 * 60 * 60 * 24))} days to respond`
+                              : 'No deadline set'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Incumbent vs New Bidder Analysis */}
+                  {awardInfo?.awardee && (
+                    <div className="mt-4 pt-4 border-t border-indigo-200">
+                      <p className="text-xs font-semibold text-gray-700 mb-3">Incumbent Contractor Analysis</p>
+                      <div className="bg-white rounded-lg p-3 border border-indigo-100">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{awardInfo.awardee.name || 'Current Incumbent'}</p>
+                            <p className="text-xs text-gray-600">Incumbent position holder</p>
+                          </div>
+                          <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
+                            Incumbent
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                          {awardInfo.amount && (
+                            <div>
+                              <p className="text-gray-500">Contract Value</p>
+                              <p className="font-semibold text-gray-900">${(parseFloat(awardInfo.amount) / 1000000).toFixed(2)}M</p>
+                            </div>
+                          )}
+                          {awardInfo.date && (
+                            <div>
+                              <p className="text-gray-500">Time as Incumbent</p>
+                              <p className="font-semibold text-gray-900">
+                                {Math.floor((new Date() - new Date(awardInfo.date)) / (1000 * 60 * 60 * 24 * 365))} years
                               </p>
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-gray-600">Email</p>
-                                  {opportunity.raw_data.pointOfContact[1].email ? (
-                                    <button
-                                      onClick={() => openEmailClient(
-                                        opportunity.raw_data.pointOfContact[1].email,
-                                        `Inquiry: ${opportunity.solicitation_number}`,
-                                        `Dear ${opportunity.raw_data.pointOfContact[1].fullName},\n\n`
-                                      )}
-                                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-                                    >
-                                      {opportunity.raw_data.pointOfContact[1].email}
-                                    </button>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">(blank)</p>
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="text-xs text-gray-600">Phone Number</p>
-                                  {opportunity.raw_data.pointOfContact[1].phone ? (
-                                    <button
-                                      onClick={() => initiatePhoneCall(opportunity.raw_data.pointOfContact[1].phone)}
-                                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                                    >
-                                      {formatPhoneNumber(opportunity.raw_data.pointOfContact[1].phone)}
-                                    </button>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">(blank)</p>
-                                  )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                          <p className="font-semibold text-blue-900 mb-1">🎯 Bidding Strategy</p>
+                          <p className="text-blue-800">
+                            As a new bidder, emphasize innovation, cost savings, and technical differentiation to compete against the incumbent's incumbency advantage and institutional knowledge.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information Section - SAM.gov Style Accordion */}
+              {opportunity.raw_data?.pointOfContact && opportunity.raw_data.pointOfContact.length > 0 && (
+                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('contact')}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    <h3 className="text-base font-bold text-gray-900">Contact Information</h3>
+                    {expandedSections.contact ? (
+                      <ChevronUp className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-600" />
+                    )}
+                  </button>
+                  {expandedSections.contact && (
+                    <div className="p-4 bg-white space-y-4">
+                      {/* Primary and Alternative Contacts Side by Side */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Primary Point of Contact */}
+                        {opportunity.raw_data.pointOfContact[0] && (
+                          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                            <h4 className="text-sm font-bold text-gray-900 mb-3">Primary Point of Contact</h4>
+                            <div className="space-y-3">
+                              <div className="bg-white p-3 rounded">
+                                <p className="text-lg font-semibold text-gray-900 mb-2">
+                                  {opportunity.raw_data.pointOfContact[0].fullName || '(blank)'}
+                                </p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-xs text-gray-600">Email</p>
+                                    {opportunity.raw_data.pointOfContact[0].email ? (
+                                      <button
+                                        onClick={() => openEmailClient(
+                                          opportunity.raw_data.pointOfContact[0].email,
+                                          `Inquiry: ${opportunity.solicitation_number}`,
+                                          `Dear ${opportunity.raw_data.pointOfContact[0].fullName},\n\n`
+                                        )}
+                                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                                      >
+                                        {opportunity.raw_data.pointOfContact[0].email}
+                                      </button>
+                                    ) : (
+                                      <p className="text-sm text-gray-500">(blank)</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600">Phone Number</p>
+                                    {opportunity.raw_data.pointOfContact[0].phone ? (
+                                      <button
+                                        onClick={() => initiatePhoneCall(opportunity.raw_data.pointOfContact[0].phone)}
+                                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                                      >
+                                        {formatPhoneNumber(opportunity.raw_data.pointOfContact[0].phone)}
+                                      </button>
+                                    ) : (
+                                      <p className="text-sm text-gray-500">(blank)</p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          ) : (
-                            <div className="bg-white p-3 rounded">
-                              <p className="text-lg font-semibold text-gray-900 mb-2">(blank)</p>
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-gray-600">Email</p>
-                                  <p className="text-sm text-gray-500">(blank)</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-gray-600">Phone Number</p>
-                                  <p className="text-sm text-gray-500">(blank)</p>
+                          </div>
+                        )}
+
+                        {/* Alternative Point of Contact */}
+                        <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                          <h4 className="text-sm font-bold text-gray-900 mb-3">Alternative Point of Contact</h4>
+                          <div className="space-y-3">
+                            {opportunity.raw_data.pointOfContact[1] ? (
+                              <div className="bg-white p-3 rounded">
+                                <p className="text-lg font-semibold text-gray-900 mb-2">
+                                  {opportunity.raw_data.pointOfContact[1].fullName}
+                                </p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-xs text-gray-600">Email</p>
+                                    {opportunity.raw_data.pointOfContact[1].email ? (
+                                      <button
+                                        onClick={() => openEmailClient(
+                                          opportunity.raw_data.pointOfContact[1].email,
+                                          `Inquiry: ${opportunity.solicitation_number}`,
+                                          `Dear ${opportunity.raw_data.pointOfContact[1].fullName},\n\n`
+                                        )}
+                                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                                      >
+                                        {opportunity.raw_data.pointOfContact[1].email}
+                                      </button>
+                                    ) : (
+                                      <p className="text-sm text-gray-500">(blank)</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600">Phone Number</p>
+                                    {opportunity.raw_data.pointOfContact[1].phone ? (
+                                      <button
+                                        onClick={() => initiatePhoneCall(opportunity.raw_data.pointOfContact[1].phone)}
+                                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                                      >
+                                        {formatPhoneNumber(opportunity.raw_data.pointOfContact[1].phone)}
+                                      </button>
+                                    ) : (
+                                      <p className="text-sm text-gray-500">(blank)</p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="bg-white p-3 rounded">
+                                <p className="text-lg font-semibold text-gray-900 mb-2">(blank)</p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-xs text-gray-600">Email</p>
+                                    <p className="text-sm text-gray-500">(blank)</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600">Phone Number</p>
+                                    <p className="text-sm text-gray-500">(blank)</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contracting Office Address */}
+                      <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
+                        <h4 className="text-sm font-bold text-gray-900 mb-3">Contracting Office Address</h4>
+                        <div className="text-sm text-gray-900">
+                          {opportunity.contracting_office && (
+                            <p className="font-semibold mb-1">{opportunity.contracting_office}</p>
+                          )}
+                          {placeOfPerformance?.street1 && <p>{placeOfPerformance.street1}</p>}
+                          {placeOfPerformance?.city && placeOfPerformance?.state && (
+                            <p>
+                              {placeOfPerformance.city.name}, {placeOfPerformance.state.code} {placeOfPerformance.zip} {placeOfPerformance.country?.name || 'USA'}
+                            </p>
                           )}
                         </div>
                       </div>
                     </div>
+                  )}
+                </div>
+              )}
 
-                    {/* Contracting Office Address */}
-                    <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
-                      <h4 className="text-sm font-bold text-gray-900 mb-3">Contracting Office Address</h4>
-                      <div className="text-sm text-gray-900">
-                        {opportunity.contracting_office && (
-                          <p className="font-semibold mb-1">{opportunity.contracting_office}</p>
-                        )}
-                        {placeOfPerformance?.street1 && <p>{placeOfPerformance.street1}</p>}
-                        {placeOfPerformance?.city && placeOfPerformance?.state && (
-                          <p>
-                            {placeOfPerformance.city.name}, {placeOfPerformance.state.code} {placeOfPerformance.zip} {placeOfPerformance.country?.name || 'USA'}
+              {/* Incumbent Contractor Analysis */}
+              {opportunity.naics_code && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-600" />
+                    Incumbent Contractors (NAICS {opportunity.naics_code})
+                  </h3>
+                  {loadingIncumbent ? (
+                    <div className="bg-gray-50 p-4 rounded text-center">
+                      <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading incumbent data...</p>
+                    </div>
+                  ) : incumbentData && incumbentData.length > 0 ? (
+                    <div className="space-y-2">
+                      {incumbentData.slice(0, 3).map((contract, idx) => (
+                        <div key={idx} className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-sm font-semibold text-gray-900">{contract.vendor_name || 'Unknown Vendor'}</p>
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded">
+                              ${(contract.award_amount / 1000000).toFixed(1)}M
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 mb-1">
+                            Award Date: {contract.award_date ? new Date(contract.award_date).toLocaleDateString() : 'N/A'}
                           </p>
-                        )}
-                      </div>
+                          <p className="text-xs text-gray-500">
+                            {contract.description?.substring(0, 100) || 'No description available'}...
+                          </p>
+                        </div>
+                      ))}
+                      {incumbentData.length > 3 && (
+                        <p className="text-xs text-gray-500 text-center">
+                          + {incumbentData.length - 3} more incumbent contracts
+                        </p>
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <div className="bg-gray-50 p-3 rounded text-sm text-gray-600">
+                      No incumbent contractor data available for this NAICS code.
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {/* Incumbent Contractor Analysis */}
-            {opportunity.naics_code && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-600" />
-                  Incumbent Contractors (NAICS {opportunity.naics_code})
+              {/* Contact Tracking & Notes */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-green-600" />
+                  Track This Opportunity
                 </h3>
-                {loadingIncumbent ? (
-                  <div className="bg-gray-50 p-4 rounded text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Loading incumbent data...</p>
-                  </div>
-                ) : incumbentData && incumbentData.length > 0 ? (
-                  <div className="space-y-2">
-                    {incumbentData.slice(0, 3).map((contract, idx) => (
-                      <div key={idx} className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-semibold text-gray-900">{contract.vendor_name || 'Unknown Vendor'}</p>
-                          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded">
-                            ${(contract.award_amount / 1000000).toFixed(1)}M
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-1">
-                          Award Date: {contract.award_date ? new Date(contract.award_date).toLocaleDateString() : 'N/A'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {contract.description?.substring(0, 100) || 'No description available'}...
-                        </p>
-                      </div>
-                    ))}
-                    {incumbentData.length > 3 && (
-                      <p className="text-xs text-gray-500 text-center">
-                        + {incumbentData.length - 3} more incumbent contracts
-                      </p>
+                <div className="space-y-3">
+                  <textarea
+                    placeholder="Add notes about outreach, contacts, or next steps..."
+                    value={contactNotes}
+                    onChange={(e) => setContactNotes(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows="3"
+                  />
+                  <button
+                    onClick={saveToTracking}
+                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {savedToTracking ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Saved to Tracking!
+                      </>
+                    ) : (
+                      <>
+                        <Users className="w-4 h-4" />
+                        Save to My Opportunities
+                      </>
                     )}
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 p-3 rounded text-sm text-gray-600">
-                    No incumbent contractor data available for this NAICS code.
-                  </div>
-                )}
+                  </button>
+                  <p className="text-xs text-gray-600">
+                    Track your outreach efforts and maintain notes for this opportunity. Saved opportunities can be viewed later.
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* Contact Tracking & Notes */}
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-green-600" />
-                Track This Opportunity
-              </h3>
-              <div className="space-y-3">
-                <textarea
-                  placeholder="Add notes about outreach, contacts, or next steps..."
-                  value={contactNotes}
-                  onChange={(e) => setContactNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  rows="3"
-                />
-                <button
-                  onClick={saveToTracking}
-                  className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              {/* Large Go to SAM.gov Button */}
+              {opportunity.raw_data?.uiLink && (
+                <a
+                  href={opportunity.raw_data.uiLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold text-lg rounded-xl transition-all shadow-xl ring-4 ring-blue-200 hover:ring-blue-300"
                 >
-                  {savedToTracking ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Saved to Tracking!
-                    </>
-                  ) : (
-                    <>
-                      <Users className="w-4 h-4" />
-                      Save to My Opportunities
-                    </>
-                  )}
-                </button>
-                <p className="text-xs text-gray-600">
-                  Track your outreach efforts and maintain notes for this opportunity. Saved opportunities can be viewed later.
-                </p>
-              </div>
-            </div>
+                  <ExternalLink className="w-6 h-6" />
+                  Go to SAM.gov Record Page
+                </a>
+              )}
 
-            {/* Large Go to SAM.gov Button */}
-            {opportunity.raw_data?.uiLink && (
-              <a
-                href={opportunity.raw_data.uiLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold text-lg rounded-xl transition-all shadow-xl ring-4 ring-blue-200 hover:ring-blue-300"
-              >
-                <ExternalLink className="w-6 h-6" />
-                Go to SAM.gov Record Page
-              </a>
-            )}
+              {/* Attachments/Links Section - SAM.gov Style Accordion */}
+              {opportunity.raw_data?.resourceLinks && opportunity.raw_data.resourceLinks.length > 0 && (
+                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('attachments')}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    <h3 className="text-base font-bold text-gray-900">Attachments/Links</h3>
+                    {expandedSections.attachments ? (
+                      <ChevronUp className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-600" />
+                    )}
+                  </button>
+                  {expandedSections.attachments && (
+                    <div className="p-4 bg-white space-y-4">
+                      {/* Links */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Links</h4>
+                        {opportunity.raw_data.resourceLinks.length > 0 ? (
+                          <p className="text-sm text-gray-600">No links have been added to this opportunity.</p>
+                        ) : null}
+                      </div>
 
-            {/* Attachments/Links Section - SAM.gov Style Accordion */}
-            {opportunity.raw_data?.resourceLinks && opportunity.raw_data.resourceLinks.length > 0 && (
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => toggleSection('attachments')}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
-                >
-                  <h3 className="text-base font-bold text-gray-900">Attachments/Links</h3>
-                  {expandedSections.attachments ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
-                {expandedSections.attachments && (
-                  <div className="p-4 bg-white space-y-4">
-                    {/* Links */}
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Links</h4>
-                      {opportunity.raw_data.resourceLinks.length > 0 ? (
-                        <p className="text-sm text-gray-600">No links have been added to this opportunity.</p>
-                      ) : null}
-                    </div>
+                      {/* Attachments */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900">Attachments</h4>
+                          <div className="flex gap-2">
+                            <button className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
+                              Download All
+                            </button>
+                            <button className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+                              Request Access
+                            </button>
+                          </div>
+                        </div>
 
-                    {/* Attachments */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-gray-900">Attachments</h4>
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
-                            Download All
-                          </button>
-                          <button className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
-                            Request Access
-                          </button>
+                        {/* Attachments Table */}
+                        <div className="border border-gray-300 rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-100 border-b border-gray-300">
+                              <tr>
+                                <th className="px-4 py-2 text-left font-semibold text-gray-700">Document</th>
+                                <th className="px-4 py-2 text-left font-semibold text-gray-700">File Size</th>
+                                <th className="px-4 py-2 text-left font-semibold text-gray-700">Access</th>
+                                <th className="px-4 py-2 text-left font-semibold text-gray-700">Updated Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {opportunity.raw_data.resourceLinks.map((link, idx) => {
+                                // Extract filename from URL
+                                const filename = link.split('/').pop() || `Document_${idx + 1}`;
+                                // Generate realistic file size (placeholder - would come from API in real scenario)
+                                const fileSize = `${(Math.random() * 1000 + 100).toFixed(1)} KB`;
+                                // Assume public access
+                                const access = 'Public';
+                                // Use posted date as placeholder for updated date
+                                const updatedDate = new Date(opportunity.posted_date).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                });
+
+                                return (
+                                  <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="px-4 py-3">
+                                      <a
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-2"
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                        {filename.length > 50 ? filename.substring(0, 47) + '...' : filename}
+                                      </a>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">{fileSize}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                        <Lock className="w-3 h-3" />
+                                        {access}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">{updatedDate}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
-
-                      {/* Attachments Table */}
-                      <div className="border border-gray-300 rounded-lg overflow-hidden">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-100 border-b border-gray-300">
-                            <tr>
-                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Document</th>
-                              <th className="px-4 py-2 text-left font-semibold text-gray-700">File Size</th>
-                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Access</th>
-                              <th className="px-4 py-2 text-left font-semibold text-gray-700">Updated Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {opportunity.raw_data.resourceLinks.map((link, idx) => {
-                              // Extract filename from URL
-                              const filename = link.split('/').pop() || `Document_${idx + 1}`;
-                              // Generate realistic file size (placeholder - would come from API in real scenario)
-                              const fileSize = `${(Math.random() * 1000 + 100).toFixed(1)} KB`;
-                              // Assume public access
-                              const access = 'Public';
-                              // Use posted date as placeholder for updated date
-                              const updatedDate = new Date(opportunity.posted_date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              });
-
-                              return (
-                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                                  <td className="px-4 py-3">
-                                    <a
-                                      href={link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-2"
-                                    >
-                                      <FileText className="w-4 h-4" />
-                                      {filename.length > 50 ? filename.substring(0, 47) + '...' : filename}
-                                    </a>
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">{fileSize}</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                                      <Lock className="w-3 h-3" />
-                                      {access}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">{updatedDate}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* All Details Section - Complete API Data */}
             <div className="border-t-4 border-gray-300 pt-6 mt-6">

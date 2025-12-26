@@ -474,25 +474,17 @@ router.post('/:orgId/api-keys', requireOrgAdmin, async (req, res) => {
     }
 
     const { saveApiKey } = await import('../utils/apiKeys.js');
-    const success = await saveApiKey(serviceName, keyValue, req.user.id, parseInt(orgId), keyLabel);
+    const newKey = await saveApiKey(serviceName, keyValue, req.user.id, parseInt(orgId), keyLabel);
 
-    if (success) {
-      // Fetch the created key to return consistent response format
-      const result = await query(
-        `SELECT id, key_label, service_name, organization_id, is_active, created_at 
-         FROM api_secrets 
-         WHERE service_name = $1 AND organization_id = $2 
-         ORDER BY created_at DESC LIMIT 1`,
-        [serviceName, parseInt(orgId)]
-      );
+    if (newKey) {
       res.status(201).json({
         apiKey: {
-          id: result.rows[0].id,
-          keyLabel: result.rows[0].key_label,
-          serviceName: result.rows[0].service_name,
-          organizationId: result.rows[0].organization_id,
-          isActive: result.rows[0].is_active,
-          createdAt: result.rows[0].created_at
+          id: newKey.id,
+          keyLabel: newKey.key_label,
+          serviceName: newKey.service_name,
+          organizationId: newKey.organization_id,
+          isActive: newKey.is_active,
+          createdAt: newKey.created_at
         }
       });
     } else {
@@ -553,15 +545,16 @@ router.put('/:orgId/api-keys/:keyId', requireOrgAdmin, async (req, res) => {
 
 /**
  * DELETE /api/org/:orgId/api-keys/:keyId
- * Deactivate API key (soft delete)
+ * Deactivate API key (soft delete) or permanent delete (force=true)
  */
 router.delete('/:orgId/api-keys/:keyId', requireOrgAdmin, async (req, res) => {
   try {
     const { orgId, keyId } = req.params;
+    const { force } = req.query;
 
     // Verify key belongs to org
     const keyCheck = await query(
-      `SELECT id FROM api_secrets
+      `SELECT id, is_active FROM api_secrets
        WHERE id = $1 AND organization_id = $2`,
       [parseInt(keyId), parseInt(orgId)]
     );
@@ -570,6 +563,20 @@ router.delete('/:orgId/api-keys/:keyId', requireOrgAdmin, async (req, res) => {
       return res.status(404).json({ error: 'API key not found' });
     }
 
+    // Hard Delete
+    if (force === 'true') {
+      await query(
+        `DELETE FROM api_secrets WHERE id = $1`,
+        [parseInt(keyId)]
+      );
+
+      return res.json({
+        message: 'API key permanently deleted',
+        keyId: parseInt(keyId)
+      });
+    }
+
+    // Soft Delete (Deactivate)
     const result = await query(
       `UPDATE api_secrets
        SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
@@ -668,7 +675,8 @@ router.get('/:orgId/settings', requireOrgAdmin, async (req, res) => {
     const { orgId } = req.params;
 
     const result = await query(
-      `SELECT id, name, slug, branding_settings, created_at
+      `SELECT id, name, slug, branding_settings, created_at,
+              description, website_url, address, phone
        FROM organizations
        WHERE id = $1`,
       [parseInt(orgId)]
@@ -692,7 +700,7 @@ router.get('/:orgId/settings', requireOrgAdmin, async (req, res) => {
 router.put('/:orgId/settings', requireOrgAdmin, async (req, res) => {
   try {
     const { orgId } = req.params;
-    const { name, brandingSettings } = req.body;
+    const { name, brandingSettings, description, websiteUrl, address, phone } = req.body;
 
     // Validate input
     if (name && name.trim().length === 0) {
@@ -715,6 +723,26 @@ router.put('/:orgId/settings', requireOrgAdmin, async (req, res) => {
       values.push(JSON.stringify(brandingSettings));
     }
 
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      values.push(description);
+    }
+
+    if (websiteUrl !== undefined) {
+      updates.push(`website_url = $${paramCount++}`);
+      values.push(websiteUrl);
+    }
+
+    if (address !== undefined) {
+      updates.push(`address = $${paramCount++}`);
+      values.push(address);
+    }
+
+    if (phone !== undefined) {
+      updates.push(`phone = $${paramCount++}`);
+      values.push(phone);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
     }
@@ -726,7 +754,7 @@ router.put('/:orgId/settings', requireOrgAdmin, async (req, res) => {
       `UPDATE organizations
        SET ${updates.join(', ')}
        WHERE id = $${paramCount}
-       RETURNING id, name, slug, branding_settings, updated_at`,
+       RETURNING id, name, slug, branding_settings, description, website_url, address, phone, updated_at`,
       values
     );
 

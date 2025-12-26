@@ -19,6 +19,15 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [usersTotal, setUsersTotal] = useState(0);
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
+  const [newOrgData, setNewOrgData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    websiteUrl: '',
+    phone: '',
+    address: ''
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -140,6 +149,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateOrg = async (e) => {
+    e.preventDefault();
+    try {
+      setError(null);
+      await api.admin.createOrganization(newOrgData);
+      setSuccessMessage('Organization created successfully');
+      setShowCreateOrgModal(false);
+      setNewOrgData({ name: '', slug: '', description: '', websiteUrl: '', phone: '', address: '' });
+      // Reload organizations
+      const response = await api.admin.getOrganizations();
+      setOrganizations(response.data.organizations || []);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create organization');
+    }
+  };
+
   const handleResetPassword = async (e) => {
     e.preventDefault();
     try {
@@ -214,6 +240,74 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleRevokeKey = async (keyId) => {
+    if (window.confirm('Are you sure you want to deactivate this SYSTEM API key? This may break system-wide functionality.')) {
+      try {
+        await api.admin.deleteApiKey(keyId); // Soft delete
+        setSuccessMessage('API key deactivated successfully');
+        loadApiKeys();
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        console.error('Error deactivating key:', err);
+        setError('Failed to deactivate API key');
+      }
+    }
+  };
+
+  const handleDeleteKey = async (keyId) => {
+    if (window.confirm('Are you sure you want to PERMANENTLY DELETE this API key? This cannot be undone.')) {
+      try {
+        await api.admin.deleteApiKey(keyId, true); // Hard delete
+        setSuccessMessage('API key deleted successfully');
+        loadApiKeys();
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } catch (err) {
+        console.error('Error deleting key:', err);
+        setError('Failed to delete API key');
+      }
+    }
+  };
+
+
+  const [emailConfig, setEmailConfig] = useState({
+    provider: 'gmail', // gmail or smtp
+    user: '',
+    pass: '',
+    host: '',
+    port: 587,
+    secure: false
+  });
+
+  // ... existing code ...
+
+  const handleSaveEmailConfig = async (e) => {
+    e.preventDefault();
+    try {
+      setError(null);
+      // Format as JSON string for api_secrets value
+      const configValue = JSON.stringify({
+        service: emailConfig.provider,
+        user: emailConfig.user,
+        pass: emailConfig.pass,
+        host: emailConfig.host,
+        port: emailConfig.port,
+        secure: emailConfig.secure
+      });
+
+      // Use system key creation generic endpoint
+      await api.admin.createApiKey({
+        provider: 'system_email',
+        apiKey: configValue,
+        keyLabel: 'System Email Configuration'
+      });
+
+      setSuccessMessage('Email configuration saved successfully');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Save Email Config Error:', err);
+      setError(err.response?.data?.error || 'Failed to save email configuration');
+    }
+  };
 
   const openEditModal = (user) => {
     setSelectedUser(user);
@@ -282,6 +376,12 @@ const AdminDashboard = () => {
         >
           👥 Users
         </button>
+        <button
+          className={activeTab === 'settings' ? 'active' : ''}
+          onClick={() => setActiveTab('settings')}
+        >
+          ⚙️ Settings
+        </button>
       </div>
 
       {successMessage && (
@@ -341,7 +441,12 @@ const AdminDashboard = () => {
       {/* Organizations Tab */}
       {activeTab === 'organizations' && (
         <div className="admin-organizations">
-          <h2>All Organizations</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2>All Organizations</h2>
+            <button className="btn-primary" onClick={() => setShowCreateOrgModal(true)}>
+              + Create Organization
+            </button>
+          </div>
           {loading ? (
             <p className="loading">Loading organizations...</p>
           ) : organizations.length === 0 ? (
@@ -429,12 +534,30 @@ const AdminDashboard = () => {
                             </td>
                             <td>{new Date(key.created_at).toLocaleDateString()}</td>
                             <td>
-                              <button
-                                className="btn-small"
-                                onClick={() => handleViewKey(key)}
-                              >
-                                View
-                              </button>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  className="btn-small"
+                                  onClick={() => handleViewKey(key)}
+                                >
+                                  View
+                                </button>
+                                {key.is_active && (
+                                  <button
+                                    className="btn-small"
+                                    style={{ borderColor: '#f44336', color: '#f44336' }}
+                                    onClick={() => handleRevokeKey(key.id)}
+                                  >
+                                    Revoke
+                                  </button>
+                                )}
+                                <button
+                                  className="btn-small"
+                                  style={{ backgroundColor: '#f44336', color: 'white', border: 'none' }}
+                                  onClick={() => handleDeleteKey(key.id, true)}
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -775,6 +898,122 @@ const AdminDashboard = () => {
           )}
         </div>
       )}
+
+      {/* Settings Tab (Email Config) */}
+      {activeTab === 'settings' && (
+        <div className="admin-settings" style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <h2 style={{ marginTop: 0 }}>System Email Configuration</h2>
+          <p style={{ color: '#666', marginBottom: '20px' }}>
+            Configure the email service used for sending invitations, password resets, and notifications.
+            If environment variables are not set, these settings will be used.
+          </p>
+
+          <form onSubmit={handleSaveEmailConfig} style={{ maxWidth: '600px' }}>
+            <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Provider Type</label>
+              <select
+                value={emailConfig.provider}
+                onChange={(e) => setEmailConfig({ ...emailConfig, provider: e.target.value })}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+              >
+                <option value="gmail">Gmail</option>
+                <option value="smtp">Custom SMTP</option>
+              </select>
+            </div>
+
+            {emailConfig.provider === 'gmail' ? (
+              <>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Gmail Address</label>
+                  <input
+                    type="email"
+                    value={emailConfig.user}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, user: e.target.value })}
+                    placeholder="example@gmail.com"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>App Password</label>
+                  <input
+                    type="password"
+                    value={emailConfig.pass}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, pass: e.target.value })}
+                    placeholder="Generared App Password"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                  <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                    Use an App Password, not your login password. <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noreferrer">Learn more</a>
+                  </small>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>SMTP Host</label>
+                  <input
+                    type="text"
+                    value={emailConfig.host}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, host: e.target.value })}
+                    placeholder="smtp.example.com"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>SMTP Port</label>
+                  <input
+                    type="number"
+                    value={emailConfig.port}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, port: parseInt(e.target.value) })}
+                    placeholder="587"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={emailConfig.secure}
+                      onChange={(e) => setEmailConfig({ ...emailConfig, secure: e.target.checked })}
+                    />
+                    Use Secure Connection (TLS/SSL)
+                  </label>
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Username</label>
+                  <input
+                    type="text"
+                    value={emailConfig.user}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, user: e.target.value })}
+                    placeholder="SMTP Username"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Password</label>
+                  <input
+                    type="password"
+                    value={emailConfig.pass}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, pass: e.target.value })}
+                    placeholder="SMTP Password"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                </div>
+              </>
+            )}
+
+            <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>
+              Save Configuration
+            </button>
+          </form>
+        </div>
+      )}
       {/* Add System API Key Modal (Polished) */}
       {showAddKeyModal && (
         <AddApiKeyModal
@@ -786,7 +1025,8 @@ const AdminDashboard = () => {
             { providerName: 'anthropic', displayName: 'Anthropic', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg', authType: 'api_key', docsUrl: 'https://console.anthropic.com/settings/keys' },
             { providerName: 'elevenlabs', displayName: 'ElevenLabs', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Eleven_Labs_logo.svg/2560px-Eleven_Labs_logo.svg.png', authType: 'api_key', docsUrl: 'https://elevenlabs.io/app/voice-lab' },
             { providerName: 'stripe', displayName: 'Stripe', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg', authType: 'api_key', docsUrl: 'https://dashboard.stripe.com/apikeys' },
-            { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' }
+            { providerName: 'google', displayName: 'Google Cloud', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg', authType: 'api_key', docsUrl: 'https://console.cloud.google.com/apis/credentials' },
+            { providerName: 'samgov', displayName: 'SAM.gov', logoUrl: 'https://gsa.gov/sites/default/files/styles/576px_wide/public/2021-04/SAM.png', authType: 'api_key', docsUrl: 'https://sam.gov/content/api-key' }
           ]}
         />
       )}
@@ -854,6 +1094,75 @@ const AdminDashboard = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showCreateOrgModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Create New Organization</h2>
+            <form onSubmit={handleCreateOrg}>
+              <div className="form-group">
+                <label>Organization Name</label>
+                <input
+                  type="text"
+                  value={newOrgData.name}
+                  onChange={e => setNewOrgData({ ...newOrgData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Slug (Optional)</label>
+                <input
+                  type="text"
+                  value={newOrgData.slug}
+                  onChange={e => setNewOrgData({ ...newOrgData, slug: e.target.value })}
+                  placeholder="auto-generated-if-empty"
+                />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={newOrgData.description}
+                  onChange={e => setNewOrgData({ ...newOrgData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="form-group">
+                <label>Website URL</label>
+                <input
+                  type="url"
+                  value={newOrgData.websiteUrl}
+                  onChange={e => setNewOrgData({ ...newOrgData, websiteUrl: e.target.value })}
+                  placeholder="https://example.com"
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  value={newOrgData.phone}
+                  onChange={e => setNewOrgData({ ...newOrgData, phone: e.target.value })}
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+              <div className="form-group">
+                <label>Address</label>
+                <textarea
+                  value={newOrgData.address}
+                  onChange={e => setNewOrgData({ ...newOrgData, address: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowCreateOrgModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Create Organization
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

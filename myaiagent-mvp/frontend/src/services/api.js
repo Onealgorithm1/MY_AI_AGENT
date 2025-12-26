@@ -330,7 +330,11 @@ export const admin = {
     api.get('/admin/api-keys'),
   createApiKey: (data) =>
     api.post('/admin/api-keys', data),
+  deleteApiKey: (keyId, force = false) =>
+    api.delete(`/admin/api-keys/${keyId}`, { params: { force } }),
   // Master admin endpoints
+  createOrganization: (data) =>
+    api.post('/admin/organizations', data),
   getOrganizations: () =>
     api.get('/admin/organizations'),
   getOrganization: (orgId) =>
@@ -363,8 +367,8 @@ export const org = {
     api.post(`/org/${orgId}/api-keys`, data),
   updateApiKey: (orgId, keyId, data) =>
     api.put(`/org/${orgId}/api-keys/${keyId}`, data),
-  deleteApiKey: (orgId, keyId) =>
-    api.delete(`/org/${orgId}/api-keys/${keyId}`),
+  deleteApiKey: (orgId, keyId, force = false) =>
+    api.delete(`/org/${orgId}/api-keys/${keyId}`, { params: { force } }),
   rotateApiKey: (orgId, keyId, newKeyValue) =>
     api.post(`/org/${orgId}/api-keys/${keyId}/rotate`, { newKeyValue }),
   getAuditLogs: (orgId, params) =>
@@ -507,6 +511,11 @@ export const samGov = {
     return response.data;
   },
 
+  getFacets: async (category) => {
+    const response = await api.get(`/sam-gov/facets/${category}`);
+    return response.data;
+  },
+
   // Get cached opportunity by notice ID
   getCachedOpportunity: async (noticeId) => {
     const response = await api.get(`/sam-gov/cache/${noticeId}`);
@@ -520,14 +529,42 @@ export const samGov = {
   },
 
   // Get cached opportunities
+  // Get cached opportunities
   getCachedOpportunities: async (params = {}) => {
-    const { limit = 20, offset = 0, keyword, type, status } = params;
+    const {
+      limit = 20,
+      offset = 0,
+      keyword,
+      type,
+      status,
+      // New filters
+      naicsCode,
+      setAside,
+      agency,
+      placeOfPerformance,
+      postedFrom,
+      postedTo,
+      responseFrom,
+      responseTo
+    } = params;
+
     const queryParams = new URLSearchParams();
     queryParams.append('limit', limit);
     queryParams.append('offset', offset);
+
     if (keyword) queryParams.append('keyword', keyword);
     if (type) queryParams.append('type', type);
     if (status) queryParams.append('status', status);
+
+    // Append new filters if they exist
+    if (naicsCode) queryParams.append('naicsCode', naicsCode);
+    if (setAside) queryParams.append('setAside', setAside);
+    if (agency) queryParams.append('agency', agency);
+    if (placeOfPerformance) queryParams.append('placeOfPerformance', placeOfPerformance);
+    if (postedFrom) queryParams.append('postedFrom', postedFrom);
+    if (postedTo) queryParams.append('postedTo', postedTo);
+    if (responseFrom) queryParams.append('responseFrom', responseFrom);
+    if (responseTo) queryParams.append('responseTo', responseTo);
 
     const response = await api.get(`/sam-gov/cached-opportunities?${queryParams.toString()}`);
     return response.data;

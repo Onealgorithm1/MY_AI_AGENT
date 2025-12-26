@@ -1,0 +1,6 @@
+--- Email Config Diagnostic ---
+GMAIL_USER: shaikarief298@gmail.com
+GMAIL_APP_PASSWORD: ***eke
+SMTP_HOST: (missing)
+EMAIL_FROM: shaikarief298@gmail.com
+-------------------------------

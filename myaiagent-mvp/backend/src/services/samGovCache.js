@@ -284,7 +284,16 @@ export async function getCachedOpportunities(options = {}) {
       status,
       userId,
       organizationId,
-      isMasterAdmin = false
+      isMasterAdmin = false,
+      // New filters
+      naicsCode,
+      setAside,
+      agency,
+      placeOfPerformance,
+      postedFrom,
+      postedTo,
+      responseFrom,
+      responseTo
     } = options;
 
     let queryText = 'SELECT * FROM samgov_opportunities_cache WHERE 1=1';
@@ -293,7 +302,7 @@ export async function getCachedOpportunities(options = {}) {
 
     // Add filters
     if (keyword) {
-      queryText += ` AND (title ILIKE $${paramIndex} OR solicitation_number ILIKE $${paramIndex})`;
+      queryText += ` AND (title ILIKE $${paramIndex} OR solicitation_number ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
       params.push(`%${keyword}%`);
       paramIndex++;
     }
@@ -301,6 +310,54 @@ export async function getCachedOpportunities(options = {}) {
     if (type) {
       queryText += ` AND type = $${paramIndex}`;
       params.push(type);
+      paramIndex++;
+    }
+
+    if (naicsCode) {
+      queryText += ` AND naics_code ILIKE $${paramIndex}`;
+      params.push(`%${naicsCode}%`);
+      paramIndex++;
+    }
+
+    if (setAside) {
+      queryText += ` AND set_aside_type = $${paramIndex}`;
+      params.push(setAside);
+      paramIndex++;
+    }
+
+    if (agency) {
+      queryText += ` AND contracting_office ILIKE $${paramIndex}`;
+      params.push(`%${agency}%`);
+      paramIndex++;
+    }
+
+    if (placeOfPerformance) {
+      queryText += ` AND place_of_performance ILIKE $${paramIndex}`;
+      params.push(`%${placeOfPerformance}%`);
+      paramIndex++;
+    }
+
+    if (postedFrom) {
+      queryText += ` AND posted_date >= $${paramIndex}`;
+      params.push(postedFrom);
+      paramIndex++;
+    }
+
+    if (postedTo) {
+      queryText += ` AND posted_date <= $${paramIndex}`;
+      params.push(postedTo);
+      paramIndex++;
+    }
+
+    if (responseFrom) {
+      queryText += ` AND response_deadline >= $${paramIndex}`;
+      params.push(responseFrom);
+      paramIndex++;
+    }
+
+    if (responseTo) {
+      queryText += ` AND response_deadline <= $${paramIndex}`;
+      params.push(responseTo);
       paramIndex++;
     }
 
@@ -417,6 +474,39 @@ export async function getAllCachedOpportunities(limit = 50, offset = 0) {
   }
 }
 
+/**
+ * Get facets (counts) for filter categories
+ * @param {string} category - Category to facet by (naics, agency, set_aside, place)
+ * @returns {Promise<Array>} Array of { value, count }
+ */
+export async function getFacets(category) {
+  try {
+    let column = '';
+    switch (category) {
+      case 'naics': column = 'naics_code'; break;
+      case 'agency': column = 'contracting_office'; break;
+      case 'set_aside': column = 'set_aside_type'; break;
+      case 'place': column = 'place_of_performance'; break;
+      default: throw new Error('Invalid facet category');
+    }
+
+    const query = `
+      SELECT ${column} as value, COUNT(*) as count 
+      FROM samgov_opportunities_cache 
+      WHERE ${column} IS NOT NULL AND ${column} != ''
+      GROUP BY ${column} 
+      ORDER BY count DESC 
+      LIMIT 1000
+    `;
+
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error(`Error getting facets for ${category}:`, error);
+    return [];
+  }
+}
+
 export default {
   cacheOpportunities,
   recordSearchHistory,
@@ -426,4 +516,5 @@ export default {
   getRecentSearches,
   linkToTrackedOpportunity,
   getAllCachedOpportunities,
+  getFacets,
 };

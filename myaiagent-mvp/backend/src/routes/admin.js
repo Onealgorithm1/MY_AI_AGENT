@@ -30,6 +30,14 @@ router.get('/stats', async (req, res) => {
       FROM messages
     `);
 
+    const orgsResult = await query(`
+      SELECT COUNT(*) as total FROM organizations WHERE is_active = true
+    `);
+
+    const keysResult = await query(`
+      SELECT COUNT(*) as total FROM api_secrets WHERE is_active = true
+    `);
+
     const users = usersResult.rows[0];
     const conversations = conversationsResult.rows[0];
     const messages = messagesResult.rows[0];
@@ -45,6 +53,12 @@ router.get('/stats', async (req, res) => {
       messages: {
         total: parseInt(messages.total) || 0,
         today: parseInt(messages.today) || 0,
+      },
+      organizations: {
+        total: parseInt(orgsResult.rows[0].total) || 0,
+      },
+      apiKeys: {
+        active: parseInt(keysResult.rows[0].total) || 0,
       },
       voice: {
         minutesToday: 0,
@@ -581,6 +595,37 @@ router.get('/master-stats', requireMasterAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching master stats:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+/**
+ * DELETE /api/admin/api-keys/:keyId
+ * Deactivate or Delete API key (Global/Master Admin)
+ */
+router.delete('/api-keys/:keyId', requireMasterAdmin, async (req, res) => {
+  try {
+    const { keyId } = req.params;
+    const { force } = req.query;
+
+    const keyCheck = await query('SELECT id FROM api_secrets WHERE id = $1', [parseInt(keyId)]);
+    if (keyCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+
+    if (force === 'true') {
+      await query('DELETE FROM api_secrets WHERE id = $1', [parseInt(keyId)]);
+      return res.json({ message: 'API key permanently deleted' });
+    }
+
+    await query(
+      'UPDATE api_secrets SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [parseInt(keyId)]
+    );
+
+    res.json({ message: 'API key deactivated' });
+  } catch (error) {
+    console.error('Delete API key error:', error);
+    res.status(500).json({ error: 'Failed to delete API key' });
   }
 });
 

@@ -6,6 +6,58 @@ const router = express.Router();
 
 // All routes require system admin role
 
+// Create new organization
+router.post('/', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { name, slug, ownerId, description, websiteUrl, address, phone } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Organization name is required' });
+    }
+
+    // Generate slug if not provided
+    let orgSlug = slug;
+    if (!orgSlug) {
+      orgSlug = name.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+    }
+
+    // Check if slug exists
+    const existing = await query('SELECT id FROM organizations WHERE slug = $1', [orgSlug]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Organization slug already in use' });
+    }
+
+    const result = await query(
+      `INSERT INTO organizations (name, slug, owner_id, description, website_url, address, phone, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id, name, slug, owner_id, description, website_url, address, phone, created_at`,
+      [name, orgSlug, ownerId || null, description, websiteUrl, address, phone]
+    );
+
+    const organization = result.rows[0];
+
+    // If owner provided, add to organization_users as owner
+    if (ownerId) {
+      await query(
+        `INSERT INTO organization_users (organization_id, user_id, role, is_active)
+         VALUES ($1, $2, 'owner', true)
+         ON CONFLICT (organization_id, user_id) DO UPDATE SET role = 'owner'`,
+        [organization.id, ownerId]
+      );
+    }
+
+    res.status(201).json({
+      message: 'Organization created successfully',
+      organization
+    });
+  } catch (error) {
+    console.error('Create organization error:', error);
+    res.status(500).json({ error: 'Failed to create organization' });
+  }
+});
+
 // Get all organizations
 router.get('/', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -27,7 +79,7 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
     const result = await query(sql, params);
 
     // Get total count
-    const countSql = 'SELECT COUNT(*) as count FROM organizations' + 
+    const countSql = 'SELECT COUNT(*) as count FROM organizations' +
       (params.length > 2 ? ' WHERE is_active = $1' : '');
     const countResult = await query(countSql, params.length > 2 ? [params[0]] : []);
 
@@ -176,7 +228,7 @@ router.get('/stats/overview', authenticate, requireAdmin, async (req, res) => {
   try {
     // Total organizations
     const orgResult = await query('SELECT COUNT(*) as count FROM organizations WHERE is_active = TRUE');
-    
+
     // Total users
     const usersResult = await query(
       'SELECT COUNT(DISTINCT user_id) as count FROM organization_users WHERE is_active = TRUE'
