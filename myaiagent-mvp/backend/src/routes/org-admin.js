@@ -346,7 +346,7 @@ router.post('/:orgId/users/:userId/reset-password', requireOrgAdmin, async (req,
       [user.id, resetToken, expiresAt]
     );
 
-    const resetLink = `${process.env.FRONTEND_URL || 'https://werkules.com'}/auth/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
     // Send email asynchronously
     import('../services/emailService.js').then(({ default: emailService }) => {
