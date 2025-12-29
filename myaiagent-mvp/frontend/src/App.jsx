@@ -16,6 +16,8 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const OrgAdminDashboard = lazy(() => import('./pages/OrgAdminDashboard'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
 const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
@@ -116,10 +118,10 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       await fetchCsrfToken();
-      
+
       // Skip auth verification on OAuth callback pages
       const isOAuthCallback = window.location.pathname.startsWith('/auth/google/');
-      
+
       // If frontend thinks user is authenticated, verify with backend
       if (isAuthenticated && user && !isOAuthCallback) {
         try {
@@ -134,7 +136,7 @@ function App() {
         }
       }
     };
-    
+
     initializeApp();
   }, []);
 
@@ -145,6 +147,9 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/accept-invitation/:token" element={<AcceptInvitePage />} />
           <Route path="/auth/google/success" element={<GoogleCallbackPage />} />
           <Route path="/auth/google/error" element={<GoogleCallbackPage />} />
 

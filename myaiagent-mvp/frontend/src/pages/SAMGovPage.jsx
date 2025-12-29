@@ -258,20 +258,25 @@ const SAMGovPage = () => {
   };
 
   const resetFilters = () => {
-    setFilters({
+    const defaultFilters = {
       keyword: '',
       keywordType: 'ALL',
       setAsideType: '',
       naicsCode: '',
       noticeType: '',
-      status: '', // Show all opportunities by default
-      dateFrom: '',
-      dateTo: '',
+      status: '', // Show all opportunities by default (active and inactive)
+      dateFrom: '', // Posted From
+      dateTo: '',   // Posted To
+      responseFrom: '',
+      responseTo: '',
       agency: '',
+      placeOfPerformance: '', // Zip or State
       sortBy: '-modifiedDate',
-    });
+    };
+    setFilters(defaultFilters);
     setSelectedDomain('');
     setCurrentPage(1);
+    loadData(false, defaultFilters);
   };
 
   // Save current search
@@ -667,34 +672,40 @@ What would you like to know about this opportunity?`;
               </FilterSection>
 
               <FilterSection
-                title="Dates"
+                title="Published Date"
                 name="dates"
                 count={(filters.dateFrom || filters.dateTo) ? 1 : 0}
               >
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">From</label>
-                    <input
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => {
-                        setFilters({ ...filters, dateFrom: e.target.value });
-                        setCurrentPage(1);
-                      }}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">To</label>
-                    <input
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => {
-                        setFilters({ ...filters, dateTo: e.target.value });
-                        setCurrentPage(1);
-                      }}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                    />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">From</label>
+                      <input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => {
+                          const newFilters = { ...filters, dateFrom: e.target.value };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          loadData(false, newFilters);
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">To</label>
+                      <input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => {
+                          const newFilters = { ...filters, dateTo: e.target.value };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          loadData(false, newFilters);
+                        }}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
               </FilterSection>

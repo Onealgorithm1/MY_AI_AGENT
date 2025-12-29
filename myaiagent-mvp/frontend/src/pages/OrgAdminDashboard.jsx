@@ -18,6 +18,9 @@ const OrgAdminDashboard = () => {
   // Data state
   const [users, setUsers] = useState([]);
   const [apiKeys, setApiKeys] = useState([]);
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [companyMatches, setCompanyMatches] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
 
   // Modal/Form state
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -125,6 +128,45 @@ const OrgAdminDashboard = () => {
         }
       }
       loadApiKeys();
+    }
+  }, [activeTab, currentOrganization]);
+
+  // Load Organization Profile & Matches (Shared for Overview and Eligible Opportunities)
+  useEffect(() => {
+    if ((activeTab === 'overview' || activeTab === 'eligible-opportunities') && currentOrganization) {
+      const loadOrgData = async () => {
+        try {
+          setLoading(true);
+          // Fetch profile for Overview
+          if (!companyProfile) {
+            const profileRes = await api.get('/company/profile');
+            setCompanyProfile(profileRes.data.profile);
+          }
+
+          // Fetch matches for Eligible Opportunities or Overview stats
+          if (activeTab === 'eligible-opportunities' || !companyMatches.length) {
+            const matchesRes = await api.get('/company/matched-opportunities?limit=50');
+            setCompanyMatches(matchesRes.data.matches || []);
+          }
+
+          // Fetch detailed analysis only if needed (e.g. for Overview recommendations)
+          if (activeTab === 'overview' && !recommendations.length) {
+            try {
+              const eligibilityRes = await api.get('/company/eligibility-analysis');
+              setRecommendations(eligibilityRes.data.recommendations || []);
+            } catch (e) { console.warn("Could not load recommendations", e); }
+          }
+
+        } catch (err) {
+          console.error('Error loading org data:', err);
+          // Don't block the UI with a full page error for this, just log it 
+          // as these are enhancements
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadOrgData();
     }
   }, [activeTab, currentOrganization]);
 
@@ -247,6 +289,12 @@ const OrgAdminDashboard = () => {
           📊 Overview
         </button>
         <button
+          className={`tab ${activeTab === 'eligible-opportunities' ? 'active' : ''}`}
+          onClick={() => setActiveTab('eligible-opportunities')}
+        >
+          🎯 Eligible Opportunities
+        </button>
+        <button
           className={`tab ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
@@ -329,6 +377,66 @@ const OrgAdminDashboard = () => {
                 </div>
               )}
             </div>
+
+            {/* Profile Data Section */}
+            <div className="profile-section" style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #eee' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>Company Profile Data</h4>
+              {!companyProfile ? (
+                <p style={{ fontSize: '14px', color: '#666' }}>
+                  No profile data found. <a href="/company-profile" style={{ color: '#0066cc', textDecoration: 'none' }}>Complete your profile</a> to match more opportunities.
+                </p>
+              ) : (
+                <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#666', textTransform: 'uppercase' }}>NAICS Codes</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                      {(companyProfile.naicsCodes || companyProfile.naics_codes || []).length > 0 ?
+                        (companyProfile.naicsCodes || companyProfile.naics_codes).map((code, i) => (
+                          <span key={i} style={{ padding: '2px 8px', backgroundColor: '#f3e8ff', color: '#6b21a8', borderRadius: '4px', fontSize: '12px' }}>{code}</span>
+                        )) : <span style={{ color: '#999', fontSize: '12px' }}>None listed</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#666', textTransform: 'uppercase' }}>Certifications</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                      {Object.entries(companyProfile.certifications || {}).filter(([_, v]) => v).length > 0 ?
+                        Object.entries(companyProfile.certifications).filter(([_, v]) => v).map(([k]) => (
+                          <span key={k} style={{ padding: '2px 8px', backgroundColor: '#fef9c3', color: '#854d0e', borderRadius: '4px', fontSize: '12px', textTransform: 'capitalize' }}>{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        )) : <span style={{ color: '#999', fontSize: '12px' }}>None listed</span>}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#666', textTransform: 'uppercase' }}>Core Capabilities</span>
+                    <p style={{ fontSize: '14px', color: '#333', marginTop: '4px' }}>
+                      {companyProfile.keywords?.join(', ') || companyProfile.core_capabilities?.join(', ') || 'No capabilities listed'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recommendations Section */}
+            {recommendations.length > 0 && (
+              <div className="recommendations-section" style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #eee' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+                  🚧 Missing Requirements (Gaps)
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {recommendations.slice(0, 3).map((rec, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', padding: '8px', backgroundColor: '#fff7ed', borderRadius: '4px', border: '1px solid #ffedd5' }}>
+                      <span style={{ color: '#f97316', marginRight: '8px' }}>•</span>
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937', margin: 0 }}>{rec.title}</p>
+                        <p style={{ fontSize: '12px', color: '#4b5563', margin: 0 }}>{rec.action || rec.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <a href="/company-profile" style={{ fontSize: '14px', color: '#0066cc', textDecoration: 'none' }}>View all match recommendations &rarr;</a>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="org-admin-guide">
@@ -344,7 +452,62 @@ const OrgAdminDashboard = () => {
         </div>
       )}
 
-      {/* Users Tab */}
+      {/* Eligible Opportunities Tab */}
+      {activeTab === 'eligible-opportunities' && (
+        <div className="org-opportunities" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Eligible Opportunities</h2>
+              <p style={{ color: '#666', fontSize: '14px', marginTop: '4px' }}>Contracts matched to your company profile</p>
+            </div>
+            <a href="/samgov" style={{ padding: '8px 16px', backgroundColor: '#0066cc', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>
+              Browse All Opportunities
+            </a>
+          </div>
+
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: '32px', color: '#666' }}>Finding matches...</p>
+          ) : companyMatches.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <p style={{ color: '#6b7280', fontSize: '16px' }}>No eligible opportunities found yet.</p>
+              <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px' }}>Try updating your company profile with more keywords and NAICS codes.</p>
+              <a href="/company-profile" style={{ display: 'inline-block', marginTop: '16px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', textDecoration: 'none', fontSize: '14px', fontWeight: 500, color: '#374151' }}>Update Profile</a>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+              {companyMatches.map((match, i) => (
+                <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', backgroundColor: 'white', transition: 'box-shadow 0.2s' }} className="hover:shadow-md">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
+                        <a href={`/samgov/${match.id || match.solicitation_number}`} target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
+                          {match.title || match.opportunity_title}
+                        </a>
+                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '14px', color: '#4b5563' }}>
+                        <span style={{ fontWeight: 500 }}>{match.agency || match.department}</span>
+                        <span>•</span>
+                        <span>Due: {match.close_date || match.response_deadline ? new Date(match.close_date || match.response_deadline).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 500, backgroundColor: '#dcfce7', color: '#166534' }}>
+                        {match.match_score || match.matchScore?.total || 0}% Match
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px' }}>
+                    {match.naics_code && <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#374151' }}>NAICS: {match.naics_code}</span>}
+                    {(match.set_aside || match.type_of_set_aside) && <span style={{ padding: '2px 8px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', textTransform: 'capitalize' }}>{match.set_aside || match.type_of_set_aside}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Users Tab */}{/* Users Tab */}
       {activeTab === 'users' && (
         <div className="org-users">
           <div className="users-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

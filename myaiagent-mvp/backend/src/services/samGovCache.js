@@ -313,6 +313,14 @@ export async function getCachedOpportunities(options = {}) {
       paramIndex++;
     }
 
+    if (status === 'active') {
+      // Active: Deadline is in future OR null (assuming null means open/unknown)
+      queryText += ` AND (response_deadline >= CURRENT_TIMESTAMP OR response_deadline IS NULL)`;
+    } else if (status === 'inactive') {
+      // Inactive: Deadline is in past
+      queryText += ` AND response_deadline < CURRENT_TIMESTAMP`;
+    }
+
     if (naicsCode) {
       queryText += ` AND naics_code ILIKE $${paramIndex}`;
       params.push(`%${naicsCode}%`);
@@ -338,13 +346,13 @@ export async function getCachedOpportunities(options = {}) {
     }
 
     if (postedFrom) {
-      queryText += ` AND posted_date >= $${paramIndex}`;
+      queryText += ` AND posted_date::date >= $${paramIndex}`;
       params.push(postedFrom);
       paramIndex++;
     }
 
     if (postedTo) {
-      queryText += ` AND posted_date <= $${paramIndex}`;
+      queryText += ` AND posted_date::date <= $${paramIndex}`;
       params.push(postedTo);
       paramIndex++;
     }

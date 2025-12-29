@@ -13,14 +13,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     console.log('🔵 Login form submitted with:', { email, password: password ? '***' : 'empty' });
-    
+
     try {
       const result = await login(email, password);
-      
+
       console.log('🔵 Login result:', result);
-      
+
       if (result.success) {
         toast.success('Welcome back!');
         navigate('/');
@@ -82,6 +82,15 @@ export default function LoginPage() {
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="••••••••"
               />
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Link
+                to="/reset-password"
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Forgot your password?
+              </Link>
             </div>
           </div>
 

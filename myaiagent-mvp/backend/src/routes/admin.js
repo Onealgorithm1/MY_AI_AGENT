@@ -442,7 +442,7 @@ router.post('/api-keys', async (req, res) => {
       return res.status(400).json({ error: 'Provider and API key are required' });
     }
 
-    const allowedProviders = ['openai', 'elevenlabs', 'gemini', 'anthropic', 'stripe', 'google', 'samgov'];
+    const allowedProviders = ['openai', 'elevenlabs', 'gemini', 'anthropic', 'stripe', 'google', 'samgov', 'system_email'];
     if (!allowedProviders.includes(provider)) {
       return res.status(400).json({ error: 'Invalid provider' });
     }
