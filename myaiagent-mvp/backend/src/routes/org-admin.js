@@ -101,8 +101,10 @@ router.post('/:orgId/users', requireOrgAdmin, async (req, res) => {
       }
     } else {
       // Create temporary user (will be activated when they accept invitation)
-      const tempPassword = crypto.randomBytes(16).toString('hex');
-      const hashedPassword = await hashPassword(tempPassword);
+      // Auto-generate a secure random password for the user
+      // 12 chars, alphanumeric + special
+      const autoPassword = crypto.randomBytes(8).toString('hex');
+      const hashedPassword = await hashPassword(autoPassword);
 
       const newUserResult = await query(
         `INSERT INTO users (email, password_hash, full_name, is_active)
@@ -112,6 +114,9 @@ router.post('/:orgId/users', requireOrgAdmin, async (req, res) => {
       );
 
       userId = newUserResult.rows[0].id;
+
+      // Store plain password temporarily to send in email (it is not stored in DB)
+      req.tempPassword = autoPassword;
     }
 
     // Add user to organization
@@ -131,7 +136,9 @@ router.post('/:orgId/users', requireOrgAdmin, async (req, res) => {
     const acceptLink = `${process.env.FRONTEND_URL || 'https://werkules.com'}/auth/invitation?token=${encodeURIComponent(email)}`; // Placeholder token
 
     import('../services/emailService.js').then(({ default: emailService }) => {
-      emailService.sendInvitationEmail(email, orgName, inviterName, acceptLink)
+      // Pass the auto-generated password if we created a new user
+      console.log(`[OrgInvite] Sending email to ${email}. TempPassword generated: ${!!req.tempPassword}`);
+      emailService.sendInvitationEmail(email, orgName, inviterName, acceptLink, req.tempPassword)
         .catch(err => console.error('Failed to send invitation email:', err));
     });
 
@@ -361,6 +368,69 @@ router.post('/:orgId/users/:userId/reset-password', requireOrgAdmin, async (req,
   } catch (error) {
     console.error('Error resetting password:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+/**
+ * PUT /api/org/:orgId/users/:userId/password
+ * Manually set user password (org admin only)
+ */
+router.put('/:orgId/users/:userId/password', requireOrgAdmin, async (req, res) => {
+  try {
+    const { orgId, userId } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // 1. Verify User is in Organization
+    const userRow = await query(
+      `SELECT u.id, u.email, ou.role as org_role 
+       FROM users u
+       JOIN organization_users ou ON u.id = ou.user_id
+       WHERE u.id = $1 AND ou.organization_id = $2`,
+      [parseInt(userId), parseInt(orgId)]
+    );
+
+    if (userRow.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found in this organization' });
+    }
+
+    const targetUser = userRow.rows[0];
+
+    // 2. Security Check: Block resetting OWNER password unless you are an OWNER
+    if (targetUser.org_role === 'owner' && req.user.org_role !== 'owner') {
+      return res.status(403).json({ error: 'Only Owners can reset other Owner passwords' });
+    }
+
+    // 3. Hash & Update
+    const newHash = await hashPassword(password);
+
+    await query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2`,
+      [newHash, parseInt(userId)]
+    );
+
+    // 4. Audit Log
+    import('../services/auditService.js').then(({ default: auditService }) => {
+      auditService.log({
+        userId: req.user.id,
+        organizationId: parseInt(orgId),
+        action: 'user.manual_password_reset',
+        resourceType: 'user',
+        resourceId: parseInt(userId),
+        details: {},
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    });
+
+    res.json({ message: 'Password updated successfully' });
+
+  } catch (error) {
+    console.error('Error setting password:', error);
+    res.status(500).json({ error: 'Failed to set password' });
   }
 });
 

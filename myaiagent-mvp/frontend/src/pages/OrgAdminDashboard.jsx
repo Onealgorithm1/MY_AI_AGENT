@@ -35,6 +35,7 @@ const OrgAdminDashboard = () => {
   const [usersTotal, setUsersTotal] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
@@ -207,7 +208,32 @@ const OrgAdminDashboard = () => {
     }
   };
 
-  const handleResetPassword = async (userId) => {
+  const openPasswordModal = (user) => {
+    setSelectedUser(user);
+    setPasswordForm('');
+    setShowPasswordModal(true);
+  };
+
+  const handleManualSetPassword = async (e) => {
+    e.preventDefault();
+    if (!passwordForm || passwordForm.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setError(null);
+      await api.org.setPassword(currentOrganization.id, selectedUser.id, passwordForm);
+      setSuccessMessage('Password updated successfully');
+      setShowPasswordModal(false);
+      setPasswordForm('');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to set password');
+    }
+  };
+
+  const handleSendResetLink = async (userId) => {
     try {
       setError(null);
       await api.org.resetPassword(currentOrganization.id, userId);
@@ -613,6 +639,40 @@ const OrgAdminDashboard = () => {
             </div>
           )}
 
+          {showPasswordModal && (
+            <div className="modal-overlay" style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+            }}>
+              <div className="modal-content" style={{
+                backgroundColor: 'white', padding: '30px', borderRadius: '8px', width: '500px', maxWidth: '90%'
+              }}>
+                <h3 style={{ marginTop: 0 }}>Set Password: {selectedUser?.full_name}</h3>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+                  Manually set a new password for this user. They will be able to log in immediately with this password.
+                </p>
+                <form onSubmit={handleManualSetPassword}>
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>New Password</label>
+                    <input
+                      type="text"
+                      required
+                      minLength={6}
+                      value={passwordForm}
+                      onChange={(e) => setPasswordForm(e.target.value)}
+                      placeholder="Enter new password"
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setShowPasswordModal(false)} style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', background: '#d32f2f', color: 'white', cursor: 'pointer' }}>Set Password</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {showEditModal && (
             <div className="modal-overlay" style={{
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -726,10 +786,18 @@ const OrgAdminDashboard = () => {
                           <button
                             className="btn-small"
                             style={{ borderColor: '#d32f2f', color: '#d32f2f' }}
-                            onClick={() => handleResetPassword(user.id)}
+                            onClick={() => openPasswordModal(user)}
+                            title="Manually Set Password"
+                          >
+                            🔒 Set PWD
+                          </button>
+                          <button
+                            className="btn-small"
+                            style={{ borderColor: '#666', color: '#666' }}
+                            onClick={() => handleSendResetLink(user.id)}
                             title="Send Password Reset Email"
                           >
-                            Reset PWD
+                            ✉️ Email Link
                           </button>
                           <button
                             className="btn-small"

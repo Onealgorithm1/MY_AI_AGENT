@@ -72,7 +72,7 @@ export async function syncDateRange(startDate, endDate) {
             params,
             samGovService.searchOpportunities,
             context.userId,
-            context.organizationId
+            context.organizationId // Use Org ID for API Key lookup, but cache will store as Global
         );
 
         return result;

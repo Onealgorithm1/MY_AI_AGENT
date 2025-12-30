@@ -359,6 +359,8 @@ export const org = {
     api.put(`/org/${orgId}/users/${userId}/status`, { isActive }),
   resetPassword: (orgId, userId) =>
     api.post(`/org/${orgId}/users/${userId}/reset-password`),
+  setPassword: (orgId, userId, password) =>
+    api.put(`/org/${orgId}/users/${userId}/password`, { password }),
   deleteUser: (orgId, userId) =>
     api.delete(`/org/${orgId}/users/${userId}`),
   getApiKeys: (orgId) =>

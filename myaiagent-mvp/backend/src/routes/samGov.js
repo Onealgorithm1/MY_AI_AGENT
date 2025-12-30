@@ -180,9 +180,9 @@ router.get('/cached-opportunities', async (req, res) => {
       responseFrom,
       responseTo,
       // Pass context for isolation
-      userId: req.user.role === 'master_admin' ? undefined : req.user.id,
-      organizationId: req.user.organization_id,
-      isMasterAdmin: req.user.role === 'master_admin' || req.user.role === 'superadmin'
+      userId: undefined, // GLOBAL VIEW: Do not filter by who found it
+      organizationId: undefined, // GLOBAL VIEW: Do not filter by org
+      isMasterAdmin: true // Treat everyone as "Master Admin" for visibility purposes (see all)
     });
 
     res.json(result);

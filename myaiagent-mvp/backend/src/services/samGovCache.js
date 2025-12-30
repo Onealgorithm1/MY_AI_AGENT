@@ -21,6 +21,8 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
   try {
     await client.query('BEGIN');
 
+    const effectiveOrgId = null; // FORCE GLOBAL: All SAM.gov data is public
+
     const newOpportunities = [];
     const existingOpportunities = [];
     const updatedOpportunities = [];
@@ -38,7 +40,7 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
          FROM samgov_opportunities_cache 
          WHERE notice_id = $1 
          AND (($2::INTEGER IS NULL AND organization_id IS NULL) OR organization_id = $2)`,
-        [noticeId, organizationId]
+        [noticeId, effectiveOrgId]
       );
 
       if (existingResult.rows.length > 0) {
@@ -96,9 +98,8 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
             opp.officeAddress?.city || opp.contracting_office || null,
             opp.placeOfPerformance?.city?.name || opp.place_of_performance || null,
             opp.description || null,
-            JSON.stringify(opp),
             userId,
-            organizationId
+            effectiveOrgId
           ]
         );
 

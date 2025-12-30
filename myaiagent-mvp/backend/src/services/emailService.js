@@ -102,13 +102,30 @@ class EmailService {
   /**
    * Send invitation email to a new user
    */
-  async sendInvitationEmail(email, orgName, inviterName, link) {
+  async sendInvitationEmail(email, orgName, inviterName, link, password = null) {
     const subject = `Join ${orgName} on Werkules`;
-    const text = `Hello,\n\n${inviterName} has invited you to join ${orgName} on Werkules.\n\nClick the link below to accept the invitation:\n${link}\n\nIf you did not expect this invitation, you can ignore this email.`;
+
+    let passwordSectionText = '';
+    let passwordSectionHtml = '';
+
+    if (password) {
+      passwordSectionText = `\n\nYour temporary password is: ${password}\n\nPlease use this password to log in, then change it in your profile settings.`;
+      passwordSectionHtml = `
+        <div style="background-color: #f3f4f6; padding: 16px; border-radius: 6px; margin: 16px 0;">
+          <p style="margin: 0; color: #374151; font-weight: bold;">Temporary Password:</p>
+          <p style="margin: 8px 0 0 0; font-family: monospace; font-size: 18px; color: #111827;">${password}</p>
+          <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 13px;">Please change this password after your first login.</p>
+        </div>
+      `;
+    }
+
+    const text = `Hello,\n\n${inviterName} has invited you to join ${orgName} on Werkules.${passwordSectionText}\n\nClick the link below to accept the invitation:\n${link}\n\nIf you did not expect this invitation, you can ignore this email.`;
+
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px;">
         <h2 style="color: #111827; margin-top: 0;">You've been invited!</h2>
         <p style="color: #4b5563; font-size: 16px;"><strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> on Werkules.</p>
+        ${passwordSectionHtml}
         <div style="margin: 24px 0;">
           <a href="${link}" style="display: inline-block; background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>
         </div>
