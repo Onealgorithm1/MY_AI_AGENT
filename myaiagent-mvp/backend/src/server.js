@@ -77,6 +77,9 @@ import { performanceMonitoringMiddleware } from './middleware/performanceMonitor
 // Import Email Queue Processor
 import { startQueueProcessor } from './services/emailQueueProcessor.js';
 
+// Import Cron Service
+import { initCronJobs } from './services/cronService.js';
+
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 5000 : 3000);
 
@@ -557,6 +560,9 @@ server.listen(PORT, async () => {
   await initializeDatabaseMigrationsOnStartup();
 
   startQueueProcessor();
+
+  // Initialize Cron Jobs (Scheduled Tasks)
+  initCronJobs();
 });
 
 export default app;

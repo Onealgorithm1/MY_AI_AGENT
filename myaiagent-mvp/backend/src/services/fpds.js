@@ -8,9 +8,9 @@ const FPDS_CONTRACT_DATA_URL = 'https://api.sam.gov/prod/federalaccountingsystem
 /**
  * Get SAM.gov API key (FPDS uses same key as SAM.gov)
  */
-async function getFpdsApiKey(userId = null) {
+async function getFpdsApiKey(userId = null, organizationId = null) {
   try {
-    const apiKey = await getApiKey('samgov', userId);
+    const apiKey = await getApiKey('samgov', 'project', organizationId);
     return apiKey;
   } catch (error) {
     console.error('Failed to get FPDS API key:', error);
@@ -35,9 +35,9 @@ async function getFpdsApiKey(userId = null) {
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Contract award search results
  */
-export async function searchContractAwards(options = {}, userId = null) {
+export async function searchContractAwards(options = {}, userId = null, organizationId = null) {
   try {
-    const apiKey = await getFpdsApiKey(userId);
+    const apiKey = await getFpdsApiKey(userId, organizationId);
     const {
       piid,
       vendorUEI,
@@ -95,9 +95,9 @@ export async function searchContractAwards(options = {}, userId = null) {
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Contract details
  */
-export async function getContractByPIID(piid, userId = null) {
+export async function getContractByPIID(piid, userId = null, organizationId = null) {
   try {
-    const result = await searchContractAwards({ piid, limit: 1 }, userId);
+    const result = await searchContractAwards({ piid, limit: 1 }, userId, organizationId);
 
     if (result.contracts && result.contracts.length > 0) {
       return {
@@ -123,7 +123,7 @@ export async function getContractByPIID(piid, userId = null) {
  * @param {string} userId - User ID
  * @returns {Promise<Object>} Vendor's contract history
  */
-export async function getVendorContracts(vendorUEI, options = {}, userId = null) {
+export async function getVendorContracts(vendorUEI, options = {}, userId = null, organizationId = null) {
   try {
     const result = await searchContractAwards(
       {
@@ -131,7 +131,8 @@ export async function getVendorContracts(vendorUEI, options = {}, userId = null)
         ...options,
         limit: options.limit || 100,
       },
-      userId
+      userId,
+      organizationId
     );
 
     return {

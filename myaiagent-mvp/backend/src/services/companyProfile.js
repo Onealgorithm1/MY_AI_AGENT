@@ -203,11 +203,11 @@ export function matchOpportunities(opportunities, profile = ONEALGORITHM_PROFILE
   opportunities.forEach(opp => {
     const score = calculateMatchScore(opp, profile);
 
-    if (score.total >= 70) {
+    if (score.total >= 50) {
       matched.push({ ...opp, matchScore: score });
-    } else if (score.total >= 50) {
-      nearMatch.push({ ...opp, matchScore: score });
     } else if (score.total >= 30) {
+      nearMatch.push({ ...opp, matchScore: score });
+    } else if (score.total >= 10) {
       stretch.push({ ...opp, matchScore: score });
     }
   });
@@ -240,8 +240,10 @@ function calculateMatchScore(opportunity, profile) {
   // Check NAICS match (0-30 points)
   const oppNaics = opportunity.naics_code || opportunity.raw_data?.naicsCode;
   if (oppNaics) {
-    const allCompanyNaics = Object.values(profile.capabilities)
-      .flatMap(cap => cap.naicsCodes);
+    const allCompanyNaics = [
+      ...(profile.naicsCodes || []),
+      ...Object.values(profile.capabilities).flatMap(cap => cap.naicsCodes || [])
+    ];
 
     if (allCompanyNaics.includes(oppNaics)) {
       score.naics = 30;
@@ -254,8 +256,10 @@ function calculateMatchScore(opportunity, profile) {
   // Check PSC match (0-20 points)
   const oppPsc = opportunity.psc_code || opportunity.raw_data?.productServiceCode;
   if (oppPsc) {
-    const allCompanyPsc = Object.values(profile.capabilities)
-      .flatMap(cap => cap.pscCodes);
+    const allCompanyPsc = [
+      ...(profile.pscCodes || []),
+      ...Object.values(profile.capabilities).flatMap(cap => cap.pscCodes || [])
+    ];
 
     if (allCompanyPsc.includes(oppPsc)) {
       score.psc = 20;

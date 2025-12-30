@@ -38,20 +38,24 @@ export async function query(text, params) {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    
+
     if (duration > 1000) {
-      console.warn('⚠️  Slow query detected', { 
-        duration, 
+      console.warn('⚠️  Slow query detected', {
+        duration,
         rows: res.rowCount,
-        query: text.substring(0, 100) 
+        query: text.substring(0, 100)
       });
     } else if (process.env.DEBUG_QUERIES === 'true') {
       console.log('📊 Query executed', { duration, rows: res.rowCount });
     }
-    
+
     return res;
   } catch (error) {
-    console.error('❌ Query error:', error);
+    // Suppress logging calls for "relation already exists" or "duplicate object" errors
+    // These are common in idempotent migrations and are handled by the migration runner
+    if (error.code !== '42P07' && error.code !== '42710') {
+      console.error('❌ Query error:', error);
+    }
     throw error;
   }
 }

@@ -146,11 +146,34 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    // Fetch from SAM.gov cache
-    const cachedOpps = await getCachedOpportunities({ limit: 1000, offset: 0 });
+    // 1. Get company profile first
+    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
+    console.log(`[DEBUG] Org ${req.user.organization_id} Profile NAICS:`, profile.naicsCodes);
+
+    // 2. Extract all NAICS codes for pre-filtering
+    // We want to fetch opportunities that match ANY of our NAICS codes
+    const profileNaics = profile.naicsCodes || [];
+    const capabilityNaics = Object.values(profile.capabilities).flatMap(cap => cap.naicsCodes || []);
+    const allNaics = [...new Set([...profileNaics, ...capabilityNaics])];
+    console.log(`[DEBUG] All Filter NAICS:`, allNaics);
+
+    // 3. Fetch pre-filtered from SAM.gov cache
+    const filterOptions = { limit: 1000, offset: 0 };
+    if (allNaics.length > 0) {
+      filterOptions.naicsCodes = allNaics;
+    }
+
+    console.log(`[DEBUG] Calling getCachedOpportunities with:`, JSON.stringify(filterOptions));
+    const cachedOpps = await getCachedOpportunities(filterOptions);
     const opportunities = cachedOpps.opportunities || [];
+    console.log(`[DEBUG] DB Returned Opportunities: ${opportunities.length}`);
+
+    if (opportunities.length > 0) {
+      console.log(`[DEBUG] Sample Opp NAICS: ${opportunities[0].naics_code}`);
+    }
 
     if (opportunities.length === 0) {
+      console.log('[DEBUG] No opportunities found in DB for these NAICS.');
       return res.json({
         success: true,
         matches: [],
@@ -160,8 +183,8 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
     }
 
     // Match opportunities
-    const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
     const results = companyProfile.matchOpportunities(opportunities, profile);
+    console.log(`[DEBUG] Match Results: Matched=${results.matched.length}, Near=${results.nearMatch.length}, Stretch=${results.stretch.length}`);
 
     res.json({
       success: true,

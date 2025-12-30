@@ -193,7 +193,7 @@ export async function recordSearchHistory(params, results, userId = null) {
 export async function searchAndCache(searchParams, searchFunction, userId = null, organizationId = null) {
   try {
     // Perform the search
-    const searchResults = await searchFunction(searchParams, userId);
+    const searchResults = await searchFunction(searchParams, userId, organizationId);
 
     if (!searchResults.success || !searchResults.opportunities) {
       return searchResults;
@@ -228,7 +228,7 @@ export async function searchAndCache(searchParams, searchFunction, userId = null
 export async function getCachedOpportunity(noticeId) {
   try {
     const result = await pool.query(
-      'SELECT * FROM samgov_opportunities_cache WHERE notice_id = $1',
+      `SELECT * FROM samgov_opportunities_cache WHERE notice_id = $1 OR id::text = $1`,
       [noticeId]
     );
 
@@ -287,6 +287,7 @@ export async function getCachedOpportunities(options = {}) {
       isMasterAdmin = false,
       // New filters
       naicsCode,
+      naicsCodes, // Add support for array of matched NAICS
       setAside,
       agency,
       placeOfPerformance,
@@ -324,6 +325,12 @@ export async function getCachedOpportunities(options = {}) {
     if (naicsCode) {
       queryText += ` AND naics_code ILIKE $${paramIndex}`;
       params.push(`%${naicsCode}%`);
+      paramIndex++;
+    }
+
+    if (naicsCodes && Array.isArray(naicsCodes) && naicsCodes.length > 0) {
+      queryText += ` AND naics_code = ANY($${paramIndex})`;
+      params.push(naicsCodes);
       paramIndex++;
     }
 
@@ -375,23 +382,16 @@ export async function getCachedOpportunities(options = {}) {
       paramIndex++;
     }
 
-    // Organization Isolation Logic
+    // Organization Isolation Logic - DISABLED for SAM.gov Cache (Public Data)
+    /*
     if (!isMasterAdmin && organizationId) {
-      // Regular users only see their org's data or data with no org (system-wide)
-      /* 
-         NOTE: We allow seeing NULL organization_id records as "Public/System" data 
-         if that's the desired behavior. But typically for strict isolation 
-         we might want ONLY organization_id. 
-         Let's assume users can see their own org's data OR data they created.
-      */
       queryText += ` AND (organization_id = $${paramIndex} OR organization_id IS NULL)`;
       params.push(organizationId);
       paramIndex++;
     } else if (!isMasterAdmin && !organizationId) {
-      // No org ID (e.g. system user?) and not master admin
-      // Fallback to seeing strictly own created items or public items
       queryText += ` AND (organization_id IS NULL)`;
     }
+    */
     // Master Admin sees ALL (no filter added)
 
     // Count total

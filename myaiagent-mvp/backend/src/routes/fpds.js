@@ -40,7 +40,8 @@ router.get('/search/contracts', authenticate, async (req, res) => {
         limit: parseInt(limit) || 100,
         offset: parseInt(offset) || 0,
       },
-      req.user.id
+      req.user.id,
+      req.user.organization_id
     );
 
     res.json(result);
@@ -62,7 +63,7 @@ router.get('/contract/:piid', authenticate, async (req, res) => {
   try {
     const { piid } = req.params;
 
-    const result = await fpdsService.getContractByPIID(piid, req.user.id);
+    const result = await fpdsService.getContractByPIID(piid, req.user.id, req.user.organization_id);
 
     if (!result.success) {
       return res.status(404).json(result);
@@ -96,7 +97,8 @@ router.get('/vendor/:uei/contracts', authenticate, async (req, res) => {
         agencyCode,
         awardDateFrom,
       },
-      req.user.id
+      req.user.id,
+      req.user.organization_id
     );
 
     res.json(result);

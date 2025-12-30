@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import './OrgAdminDashboard.css';
 import AuditLogs from '../components/AuditLogs';
 import AddApiKeyModal from '../components/AddApiKeyModal';
+import OpportunityDetailModal from '../components/OpportunityDetailModal';
 
 const OrgAdminDashboard = () => {
   const { user, currentOrganization } = useAuthStore();
@@ -40,6 +41,19 @@ const OrgAdminDashboard = () => {
     fullName: '',
     role: 'member'
   });
+
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+
+  const formatContractValue = (opp) => {
+    const award = opp.raw_data?.award;
+    if (award?.amount) {
+      const amount = parseFloat(award.amount);
+      if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+      if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+      return `$${amount.toLocaleString()}`;
+    }
+    return null;
+  };
 
   // Verify user is org admin
   useEffect(() => {
@@ -476,29 +490,41 @@ const OrgAdminDashboard = () => {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
               {companyMatches.map((match, i) => (
-                <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', backgroundColor: 'white', transition: 'box-shadow 0.2s' }} className="hover:shadow-md">
+                <div
+                  key={match.notice_id || match.id}
+                  className="match-card"
+                  style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}
+                  onClick={() => setSelectedOpportunity(match)}
+                  onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}
+                  onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
-                        <a href={`/samgov/${match.id || match.solicitation_number}`} target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
-                          {match.title || match.opportunity_title}
-                        </a>
-                      </h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '14px', color: '#4b5563' }}>
-                        <span style={{ fontWeight: 500 }}>{match.agency || match.department}</span>
-                        <span>•</span>
-                        <span>Due: {match.close_date || match.response_deadline ? new Date(match.close_date || match.response_deadline).toLocaleDateString() : 'N/A'}</span>
-                      </div>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#1f2937', fontSize: '16px' }}>{match.title}</h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>
+                        Solicitation: {match.solicitation_number} • Posted: {new Date(match.posted_date).toLocaleDateString()}
+                      </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 500, backgroundColor: '#dcfce7', color: '#166534' }}>
-                        {match.match_score || match.matchScore?.total || 0}% Match
-                      </div>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        borderRadius: '9999px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        backgroundColor: match.matchScore?.total >= 80 ? '#dcfce7' :
+                          match.matchScore?.total >= 50 ? '#fef9c3' : '#f3f4f6',
+                        color: match.matchScore?.total >= 80 ? '#166534' :
+                          match.matchScore?.total >= 50 ? '#854d0e' : '#374151'
+                      }}>
+                        {match.matchScore?.total}% Match
+                      </span>
                     </div>
                   </div>
-                  <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px' }}>
-                    {match.naics_code && <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#374151' }}>NAICS: {match.naics_code}</span>}
-                    {(match.set_aside || match.type_of_set_aside) && <span style={{ padding: '2px 8px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', textTransform: 'capitalize' }}>{match.set_aside || match.type_of_set_aside}</span>}
+
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {match.naics_code && <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#4b5563' }}>NAICS: {match.naics_code}</span>}
+                    {match.set_aside_type && <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#4b5563' }}>{match.set_aside_type}</span>}
                   </div>
                 </div>
               ))}
@@ -900,6 +926,15 @@ const OrgAdminDashboard = () => {
           </div>
         )
       }
+
+      {/* Opportunity Detail Modal */}
+      {selectedOpportunity && (
+        <OpportunityDetailModal
+          opportunity={selectedOpportunity}
+          onClose={() => setSelectedOpportunity(null)}
+          formatContractValue={formatContractValue}
+        />
+      )}
     </div >
   );
 }

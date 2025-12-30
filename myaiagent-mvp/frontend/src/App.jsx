@@ -25,6 +25,7 @@ const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage')
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
 const CompanyProfilePage = lazy(() => import('./pages/CompanyProfilePage'));
+const OpportunityDetailsPage = lazy(() => import('./pages/OpportunityDetailsPage'));
 const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettingsPage'));
 const AppLayout = lazy(() => import('./components/AppLayout'));
 
@@ -235,6 +236,14 @@ function App() {
             element={
               <PrivateRoute>
                 <CompanyProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/opportunities/:id"
+            element={
+              <PrivateRoute>
+                <OpportunityDetailsPage />
               </PrivateRoute>
             }
           />
