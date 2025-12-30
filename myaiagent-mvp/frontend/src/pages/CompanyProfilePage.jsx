@@ -28,7 +28,7 @@ import { useAuthStore } from '../store/authStore';
 import { toast } from 'sonner';
 
 const CompanyProfilePage = () => {
-  const { user } = useAuthStore();
+  const { user, currentOrganization } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,7 +43,6 @@ const CompanyProfilePage = () => {
     name: '',
     website: '',
     naicsCodes: '',
-    naicsCodes: '',
     keywords: '',
     certifications: {
       smallBusiness: false,
@@ -56,10 +55,9 @@ const CompanyProfilePage = () => {
   });
 
   const canEdit = user?.role === 'admin' || user?.role === 'owner' || user?.org_role === 'admin' || user?.org_role === 'owner';
-
   useEffect(() => {
     fetchCompanyProfile();
-  }, []);
+  }, [currentOrganization?.id]);
 
   useEffect(() => {
     if (profile) {

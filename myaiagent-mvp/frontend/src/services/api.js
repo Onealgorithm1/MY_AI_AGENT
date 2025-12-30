@@ -117,19 +117,21 @@ api.interceptors.request.use(
       }
     }
     // Add Organization Context Header
-    // try {
-    //   const authStorage = localStorage.getItem('auth-storage');
-    //   if (authStorage) {
-    //     const parsed = JSON.parse(authStorage);
-    //     // Zustand persist structure: { state: { ... } }
-    //     const currentOrgId = parsed.state?.currentOrganization?.id;
-    //     if (currentOrgId) {
-    //       config.headers['X-Organization-ID'] = currentOrgId;
-    //     }
-    //   }
-    // } catch (e) {
-    //   // Ignore storage read errors
-    // }
+    // Add Organization Context Header
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        // Zustand persist structure: { state: { ... } }
+        const currentOrgId = parsed.state?.currentOrganization?.id;
+        if (currentOrgId) {
+          config.headers['X-Organization-ID'] = currentOrgId;
+          // console.log('🏢 Added Org Context Header:', currentOrgId);
+        }
+      }
+    } catch (e) {
+      // Ignore storage read errors
+    }
 
     return config;
   },
