@@ -332,7 +332,7 @@ const OrgAdminDashboard = () => {
           className={`tab ${activeTab === 'eligible-opportunities' ? 'active' : ''}`}
           onClick={() => setActiveTab('eligible-opportunities')}
         >
-          🎯 Eligible Opportunities
+          🎯 Recommended Opportunities
         </button>
         <button
           className={`tab ${activeTab === 'users' ? 'active' : ''}`}
@@ -497,7 +497,7 @@ const OrgAdminDashboard = () => {
         <div className="org-opportunities" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Eligible Opportunities</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Recommended Opportunities</h2>
               <p style={{ color: '#666', fontSize: '14px', marginTop: '4px' }}>Contracts matched to your company profile</p>
             </div>
             <a href="/samgov" style={{ padding: '8px 16px', backgroundColor: '#0066cc', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}>
@@ -509,7 +509,7 @@ const OrgAdminDashboard = () => {
             <p style={{ textAlign: 'center', padding: '32px', color: '#666' }}>Finding matches...</p>
           ) : companyMatches.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <p style={{ color: '#6b7280', fontSize: '16px' }}>No eligible opportunities found yet.</p>
+              <p style={{ color: '#6b7280', fontSize: '16px' }}>No recommended opportunities found yet.</p>
               <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px' }}>Try updating your company profile with more keywords and NAICS codes.</p>
               <a href="/company-profile" style={{ display: 'inline-block', marginTop: '16px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', textDecoration: 'none', fontSize: '14px', fontWeight: 500, color: '#374151' }}>Update Profile</a>
             </div>

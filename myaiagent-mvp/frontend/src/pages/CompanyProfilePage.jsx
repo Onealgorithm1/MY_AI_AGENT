@@ -547,7 +547,7 @@ const CompanyProfilePage = () => {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {eligibility.eligible_count || 0} Eligible Opportunities
+                  {eligibility.eligible_count || 0} Recommended Opportunities
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                   {eligibility.potential_count || 0} Potential Matches
