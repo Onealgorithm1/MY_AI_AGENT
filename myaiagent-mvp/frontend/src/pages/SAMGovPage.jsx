@@ -172,7 +172,7 @@ const SAMGovPage = () => {
       const activeFilters = filterOverrides || filters;
 
       const fullRes = await samGov.getCachedOpportunities({
-        limit: 5000, // Fetch plenty for client-side sorting if needed, or rely on server
+        limit: 10000, // Fetch plenty for client-side sorting if needed, or rely on server
         offset: 0,
         keyword: activeFilters.keyword,
         type: activeFilters.noticeType,
@@ -224,9 +224,9 @@ const SAMGovPage = () => {
 
     switch (field) {
       case 'modifiedDate':
-        return direction * (new Date(b.updated_at) - new Date(a.updated_at));
+        return direction * (new Date(a.updated_at) - new Date(b.updated_at));
       case 'postedDate':
-        return direction * (new Date(b.posted_date) - new Date(a.posted_date));
+        return direction * (new Date(a.posted_date) - new Date(b.posted_date));
       case 'responseDate':
         if (!a.response_deadline) return 1;
         if (!b.response_deadline) return -1;
@@ -956,7 +956,7 @@ What would you like to know about this opportunity?`;
                 </h2>
                 {lastRefreshTime && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Last updated: {lastRefreshTime.toLocaleTimeString()} <span className="hidden sm:inline">â€¢ Auto-refresh every hour</span>
+                    Last updated: {lastRefreshTime.toLocaleTimeString()} <span className="hidden sm:inline">&bull; Auto-refresh daily</span>
                   </p>
                 )}
               </div>
@@ -997,8 +997,8 @@ What would you like to know about this opportunity?`;
                     >
                       <option value="-modifiedDate">Updated Date (Newest)</option>
                       <option value="modifiedDate">Updated Date (Oldest)</option>
-                      <option value="-postedDate">Posted Date (Newest)</option>
-                      <option value="postedDate">Posted Date (Oldest)</option>
+                      <option value="-postedDate">Published Date (Newest)</option>
+                      <option value="postedDate">Published Date (Oldest)</option>
                       <option value="responseDate">Response Date (Earliest)</option>
                     </select>
                   </>
@@ -1235,21 +1235,23 @@ What would you like to know about this opportunity?`;
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                       >
-                        Previous
+                        &larr; Previous
                       </button>
-                      <span className="text-xs md:text-sm text-gray-600 px-2">
-                        Page {currentPage} of {totalPages}
-                      </span>
+                      <div className="hidden md:flex">
+                        <span className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                      </div>
                       <button
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="px-3 md:px-3 py-2 md:py-1 border border-gray-300 rounded text-xs md:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 touch-manipulation min-h-[44px] md:min-h-0"
+                        className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                       >
-                        Next
+                        Next &rarr;
                       </button>
                     </div>
                   </div>

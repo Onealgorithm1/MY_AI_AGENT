@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My AI Agent - Master Technical Reference</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #475569;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --code-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background: var(--bg);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Responsive Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #0f172a;
+            color: #fff;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            padding: 2rem 1rem;
+            box-sizing: border-box;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 0.5rem;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #cbd5e1;
+            text-decoration: none;
+            padding: 0.6rem 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .sidebar a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            padding-left: 10px;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Main Content Responsiveness */
+        .main {
+            margin-left: 280px;
+            /* Matches sidebar width */
+            padding: 3rem 4rem;
+            max-width: 1200px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #334155;
+            margin-top: 4rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            color: #475569;
+            margin-top: 2.5rem;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Flow Diagrams */
+        .flow-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-node {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-weight: 600;
+            color: var(--primary-dark);
+            font-size: 0.9rem;
+        }
+
+        .flow-arrow {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+
+        /* Responsive Tables */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            background: #fff;
+            min-width: 600px;
+            /* Ensures table doesn't squash too much */
+        }
+
+        th {
+            background: #f1f5f9;
+            text-align: left;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            color: #334155;
+            vertical-align: top;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <nav class="sidebar">
+        <div class="brand">My AI Agent</div>
+
+        <h2>Overview</h2>
+        <a href="#architecture">Architecture</a>
+        <a href="#domains">Domain Model</a>
+
+        <h2>Feature Implementation</h2>
+        <a href="#flow-auth">Authentication</a>
+        <a href="#flow-chat">Conversational AI</a>
+        <a href="#flow-govtech">GovTech Opportunities</a>
+        <a href="#flow-proposals">Proposal Management</a>
+        <a href="#flow-evm">Project EVM</a>
+
+        <h2>Data Dictionary</h2>
+        <a href="#db-identity">Identity & Access</a>
+        <a href="#db-chat">Chat & Memory</a>
+        <a href="#db-govtech">Federal Pipeline</a>
+        <a href="#db-proposals">Proposals & Collab</a>
+        <a href="#db-evm">EVM & Analytics</a>
+    </nav>
+
+    <div class="main">
+        <h1>Master Technical Reference</h1>
+        <p>This document provides a comprehensive technical breakdown of the <strong>My AI Agent</strong> platform,
+            mapping Frontend User Interfaces to Backend Services and the underlying Database Schema.</p>
+
+        <!-- SECTION 1: ARCHITECTURE -->
+        <h2 id="architecture">1. System Architecture</h2>
+        <p>The system follows a 3-tier architecture with a clear separation of concerns.</p>
+        <img src="docs/system_architecture.png" alt="System Architecture Diagram">
+
+        <h2 id="domains">2. Domain Diagram</h2>
+        <p>The database is structured around 6 core domains, now including the newly architected <strong>Proposal
+                Management</strong> module.</p>
+        <img src="docs/database_erd.png" alt="Database ERD">
+
+        <!-- SECTION 2: FEATURE IMPLEMENTATION -->
+        <h2 id="implementation">3. Feature Implementation Mappings</h2>
+        <p>This section explains exactly how data flows through the application code.</p>
+
+        <!-- AUTH FLOW -->
+        <div class="card" id="flow-auth">
+            <h3>🔐 Authentication & Identity <span class="tag">Core</span></h3>
+            <p><strong>Goal:</strong> Secure user access and multi-tenancy context.</p>
+
+            <div class="flow-container">
+                <div class="flow-node">SignupPage.jsx</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">api.post('/auth/signup')</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">routes/auth.js</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">DB: users, organizations</div>
+            </div>
+
+            <ul>
+                <li><strong>Frontend:</strong> <code>src/context/AuthContext.jsx</code> manages session state (JWT).
+                </li>
+                <li><strong>Backend:</strong> <code>verificationMiddleware</code> checks JWT and attaches
+                    <code>req.user</code>.
+                </li>
+                <li><strong>Data Effect:</strong> Creates a <code>users</code> record and a default
+                    <code>organizations</code> tenant.
+                </li>
+            </ul>
+        </div>
+
+        <!-- CHAT FLOW -->
+        <div class="card" id="flow-chat">
+            <h3>💬 Conversational AI <span class="tag">RAG Engine</span></h3>
+            <p><strong>Goal:</strong> Real-time chat with "Long-term Memory" and document awareness.</p>
+
+            <div class="flow-container">
+                <div class="flow-node">ChatInterface.jsx</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">useChat.js (Hook)</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">api.post('/messages')</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">routes/messages.js</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">DB: messages, memory_facts</div>
+            </div>
+
+            <h4>How it works:</h4>
+            <ol>
+                <li>User sends message via <code>ChatPage</code>.</li>
+                <li><strong>Frontend</strong> calls <code>POST /api/messages</code>.</li>
+                <li><strong>Backend</strong> (<code>messages.js</code>):
+                    <ul>
+                        <li>Vector Search: queries <code>embeddings</code> for relevant context.</li>
+                        <li>LLM Call: Sends history + context to OpenAI/Anthropic.</li>
+                        <li>Save: Inserts user message + AI response into <code>messages</code> table.</li>
+                        <li>Update: Updates <code>updated_at</code> in <code>conversations</code>.</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <!-- GOVTECH FLOW -->
+        <div class="card" id="flow-govtech">
+            <h3>🏛️ Federal Opportunities <span class="tag">GovTech</span></h3>
+            <p><strong>Goal:</strong> Ingest SAM.gov data and manage the bid pipeline.</p>
+
+            <div class="flow-container">
+                <div class="flow-node">OpportunitiesPage.jsx</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">api.get('/opportunities')</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">routes/opportunities.js</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">DB: opportunities</div>
+            </div>
+
+            <h4>Interlinking:</h4>
+            <ul>
+                <li>The <code>opportunities</code> table is the central hub.</li>
+                <li><strong>Sync:</strong> <code>routes/samGov.js</code> runs cron jobs to fetch from SAM.gov API and
+                    populate <code>samgov_opportunities_cache</code>.</li>
+                <li><strong>Pipeline:</strong> When a user "Starts Work" on a cached view, it moves data from
+                    <code>samgov_opportunities_cache</code> -> <code>opportunities</code>.
+                </li>
+            </ul>
+        </div>
+
+        <!-- PROPOSAL FLOW -->
+        <div class="card" id="flow-proposals">
+            <h3>📝 Proposal Management <span class="tag">Collaboration</span></h3>
+            <p><strong>Goal:</strong> Collaborative workspace for writing federal proposals.</p>
+
+            <div class="flow-container">
+                <div class="flow-node">WorkspaceDashboard.jsx</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">api.get('/workspaces/:id')</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">routes/collaboration.js</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">DB: proposal_workspaces</div>
+            </div>
+
+            <h4>Data Relationships:</h4>
+            <ul>
+                <li><code>proposal_workspaces.opportunity_id</code> <span class="flow-arrow">↔</span>
+                    <code>opportunities.id</code> (Links the proposal to the bid).
+                </li>
+                <li><code>proposal_team_members</code> <span class="flow-arrow">↔</span> <code>users.id</code> (Assigns
+                    writers/managers).</li>
+                <li><code>proposal_sections</code> (Breakdown of the RFP, e.g., "Technical Volume").</li>
+            </ul>
+        </div>
+
+        <!-- SECTION 3: DATA DICTIONARY -->
+        <h2 id="db-identity">4. Detailed Data Dictionary</h2>
+
+        <!-- IDENTITY TABLES -->
+        <h3>4.1 Identity & Access</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Description</th>
+                        <th>Key Columns</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>users</code></td>
+                        <td>Global user registry.</td>
+                        <td>id (PK), email, role, settings</td>
+                    </tr>
+                    <tr>
+                        <td><code>organizations</code></td>
+                        <td>Multi-tenant container.</td>
+                        <td>id (PK), name, owner_id (FK)</td>
+                    </tr>
+                    <tr>
+                        <td><code>api_secrets</code></td>
+                        <td>Store for LLM keys (OpenAI, etc).</td>
+                        <td>id (PK), key_value (Encrypted)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CHAT TABLES -->
+        <h3 id="db-chat">4.2 Conversational AI</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Description</th>
+                        <th>Key Relationships</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>conversations</code></td>
+                        <td>Head of a chat thread.</td>
+                        <td>user_id (FK -> users), organization_id (FK)</td>
+                    </tr>
+                    <tr>
+                        <td><code>messages</code></td>
+                        <td>Actual text content.</td>
+                        <td>conversation_id (FK), role (user/ai)</td>
+                    </tr>
+                    <tr>
+                        <td><code>memory_facts</code></td>
+                        <td>Extracted knowledge graph.</td>
+                        <td>user_id (FK), source_message_id (FK)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- GOVTECH TABLES -->
+        <h3 id="db-govtech">4.3 Federal Pipeline</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Description</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>opportunities</code></td>
+                        <td>Active Bids. Status tracking.</td>
+                        <td>internal_status, pwin_score, assigned_to</td>
+                    </tr>
+                    <tr>
+                        <td><code>samgov_opportunities_cache</code></td>
+                        <td>Raw data lake from API.</td>
+                        <td>JSONB raw_data (Stores full XML/JSON)</td>
+                    </tr>
+                    <tr>
+                        <td><code>opportunity_activity</code></td>
+                        <td>Audit log of changes.</td>
+                        <td>"User X changed status to Won"</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PROPOSAL TABLES -->
+        <h3 id="db-proposals">4.4 Proposal Collaboration (New)</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Purpose</th>
+                        <th>Schema Highlights</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>proposal_workspaces</code></td>
+                        <td>The war room for a specific bid.</td>
+                        <td>Linked to <code>opportunities.id</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>proposal_sections</code></td>
+                        <td>Document volumes (Tech, Price).</td>
+                        <td><code>content</code> (Text), <code>assigned_to</code> (User)</td>
+                    </tr>
+                    <tr>
+                        <td><code>compliance_checklists</code></td>
+                        <td>RFP Matrix (Shalls/Wills).</td>
+                        <td>Linked to Workspace.</td>
+                    </tr>
+                    <tr>
+                        <td><code>proposal_deadlines</code></td>
+                        <td>Calendar for Color Reviews.</td>
+                        <td>Pink Team, Red Team dates.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- EVM TABLES -->
+        <h3 id="db-evm">4.5 Project Management (EVM)</h3>
+        <img src="docs/dashboard_mockup.png" alt="EVM Dashboard" style="max-height: 200px;">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>evm_projects</code></td>
+                        <td>Post-award execution tracking.</td>
+                    </tr>
+                    <tr>
+                        <td><code>evm_reporting_periods</code></td>
+                        <td>Monthly snapshots of CPI/SPI/EV.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>5. Interlinking & Data Flow Summary</h2>
+        <p>The strength of this data model is the <strong>Lifecycle Connectivity</strong>:</p>
+        <ol>
+            <li><strong>Discovery:</strong> Data enters via <code>samgov_opportunities_cache</code> (Automation).</li>
+            <li><strong>Qualification:</strong> Promoted to <code>opportunities</code> table (Manual/AI).</li>
+            <li><strong>Planning:</strong> A <code>proposal_workspace</code> is spawned from an Opportunity.</li>
+            <li><strong>Execution:</strong> Upon "Win", data flows to <code>evm_projects</code> for delivery tracking.
+            </li>
+            <li><strong>Intelligence:</strong> All Chat interactions (<code>messages</code>) can reference these
+                entities via Vector Search (Context).</li>
+        </ol>
+
+    </div>
+</body>
+
+</html>

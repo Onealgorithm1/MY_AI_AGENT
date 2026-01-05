@@ -98,6 +98,7 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
             opp.officeAddress?.city || opp.contracting_office || null,
             opp.placeOfPerformance?.city?.name || opp.place_of_performance || null,
             opp.description || null,
+            JSON.stringify(opp),
             userId,
             effectiveOrgId
           ]
