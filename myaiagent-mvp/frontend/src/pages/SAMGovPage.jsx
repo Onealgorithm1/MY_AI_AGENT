@@ -408,13 +408,18 @@ What would you like to know about this opportunity?`;
     }
   };
 
-  // Extract unique domains from opportunities
   const getDomains = () => {
     const domains = opportunities.map(opp => {
       const parts = opp.raw_data?.fullParentPathName?.split('.') || [];
       return parts[0] || opp.contracting_office?.split(',')[0] || 'Unknown';
     });
     return [...new Set(domains)].slice(0, 15); // Top 15 domains
+  };
+
+  // Pagination Handler
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Filter Section Component
