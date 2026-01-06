@@ -1,4 +1,5 @@
 import pool from '../utils/database.js';
+import samGovService from './samGov.js';
 
 /**
  * Extract notice_id from SAM.gov opportunity data
@@ -517,6 +518,71 @@ export async function getFacets(category) {
   }
 }
 
+
+export async function processPendingDescriptions(limit = 20) {
+  const client = await pool.connect();
+  try {
+    // 1. Find opportunities with descriptions that are links
+    const res = await client.query(`
+      SELECT id, description, organization_id 
+      FROM samgov_opportunities_cache 
+      WHERE description LIKE 'https://api.sam.gov%' 
+      LIMIT $1 FOR UPDATE SKIP LOCKED
+    `, [limit]);
+
+    if (res.rows.length === 0) return 0;
+
+    console.log(`[Description Sync] Found ${res.rows.length} opportunities with link-based descriptions.`);
+
+    // 2. Find a fallback API key (Organization) if needed
+    // SAM.gov opportunities are often global (org_id=null), but we need a valid key to fetch details
+    let fallbackOrgId = null;
+    const keyRes = await client.query(
+      `SELECT organization_id FROM api_secrets WHERE service_name = 'SAM.gov' AND is_active = true LIMIT 1`
+    );
+    if (keyRes.rows.length > 0) {
+      fallbackOrgId = keyRes.rows[0].organization_id;
+      // console.log(`[Description Sync] Using fallback Org ID: ${fallbackOrgId}`);
+    } else {
+      console.warn('[Description Sync] ⚠️ No active SAM.gov API keys found in system. Cannot fetch descriptions.');
+    }
+
+    let processedCount = 0;
+
+    for (const row of res.rows) {
+      // Use the row's org ID if valid, otherwise fallback
+      const effectiveOrgId = row.organization_id || fallbackOrgId;
+
+      if (!effectiveOrgId) {
+        // Skip if we absolutely have no key
+        console.warn(`[Description Sync] Skipping opp ${row.id} - no API key available.`);
+        continue;
+      }
+
+      const fullDesc = await samGovService.fetchDescription(row.description, effectiveOrgId);
+
+      if (fullDesc) {
+        await client.query(`
+          UPDATE samgov_opportunities_cache 
+          SET description = $1 
+          WHERE id = $2
+        `, [fullDesc, row.id]);
+        processedCount++;
+      }
+
+      // Delay to be nice to the API
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    return processedCount;
+  } catch (err) {
+    console.error('[Description Sync] Error processing descriptions:', err);
+    return 0;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   cacheOpportunities,
   recordSearchHistory,
@@ -527,4 +593,5 @@ export default {
   linkToTrackedOpportunity,
   getAllCachedOpportunities,
   getFacets,
+  processPendingDescriptions,
 };

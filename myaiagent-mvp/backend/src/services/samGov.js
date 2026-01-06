@@ -264,9 +264,37 @@ export async function getExclusions(options = {}, userId = null, organizationId 
   }
 }
 
+/**
+ * Fetch full description from SAM.gov link
+ * @param {string} url - Description URL
+ * @param {string} organizationId - Organization ID for API key lookup
+ * @returns {Promise<string>} Full description text
+ */
+export async function fetchDescription(url, organizationId = null) {
+  try {
+    const apiKey = await getSamApiKey(organizationId);
+
+    // Check if URL already has query params
+    const separator = url.includes('?') ? '&' : '?';
+    const fullUrl = `${url}${separator}api_key=${apiKey}`;
+
+    const response = await axios.get(fullUrl, {
+      timeout: 10000,
+    });
+
+    // SAM.gov description endpoint usually returns the text directly or in a specific field
+    // It's typically raw text or HTML
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch description from ${url}:`, error.message);
+    return null;
+  }
+}
+
 export default {
   searchEntities,
   getEntityByUEI,
   searchOpportunities,
   getExclusions,
+  fetchDescription,
 };

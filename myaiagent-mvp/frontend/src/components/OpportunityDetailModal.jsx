@@ -396,6 +396,43 @@ What would you like to know about this opportunity?`;
                             )}
                         </div>
 
+                        {/* Description Section - Accordion */}
+                        <div className="border border-gray-300 rounded-lg overflow-hidden">
+                            <button
+                                onClick={() => toggleSection('description')}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 transition-colors"
+                            >
+                                <h3 className="text-base font-bold text-gray-900">Description</h3>
+                                {expandedSections.description ? (
+                                    <ChevronUp className="w-5 h-5 text-gray-600" />
+                                ) : (
+                                    <ChevronDown className="w-5 h-5 text-gray-600" />
+                                )}
+                            </button>
+                            {expandedSections.description && (
+                                <div className="p-4 bg-white space-y-4">
+                                    <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
+                                        {opportunity.description || opportunity.raw_data?.description || (
+                                            <span className="text-gray-500 italic">No description provided in the data feed. Please view on SAM.gov for full details.</span>
+                                        )}
+                                    </div>
+                                    {opportunity.raw_data?.uiLink && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <a
+                                                href={opportunity.raw_data.uiLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium flex items-center gap-1"
+                                            >
+                                                <ExternalLink className="w-4 h-4" />
+                                                View Full Description on SAM.gov
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Award Details Section */}
                         {awardInfo && (
                             <div className="border border-gray-300 rounded-lg overflow-hidden">
@@ -1330,7 +1367,7 @@ What would you like to know about this opportunity?`;
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -75,6 +75,21 @@ export async function syncDateRange(startDate, endDate) {
             context.organizationId // Use Org ID for API Key lookup, but cache will store as Global
         );
 
+        // Fetch actual descriptions for opportunities that only provided a link
+        if (result.success) {
+            try {
+                // Process a batch of pending descriptions
+                // We don't await this if we want it to run in background, but better to await for cron job stability
+                const processedCount = await samGovCache.processPendingDescriptions(20);
+                if (processedCount > 0) {
+                    console.log(`[SAM.gov Sync] Enhanced ${processedCount} opportunities with full descriptions`);
+                }
+            } catch (descError) {
+                console.warn('[SAM.gov Sync] Failed to process description links:', descError.message);
+                // Don't fail the whole sync
+            }
+        }
+
         return result;
     } catch (error) {
         console.error(`[SAM.gov Sync] Failed to sync range ${startDate.toISOString()} to ${endDate.toISOString()}:`, error.message);
