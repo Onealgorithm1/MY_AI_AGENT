@@ -65,6 +65,9 @@ import aiAgentsRoutes from './routes/aiAgents.js';
 import organizationsRoutes from './routes/organizations.js';
 import adminOrganizationsRoutes from './routes/admin-organizations.js';
 import orgAdminRoutes from './routes/org-admin.js';
+import savedSearchesRoutes from './routes/savedSearches.js';
+import remindersRoutes from './routes/reminders.js';
+import notificationsRoutes from './routes/notifications.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -369,6 +372,9 @@ app.use('/api/ai-agents', aiAgentsRoutes);
 app.use('/api/organizations', organizationsRoutes);
 app.use('/api/admin/organizations', adminOrganizationsRoutes);
 app.use('/api/org', orgAdminRoutes);
+app.use('/api/saved-searches', savedSearchesRoutes);
+app.use('/api/reminders', remindersRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

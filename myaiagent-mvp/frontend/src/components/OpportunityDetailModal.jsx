@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
     X, DollarSign, Sparkles, MessageSquare, BarChart3, ExternalLink, Mail,
     CalendarPlus, Trophy, Award, FileText, CheckCircle, ChevronUp, ChevronDown,
-    Calendar, Clock, Building2, Users, Code, Lock
+    Calendar, Clock, Building2, Users, Code, Lock, Bell
 } from 'lucide-react';
 import api from '../services/api';
 import { addToGoogleCalendar, openEmailClient, initiatePhoneCall, formatPhoneNumber } from '../utils/integrations';
+import SetReminderModal from './SetReminderModal';
 
 // Opportunity Detail Modal Component
 const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) => {
@@ -23,6 +24,8 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
     const [contactNotes, setContactNotes] = useState('');
     const [savedToTracking, setSavedToTracking] = useState(false);
     const [showAllDetails, setShowAllDetails] = useState(false);
+    const [showReminderModal, setShowReminderModal] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     // Accordion sections state - SAM.gov style
     const [expandedSections, setExpandedSections] = useState({
@@ -65,24 +68,42 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
     }, [opportunity.naics_code]);
 
     // Save to contact tracking
-    const saveToTracking = () => {
-        const trackingData = {
-            opportunityId: opportunity.id,
-            title: opportunity.title,
-            solicitation: opportunity.solicitation_number,
-            agency: opportunity.contracting_office,
-            deadline: opportunity.response_deadline,
-            notes: contactNotes,
-            savedAt: new Date().toISOString()
-        };
+    const saveToTracking = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                notice_id: opportunity.notice_id || opportunity.id,
+                title: opportunity.title,
+                solicitation_number: opportunity.solicitation_number,
+                type: opportunity.type,
+                posted_date: opportunity.posted_date,
+                response_deadline: opportunity.response_deadline,
+                naics_code: opportunity.naics_code,
+                set_aside_type: opportunity.set_aside_type,
+                contracting_office: opportunity.contracting_office,
+                place_of_performance: typeof opportunity.place_of_performance === 'object'
+                    ? JSON.stringify(opportunity.place_of_performance)
+                    : opportunity.place_of_performance,
+                description: opportunity.description,
+                raw_data: opportunity.raw_data || opportunity,
+                internal_status: 'New'
+            };
 
-        // Save to localStorage (could be enhanced with backend API)
-        const existing = JSON.parse(localStorage.getItem('trackedOpportunities') || '[]');
-        existing.push(trackingData);
-        localStorage.setItem('trackedOpportunities', JSON.stringify(existing));
+            await api.opportunities.create(payload);
 
-        setSavedToTracking(true);
-        setTimeout(() => setSavedToTracking(false), 3000);
+            setSavedToTracking(true);
+            setTimeout(() => setSavedToTracking(false), 3000);
+        } catch (error) {
+            console.error('Failed to save opportunity:', error);
+            if (error.response?.data?.error?.includes('unique') || error.response?.status === 409) {
+                setSavedToTracking(true);
+                setTimeout(() => setSavedToTracking(false), 3000);
+            } else {
+                alert('Failed to save to pipeline');
+            }
+        } finally {
+            setSaving(false);
+        }
     };
 
     const performAIMarketAnalysis = async () => {
@@ -173,6 +194,35 @@ Keep it factual, concise, and actionable. No fluff or generic advice.`;
                 <div className="p-3 md:p-6 space-y-4 md:space-y-6">
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <button
+                            onClick={saveToTracking}
+                            disabled={savedToTracking || saving}
+                            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${savedToTracking
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                                }`}
+                        >
+                            {savedToTracking ? (
+                                <>
+                                    <CheckCircle className="w-4 h-4" />
+                                    Saved
+                                </>
+                            ) : (
+                                <>
+                                    <Trophy className="w-4 h-4" />
+                                    {saving ? 'Saving...' : 'Save Pipeline'}
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={() => setShowReminderModal(true)}
+                            className="flex items-center justify-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg text-xs md:text-sm font-medium transition-colors"
+                        >
+                            <Bell className="w-4 h-4" />
+                            Reminder
+                        </button>
+
                         <button
                             onClick={performAIMarketAnalysis}
                             disabled={analyzingWithAI}
@@ -1367,6 +1417,12 @@ What would you like to know about this opportunity?`;
                     </div>
                 </div>
             </div>
+            {showReminderModal && (
+                <SetReminderModal
+                    opportunity={opportunity}
+                    onClose={() => setShowReminderModal(false)}
+                />
+            )}
         </div >
     );
 };

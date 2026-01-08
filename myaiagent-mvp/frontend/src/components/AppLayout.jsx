@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock, LogOut } from 'lucide-react';
+import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock, LogOut, Briefcase } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrganizationSelector from './OrganizationSelector';
 
@@ -55,6 +55,12 @@ const AppLayout = ({ children }) => {
       icon: Building2,
       label: 'SAM.gov',
       title: 'SAM.gov Opportunities',
+    },
+    {
+      path: '/pipeline',
+      icon: Briefcase,
+      label: 'Pipeline',
+      title: 'My Saved Opportunities',
     },
   ];
 

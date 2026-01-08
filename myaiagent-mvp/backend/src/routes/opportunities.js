@@ -16,6 +16,7 @@ router.get('/', async (req, res) => {
     const {
       status,
       assignedTo,
+      createdBy,
       minScore,
       search,
       limit = 50,
@@ -45,6 +46,18 @@ router.get('/', async (req, res) => {
       } else {
         whereConditions.push(`assigned_to = $${paramIndex}`);
         params.push(parseInt(assignedTo));
+      }
+      paramIndex++;
+    }
+
+    // Filter by creator
+    if (createdBy) {
+      if (createdBy === 'me') {
+        whereConditions.push(`created_by = $${paramIndex}`);
+        params.push(req.user.id);
+      } else {
+        whereConditions.push(`created_by = $${paramIndex}`);
+        params.push(parseInt(createdBy));
       }
       paramIndex++;
     }
@@ -189,15 +202,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'notice_id and title are required' });
     }
 
-    // Check if opportunity already exists
+    // Check if opportunity already exists in THIS user's pipeline
     const existingResult = await query(
-      'SELECT id FROM opportunities WHERE notice_id = $1',
-      [notice_id]
+      'SELECT id FROM opportunities WHERE notice_id = $1 AND created_by = $2',
+      [notice_id, req.user.id]
     );
 
     if (existingResult.rows.length > 0) {
       return res.status(409).json({
-        error: 'Opportunity already exists',
+        error: 'Opportunity already in your pipeline',
         id: existingResult.rows[0].id
       });
     }

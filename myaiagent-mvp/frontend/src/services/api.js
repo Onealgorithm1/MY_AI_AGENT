@@ -736,6 +736,37 @@ export const adminOrganizations = {
     api.get('/admin/organizations/stats/overview'),
 };
 
+// Saved Searches endpoints
+export const savedSearches = {
+  list: () => api.get('/saved-searches'),
+  create: (data) => api.post('/saved-searches', data),
+  delete: (id) => api.delete(`/saved-searches/${id}`),
+};
+
+// Reminders endpoints
+export const reminders = {
+  list: () => api.get('/reminders'),
+  create: (data) => api.post('/reminders', data),
+  delete: (id) => api.delete(`/reminders/${id}`),
+};
+
+// Notifications endpoints
+export const notifications = {
+  list: () => api.get('/notifications'),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
+};
+
+// Internal Opportunities endpoints
+export const opportunities = {
+  list: (params) => api.get('/opportunities', { params }),
+  get: (id) => api.get(`/opportunities/${id}`),
+  create: (data) => api.post('/opportunities', data),
+  update: (id, data) => api.put(`/opportunities/${id}`, data),
+  updateStatus: (id, status) => api.patch(`/opportunities/${id}/status`, { status }),
+  delete: (id) => api.delete(`/opportunities/${id}`),
+};
+
 // Attach sub-modules to the main api instance for unified access (e.g., api.admin.getStats)
 api.auth = auth;
 api.conversations = conversations;
@@ -753,6 +784,10 @@ api.samGov = samGov;
 api.aiAgents = aiAgents;
 api.organizations = organizations;
 api.adminOrganizations = adminOrganizations;
+api.savedSearches = savedSearches;
+api.reminders = reminders;
+api.notifications = notifications;
+api.opportunities = opportunities;
 
 // Export both default and named export for flexibility
 export { api };

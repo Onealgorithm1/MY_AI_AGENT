@@ -4,6 +4,7 @@ import { Search, Filter, ChevronDown, ChevronUp, X, Calendar, Building2, FileTex
 import api, { samGov } from '../services/api';
 import { addToGoogleCalendar, openEmailClient, initiatePhoneCall, formatPhoneNumber } from '../utils/integrations';
 import OpportunityDetailModal from '../components/OpportunityDetailModal';
+import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const SAMGovPage = () => {
   const navigate = useNavigate();
@@ -121,13 +122,11 @@ const SAMGovPage = () => {
     }
   };
 
-  // Load saved searches from localStorage
-  const loadSavedSearches = () => {
+  // Load saved searches from Backend
+  const loadSavedSearches = async () => {
     try {
-      const saved = localStorage.getItem('savedSearches');
-      if (saved) {
-        setSavedSearches(JSON.parse(saved));
-      }
+      const response = await api.savedSearches.list();
+      setSavedSearches(response.data.searches || []);
     } catch (error) {
       console.error('Failed to load saved searches:', error);
     }
@@ -281,43 +280,52 @@ const SAMGovPage = () => {
   };
 
   // Save current search
-  const saveCurrentSearch = () => {
+  const saveCurrentSearch = async () => {
     if (!searchName.trim()) {
       alert('Please enter a name for this search');
       return;
     }
 
-    const newSearch = {
-      id: Date.now(),
-      name: searchName.trim(),
-      filters: { ...filters },
-      selectedDomain,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const response = await api.savedSearches.create({
+        name: searchName.trim(),
+        filters: { ...filters, selectedDomain }, // Include active filters
+        frequency: 'daily'
+      });
 
-    const updated = [...savedSearches, newSearch];
-    setSavedSearches(updated);
-    localStorage.setItem('savedSearches', JSON.stringify(updated));
-
-    setSearchName('');
-    setShowSaveSearchDialog(false);
-    alert(`Search "${newSearch.name}" saved successfully!`);
+      setSavedSearches(prev => [response.data.search, ...prev]);
+      setSearchName('');
+      setShowSaveSearchDialog(false);
+      alert(`Search "${searchName}" saved successfully!`);
+    } catch (error) {
+      console.error('Failed to save search:', error);
+      alert('Failed to save search. Please try again.');
+    }
   };
 
   // Load a saved search
   const loadSavedSearch = (search) => {
-    setFilters(search.filters);
-    setSelectedDomain(search.selectedDomain || '');
+    if (search.filters) {
+      setFilters(search.filters);
+      // Handle flattened or nested structure if needed
+      if (search.filters.selectedDomain) setSelectedDomain(search.filters.selectedDomain);
+    }
     setCurrentPage(1);
     setIsMobileFilterOpen(false);
+    // Trigger load
+    loadData(false, search.filters);
   };
 
   // Delete a saved search
-  const deleteSavedSearch = (id) => {
+  const deleteSavedSearch = async (id) => {
     if (confirm('Are you sure you want to delete this saved search?')) {
-      const updated = savedSearches.filter(s => s.id !== id);
-      setSavedSearches(updated);
-      localStorage.setItem('savedSearches', JSON.stringify(updated));
+      try {
+        await api.savedSearches.delete(id);
+        setSavedSearches(prev => prev.filter(s => s.id !== id));
+      } catch (error) {
+        console.error('Failed to delete search:', error);
+        alert('Failed to delete search.');
+      }
     }
   };
 
@@ -494,6 +502,7 @@ What would you like to know about this opportunity?`;
               <h1 className="text-base md:text-xl font-bold truncate">Contract Opportunities</h1>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationsDropdown />
               {refreshing && (
                 <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                   <div className="animate-spin w-3 h-3 md:w-4 md:h-4 border-2 border-white border-t-transparent rounded-full"></div>
@@ -632,7 +641,7 @@ What would you like to know about this opportunity?`;
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-gray-900 truncate">{search.name}</p>
                             <p className="text-xs text-gray-500">
-                              {new Date(search.createdAt).toLocaleDateString()}
+                              {new Date(search.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </button>

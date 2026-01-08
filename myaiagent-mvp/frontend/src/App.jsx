@@ -21,6 +21,7 @@ const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'));
 const AIAgentsPage = lazy(() => import('./pages/AIAgentsPage'));
 const SAMGovPage = lazy(() => import('./pages/SAMGovPage'));
+const PipelinePage = lazy(() => import('./pages/PipelinePage'));
 const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage'));
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
@@ -204,6 +205,14 @@ function App() {
             element={
               <PrivateRoute>
                 <SAMGovPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pipeline"
+            element={
+              <PrivateRoute>
+                <PipelinePage />
               </PrivateRoute>
             }
           />
