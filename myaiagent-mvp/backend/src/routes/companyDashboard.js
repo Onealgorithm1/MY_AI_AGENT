@@ -144,7 +144,10 @@ router.get('/eligibility-analysis', authenticate, async (req, res) => {
  */
 router.get('/matched-opportunities', authenticate, async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     // 1. Get company profile first
     const profile = await companyProfile.getCompanyProfile(req.user.organization_id);
@@ -158,6 +161,7 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
     console.log(`[DEBUG] All Filter NAICS:`, allNaics);
 
     // 3. Fetch pre-filtered from SAM.gov cache
+    // We fetch a larger pool to perform matching on
     const filterOptions = { limit: 1000, offset: 0 };
     if (allNaics.length > 0) {
       filterOptions.naicsCodes = allNaics;
@@ -177,6 +181,12 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
       return res.json({
         success: true,
         matches: [],
+        pagination: {
+          currentPage: pageNum,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: limitNum
+        },
         totalAnalyzed: 0,
         message: 'No opportunities available to analyze'
       });
@@ -186,10 +196,21 @@ router.get('/matched-opportunities', authenticate, async (req, res) => {
     const results = companyProfile.matchOpportunities(opportunities, profile);
     console.log(`[DEBUG] Match Results: Matched=${results.matched.length}, Near=${results.nearMatch.length}, Stretch=${results.stretch.length}`);
 
+    // Pagination Logic
+    const allMatches = results.matched;
+    const totalItems = allMatches.length;
+    const totalPages = Math.ceil(totalItems / limitNum);
+    const paginatedMatches = allMatches.slice(offset, offset + limitNum);
+
     res.json({
       success: true,
-      matches: results.matched.slice(0, parseInt(limit)),
-      totalMatched: results.matched.length,
+      matches: paginatedMatches,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: totalPages,
+        totalItems: totalItems,
+        itemsPerPage: limitNum
+      },
       totalAnalyzed: results.totalAnalyzed
     });
   } catch (error) {

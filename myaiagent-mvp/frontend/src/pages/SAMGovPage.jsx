@@ -171,7 +171,7 @@ const SAMGovPage = () => {
       const activeFilters = filterOverrides || filters;
 
       const fullRes = await samGov.getCachedOpportunities({
-        limit: 10000, // Fetch plenty for client-side sorting if needed, or rely on server
+        limit: 30000, // Fetch plenty for client-side sorting if needed, or rely on server
         offset: 0,
         keyword: activeFilters.keyword,
         type: activeFilters.noticeType,
@@ -348,14 +348,41 @@ const SAMGovPage = () => {
       // Send message to get AI summary
       const response = await api.post('/messages', {
         conversationId,
-        content: `Provide a concise 3-sentence summary of this contract opportunity:\n\nTitle: ${opportunity.title}\nAgency: ${opportunity.contracting_office}\nType: ${opportunity.type}\nNAICS: ${opportunity.naics_code || 'N/A'}\nSet-Aside: ${opportunity.set_aside_type || 'None'}\nDeadline: ${opportunity.response_deadline ? new Date(opportunity.response_deadline).toLocaleDateString() : 'Not specified'}\n\nFocus on: What they need, who can bid, and key deadlines.`,
+        content: `Analyze this contract opportunity and provide a structured JSON response (do NOT use markdown formatting).
+        
+        Opportunity:
+        Title: ${opportunity.title}
+        Agency: ${opportunity.contracting_office}
+        Type: ${opportunity.type}
+        Description: ${opportunity.description || ''}
+        
+        Return exactly this JSON structure:
+        {
+            "summary": "3 concise sentences focusing on needs, bidders, and deadlines.",
+            "incumbent": {
+                "name": "Name of incumbent contractor if mentioned, else null",
+                "uei": "UEI of incumbent if mentioned, else null"
+            }
+        }`,
         model: 'gemini-2.5-flash',
         stream: false,
       });
 
+      let content = response.data.content || response.data.response || '{}';
+      // Clean up markdown code blocks if present
+      content = content.replace(/```json\n?|```/g, '').trim();
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(content);
+      } catch (e) {
+        // Fallback if AI returns plain text
+        parsedData = { summary: content, incumbent: null };
+      }
+
       setAiSummaries(prev => ({
         ...prev,
-        [opportunity.id]: response.data.content || response.data.response || 'Summary not available',
+        [opportunity.id]: parsedData,
       }));
 
       // Clean up the temporary conversation
@@ -498,6 +525,13 @@ What would you like to know about this opportunity?`;
               >
                 <BarChart3 className="w-4 h-4 md:w-4 md:h-4" />
                 <span className="text-xs md:text-sm font-medium hidden md:inline">Analytics</span>
+              </button>
+              <button
+                onClick={() => navigate('/contract-analytics?tab=awards-search')} // Default link
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 md:py-1.5 bg-green-600 hover:bg-green-500 rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
+              >
+                <Search className="w-4 h-4 md:w-4 md:h-4" />
+                <span className="text-xs md:text-sm font-medium hidden md:inline">Awards Search</span>
               </button>
               <h1 className="text-base md:text-xl font-bold truncate">Contract Opportunities</h1>
             </div>
@@ -1145,13 +1179,38 @@ What would you like to know about this opportunity?`;
                           </div>
 
                           {/* AI Summary Section */}
+                          {/* AI Summary Section */}
                           {aiSummaries[opp.id] && (
                             <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                               <div className="flex items-start gap-2">
                                 <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
                                 <div className="flex-1">
                                   <p className="text-xs font-semibold text-purple-900 mb-1">AI Summary</p>
-                                  <p className="text-sm text-purple-800">{aiSummaries[opp.id]}</p>
+                                  <p className="text-sm text-purple-800">
+                                    {typeof aiSummaries[opp.id] === 'string' ? aiSummaries[opp.id] : (aiSummaries[opp.id]?.summary || 'Summary not available')}
+                                  </p>
+
+                                  {/* Competitor Link from AI Analysis */}
+                                  {aiSummaries[opp.id]?.incumbent?.name && (
+                                    <div className="mt-2 text-xs border-t border-purple-200 pt-2">
+                                      <span className="text-purple-700 font-medium">Potential Incumbent: </span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const inc = aiSummaries[opp.id].incumbent;
+                                          if (inc.uei) {
+                                            navigate(`/vendor/${inc.uei}`);
+                                          } else {
+                                            // Search by name if no UEI
+                                            navigate(`/contract-analytics?q=${encodeURIComponent(inc.name)}&tab=awards-search`);
+                                          }
+                                        }}
+                                        className="text-purple-700 underline hover:text-purple-900 font-medium ml-1"
+                                      >
+                                        {aiSummaries[opp.id].incumbent.name}
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1189,6 +1248,21 @@ What would you like to know about this opportunity?`;
                             >
                               <MessageSquare className="w-3 h-3" />
                               <span>Discuss in Chat</span>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const params = new URLSearchParams();
+                                if (opp.naics_code) params.set('naics', opp.naics_code);
+                                if (opp.contracting_office) params.set('agency', opp.contracting_office);
+                                if (opp.title) params.set('q', opp.title);
+                                navigate(`/contract-analytics?${params.toString()}`);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors touch-manipulation min-h-[44px] md:min-h-0"
+                            >
+                              <Trophy className="w-3 h-3" />
+                              <span>Research Awards</span>
                             </button>
 
                             <button
@@ -1286,86 +1360,90 @@ What would you like to know about this opportunity?`;
       </div>
 
       {/* Save Search Dialog */}
-      {showSaveSearchDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Bookmark className="w-5 h-5 text-blue-600" />
-                Save Current Search
-              </h3>
-              <button
-                onClick={() => {
-                  setShowSaveSearchDialog(false);
-                  setSearchName('');
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {
+        showSaveSearchDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Bookmark className="w-5 h-5 text-blue-600" />
+                  Save Current Search
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowSaveSearchDialog(false);
+                    setSearchName('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Name
-              </label>
-              <input
-                type="text"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && saveCurrentSearch()}
-                placeholder="e.g., IT Contracts - DoD"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-              />
-            </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Name
+                </label>
+                <input
+                  type="text"
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && saveCurrentSearch()}
+                  placeholder="e.g., IT Contracts - DoD"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
 
-            <div className="mb-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
-              <p className="font-medium mb-2">Current filters:</p>
-              <ul className="space-y-1">
-                {filters.keyword && <li>â€¢ Keyword: {filters.keyword}</li>}
-                {filters.naicsCode && <li>â€¢ NAICS: {filters.naicsCode}</li>}
-                {filters.agency && <li>â€¢ Agency: {filters.agency}</li>}
-                {filters.setAsideType && <li>â€¢ Set-Aside: {filters.setAsideType}</li>}
-                {filters.noticeType && <li>â€¢ Notice Type: {filters.noticeType}</li>}
-                {selectedDomain && <li>â€¢ Department: {selectedDomain}</li>}
-                {!filters.keyword && !filters.naicsCode && !filters.agency && !filters.setAsideType && !filters.noticeType && !selectedDomain && (
-                  <li className="text-gray-500">No filters applied</li>
-                )}
-              </ul>
-            </div>
+              <div className="mb-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
+                <p className="font-medium mb-2">Current filters:</p>
+                <ul className="space-y-1">
+                  {filters.keyword && <li>â€¢ Keyword: {filters.keyword}</li>}
+                  {filters.naicsCode && <li>â€¢ NAICS: {filters.naicsCode}</li>}
+                  {filters.agency && <li>â€¢ Agency: {filters.agency}</li>}
+                  {filters.setAsideType && <li>â€¢ Set-Aside: {filters.setAsideType}</li>}
+                  {filters.noticeType && <li>â€¢ Notice Type: {filters.noticeType}</li>}
+                  {selectedDomain && <li>â€¢ Department: {selectedDomain}</li>}
+                  {!filters.keyword && !filters.naicsCode && !filters.agency && !filters.setAsideType && !filters.noticeType && !selectedDomain && (
+                    <li className="text-gray-500">No filters applied</li>
+                  )}
+                </ul>
+              </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowSaveSearchDialog(false);
-                  setSearchName('');
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveCurrentSearch}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Save Search
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowSaveSearchDialog(false);
+                    setSearchName('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCurrentSearch}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Search
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Opportunity Detail Modal - keep existing implementation */}
-      {selectedOpportunity && (
-        <OpportunityDetailModal
-          opportunity={selectedOpportunity}
-          onClose={() => setSelectedOpportunity(null)}
-          formatContractValue={formatContractValue}
-        />
-      )}
-    </div>
+      {
+        selectedOpportunity && (
+          <OpportunityDetailModal
+            opportunity={selectedOpportunity}
+            onClose={() => setSelectedOpportunity(null)}
+            formatContractValue={formatContractValue}
+          />
+        )
+      }
+    </div >
   );
 };
 

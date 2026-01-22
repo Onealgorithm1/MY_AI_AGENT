@@ -249,6 +249,14 @@ function App() {
             }
           />
           <Route
+            path="/vendor/:uei"
+            element={
+              <PrivateRoute>
+                <CompanyProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/opportunities/:id"
             element={
               <PrivateRoute>

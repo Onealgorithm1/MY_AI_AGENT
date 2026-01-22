@@ -757,6 +757,11 @@ export const notifications = {
   markAllRead: () => api.patch('/notifications/read-all'),
 };
 
+// Recommendations endpoints
+export const recommendations = {
+  list: (limit = 10) => api.get('/recommendations', { params: { limit } }),
+};
+
 // Internal Opportunities endpoints
 export const opportunities = {
   list: (params) => api.get('/opportunities', { params }),
@@ -787,6 +792,7 @@ api.adminOrganizations = adminOrganizations;
 api.savedSearches = savedSearches;
 api.reminders = reminders;
 api.notifications = notifications;
+api.recommendations = recommendations;
 api.opportunities = opportunities;
 
 // Export both default and named export for flexibility

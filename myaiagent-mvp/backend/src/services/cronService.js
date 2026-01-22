@@ -134,43 +134,71 @@ async function checkReminders() {
 /**
  * Process saved searches and notify users of new matches
  */
+/**
+ * Process saved searches and notify users of new matches
+ */
 async function processSavedSearches() {
-    // This is a simplified implementation. 
-    // In a real system, you'd track "last_checked_at" and only query for *new* opportunities since then.
-    // For MVP, we'll just run the search and notify if there are >0 results posted in the last 24h.
+    console.log('⏰ [Cron] Processing saved searches...');
 
     // Get active daily searches
     const searches = await query(
         `SELECT * FROM saved_searches WHERE is_active = TRUE AND frequency = 'daily'`
     );
 
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Format dates as YYYY-MM-DD for SAM.gov API (or internal query)
-    // Note: Our internal searchOpportunities uses specific formats. 
-    // For now, let's assume we are checking against our INTERNAL database for new matches to save API calls.
-
     for (const search of searches.rows) {
         try {
             const filters = search.filters;
-            // Add date filter for "since last run" or "last 24h"
-            // We'll simulate by searching our local DB for posted_date > yesterday using a direct query or reused service
+            const lastRun = search.last_run_at || new Date(Date.now() - 24 * 60 * 60 * 1000); // Default to yesterday if null
 
-            // Construct WHERE clause from filters (simplified)
-            let whereClause = `posted_date >= $1`;
-            const params = [yesterday];
+            // Construct WHERE clause dynamically based on filters
+            // We are looking for opportunities posted AFTER the last run
+            let whereClause = `posted_date > $1`;
+            const params = [lastRun];
             let pIdx = 2;
 
+            // 1. Keyword (Title or Description)
             if (filters.keyword) {
                 whereClause += ` AND (title ILIKE $${pIdx} OR description ILIKE $${pIdx})`;
                 params.push(`%${filters.keyword}%`);
                 pIdx++;
             }
-            if (filters.noticeType) {
+
+            // 2. Notice Type
+            if (filters.noticeType && filters.noticeType !== 'ALL') {
                 whereClause += ` AND type = $${pIdx}`;
                 params.push(filters.noticeType);
+                pIdx++;
+            }
+
+            // 3. NAICS Code
+            if (filters.naicsCode) {
+                // Support partial match if needed, but exact is safer for codes
+                whereClause += ` AND naics_code LIKE $${pIdx}`;
+                params.push(`${filters.naicsCode}%`);
+                pIdx++;
+            }
+
+            // 4. Set Aside
+            if (filters.setAsideType && filters.setAsideType !== 'ALL') {
+                whereClause += ` AND set_aside_type = $${pIdx}`;
+                params.push(filters.setAsideType);
+                pIdx++;
+            }
+
+            // 5. Agency
+            if (filters.agency) {
+                whereClause += ` AND contracting_office ILIKE $${pIdx}`;
+                params.push(`%${filters.agency}%`);
+                pIdx++;
+            }
+
+            // 6. Place of Performance (State)
+            if (filters.placeOfPerformance) {
+                // Check if place_of_performance JSON contains the state
+                // This assumes `place_of_performance` is stored as JSONB or text that can be queried
+                // For MVP text search on the column is simplest if structure varies
+                whereClause += ` AND place_of_performance::text ILIKE $${pIdx}`;
+                params.push(`%${filters.placeOfPerformance}%`);
                 pIdx++;
             }
 
@@ -179,22 +207,27 @@ async function processSavedSearches() {
             const count = parseInt(matchResult.rows[0].count);
 
             if (count > 0) {
-                // Determine title based on filters to be more descriptive
-                let title = `New matches for "${search.name}"`;
+                const title = `New matches for "${search.name}"`;
+                const message = `Found ${count} new opportunities since your last check.`;
 
                 await notificationService.createNotification(
                     search.user_id,
                     'new_match',
                     title,
-                    `Found ${count} new opportunities matching your saved search in the last 24 hours.`,
-                    { savedSearchId: search.id, filter: filters }
+                    message,
+                    {
+                        savedSearchId: search.id,
+                        filters: filters,
+                        count: count
+                    }
                 );
 
+                // Update last run time
                 await query(
                     `UPDATE saved_searches SET last_run_at = NOW() WHERE id = $1`,
                     [search.id]
                 );
-                console.log(`✅ Notify user ${search.user_id} of ${count} matches for search ${search.id}`);
+                console.log(`✅ Notify user ${search.user_id} of ${count} matches for search "${search.name}"`);
             }
 
         } catch (err) {

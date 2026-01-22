@@ -35,7 +35,19 @@ const CompanyDashboardPage = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchDailyPicks();
   }, []);
+
+  const [dailyPicks, setDailyPicks] = useState([]);
+
+  const fetchDailyPicks = async () => {
+    try {
+      const res = await api.recommendations.list(10);
+      setDailyPicks(res.data.recommendations || []);
+    } catch (err) {
+      console.error('Failed to load daily picks:', err);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -229,21 +241,21 @@ const CompanyDashboardPage = () => {
             <nav className="flex -mb-px">
               {[
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'dailyPicks', label: 'Daily Picks', icon: Sparkles },
                 { id: 'matched', label: `Matched (${matchResults.matched.length})`, icon: Target },
                 { id: 'nearMatch', label: `Near Match (${matchResults.nearMatch.length})`, icon: TrendingUp },
                 { id: 'stretch', label: `Stretch (${matchResults.stretch.length})`, icon: Zap },
-                { id: 'recommendations', label: `Recommendations`, icon: Lightbulb }
+                { id: 'recommendations', label: `Strategic Advice`, icon: Lightbulb }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                     {tab.label}
@@ -273,9 +285,8 @@ const CompanyDashboardPage = () => {
                           <p className="font-medium text-gray-900">{name}</p>
                           <p className="text-xs text-gray-500">NAICS: {capability.naicsCodes.join(', ')}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          capability.maturity === 'High' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${capability.maturity === 'High' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
                           {capability.maturity}
                         </span>
                       </div>
@@ -289,9 +300,8 @@ const CompanyDashboardPage = () => {
                     {Object.entries(profile.certifications).map(([cert, hasIt]) => (
                       <div
                         key={cert}
-                        className={`p-3 rounded-lg border-2 ${
-                          hasIt ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'
-                        }`}
+                        className={`p-3 rounded-lg border-2 ${hasIt ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           {hasIt ? (
@@ -301,9 +311,9 @@ const CompanyDashboardPage = () => {
                           )}
                           <span className={`text-sm font-medium ${hasIt ? 'text-gray-900' : 'text-gray-400'}`}>
                             {cert === 'smallBusiness' ? 'Small Business' :
-                             cert === 'womanOwned' ? 'Woman Owned' :
-                             cert === 'veteran' ? 'Veteran Owned' :
-                             cert.toUpperCase()}
+                              cert === 'womanOwned' ? 'Woman Owned' :
+                                cert === 'veteran' ? 'Veteran Owned' :
+                                  cert.toUpperCase()}
                           </span>
                         </div>
                       </div>
@@ -336,6 +346,62 @@ const CompanyDashboardPage = () => {
                 <p className="text-3xl font-bold">{matchResults.totalAnalyzed}</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Daily Picks Tab */}
+        {activeTab === 'dailyPicks' && (
+          <div className="space-y-4">
+            {dailyPicks.length === 0 ? (
+              <div className="bg-white rounded-lg p-12 text-center">
+                <Sparkles className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No daily picks yet</p>
+                <p className="text-gray-400 text-sm mt-2">Interact with more opportunities to get personalized recommendations.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {dailyPicks.map((opp, idx) => (
+                  <div key={idx} className="bg-white rounded-lg border border-purple-100 shadow-sm p-6 hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-100 to-transparent w-32 h-full opacity-50 pointer-events-none"></div>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-gray-900">{opp.title}</h3>
+                          {opp.match_score > 0 && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              Score: {opp.match_score}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{opp.solicitation_number} • {new Date(opp.posted_date).toLocaleDateString()}</p>
+                        <div className="flex flex-wrap gap-2 text-sm text-gray-500 mb-3">
+                          <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
+                            <Building2 className="h-3 w-3" />
+                            {opp.contracting_office}
+                          </span>
+                          {opp.naics_code && (
+                            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">NAICS: {opp.naics_code}</span>
+                          )}
+                          {opp.set_aside_type && (
+                            <span className="bg-green-50 text-green-700 px-2 py-1 rounded">{opp.set_aside_type}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{opp.description}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        onClick={() => navigate(`/opportunities?search=${opp.solicitation_number}`)}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        View Details <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

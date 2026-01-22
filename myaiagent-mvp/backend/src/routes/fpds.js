@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import * as fpdsService from '../services/fpds.js';
+import * as entityService from '../services/entity.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -276,6 +277,35 @@ router.get('/competitive-intelligence/:opportunityId', authenticate, async (req,
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get competitive intelligence',
+    });
+  }
+});
+
+/**
+ * @route   GET /api/fpds/entity/:uei
+ * @desc    Get entity profile (SAM.gov or FPDS fallback)
+ * @access  Private
+ */
+router.get('/entity/:uei', authenticate, async (req, res) => {
+  try {
+    const { uei } = req.params;
+    const result = await entityService.getEntityProfile(
+      uei,
+      req.user.id,
+      req.user.organization_id
+    );
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Entity profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get entity profile',
     });
   }
 });
