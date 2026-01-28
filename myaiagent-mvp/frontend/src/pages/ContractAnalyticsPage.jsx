@@ -697,7 +697,12 @@ const ContractAnalyticsPage = () => {
                       {searchResults.map((contract, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm font-mono text-blue-600">
-                            {contract.piid || contract.noticeId}
+                            <button
+                              onClick={() => navigate(`/awards/${contract.id || contract.piid}`)}
+                              className="hover:underline focus:outline-none"
+                            >
+                              {contract.piid || contract.noticeId}
+                            </button>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                             {contract.vendorName || 'N/A'}

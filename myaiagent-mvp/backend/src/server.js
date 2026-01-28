@@ -69,6 +69,7 @@ import recommendationsRoutes from './routes/recommendations.js';
 import savedSearchesRoutes from './routes/savedSearches.js';
 import remindersRoutes from './routes/reminders.js';
 import notificationsRoutes from './routes/notifications.js';
+import awardRoutes from './routes/awardRoutes.js';
 
 // Import WebSocket
 import { createVoiceWebSocketServer } from './websocket/voice.js';
@@ -377,6 +378,7 @@ app.use('/api/saved-searches', savedSearchesRoutes);
 app.use('/api/reminders', remindersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/recommendations', recommendationsRoutes);
+app.use('/api/awards', awardRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

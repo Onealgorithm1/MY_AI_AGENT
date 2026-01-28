@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock, LogOut, Briefcase } from 'lucide-react';
+import { MessageSquare, Building2, Settings, Shield, User, Grid, X, Lock, LogOut, Briefcase, Award, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrganizationSelector from './OrganizationSelector';
 
@@ -61,6 +61,18 @@ const AppLayout = ({ children }) => {
       icon: Briefcase,
       label: 'Pipeline',
       title: 'My Saved Opportunities',
+    },
+    {
+      path: '/awards',
+      icon: Award,
+      label: 'Awards',
+      title: 'Award Search',
+    },
+    {
+      path: '/performance',
+      icon: TrendingUp,
+      label: 'Performance',
+      title: 'My Performance',
     },
   ];
 

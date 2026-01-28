@@ -35,7 +35,8 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
         description: true,   // Open by default
         contact: false,
         attachments: false,
-        apiData: false
+        apiData: false,
+        marketIntel: true // Default open for valuable insights
     });
 
     const toggleSection = (section) => {
@@ -48,14 +49,16 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
             if (opportunity.naics_code) {
                 setLoadingIncumbent(true);
                 try {
-                    // Search for contracts with same NAICS code
-                    const response = await api.get('/fpds/search/contracts', {
+                    // Search for awards with same NAICS code
+                    const response = await api.get('/awards/search', {
                         params: {
                             naicsCode: opportunity.naics_code,
-                            limit: 5
+                            limit: 5,
+                            sortBy: 'award_date',
+                            sortOrder: 'DESC'
                         }
                     });
-                    setIncumbentData(response.data.contracts || []);
+                    setIncumbentData(response.data.awards || []);
                 } catch (error) {
                     console.error('Failed to load incumbent data:', error);
                     setIncumbentData([]);
@@ -590,6 +593,7 @@ What would you like to know about this opportunity?`;
                             </button>
                             {expandedSections.classification && (
                                 <div className="p-4 bg-white space-y-3">
+                                    {/* (Existing Classification content...) */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
@@ -642,6 +646,72 @@ What would you like to know about this opportunity?`;
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Market Intelligence Section - Past Awards Search */}
+                        <div className="border border-gray-300 rounded-lg overflow-hidden">
+                            <button
+                                onClick={() => toggleSection('marketIntel')}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                            >
+                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                    <BarChart3 className="w-4 h-4 text-indigo-600" />
+                                    Market Intelligence & Past Awards
+                                </h3>
+                                {expandedSections.marketIntel ? (
+                                    <ChevronUp className="w-5 h-5 text-gray-600" />
+                                ) : (
+                                    <ChevronDown className="w-5 h-5 text-gray-600" />
+                                )}
+                            </button>
+                            {expandedSections.marketIntel && (
+                                <div className="p-4 bg-white space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-gray-600">
+                                            Related past awards for similar NAICS/Agency combinations.
+                                        </p>
+                                        <button
+                                            onClick={() => navigate(`/awards?naicsCode=${opportunity.naics_code}&agency=${encodeURIComponent(opportunity.contracting_office || '')}`)}
+                                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                        >
+                                            View Full Search <ExternalLink className="w-3 h-3" />
+                                        </button>
+                                    </div>
+
+                                    {loadingIncumbent ? (
+                                        <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">
+                                            <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                                            <span className="ml-3 text-sm text-gray-500">Searching historical data...</span>
+                                        </div>
+                                    ) : incumbentData && incumbentData.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {incumbentData.map((award, idx) => (
+                                                <div key={idx} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-gray-900">{award.vendor_name || 'Unknown Vendor'}</p>
+                                                            <p className="text-xs text-gray-500">{award.contracting_agency_name}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-bold text-green-700">
+                                                                {award.current_contract_value ? `$${parseFloat(award.current_contract_value).toLocaleString()}` : 'N/A'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">{award.award_date ? new Date(award.award_date).toLocaleDateString() : ''}</p>
+                                                        </div>
+                                                    </div>
+                                                    {award.description_of_requirement && (
+                                                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">{award.description_of_requirement}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-6 bg-gray-50 rounded-lg">
+                                            <p className="text-sm text-gray-500">No direct historical matches found for this specific criteria.</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

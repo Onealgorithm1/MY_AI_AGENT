@@ -27,6 +27,9 @@ const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage')
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
 const CompanyProfilePage = lazy(() => import('./pages/CompanyProfilePage'));
 const OpportunityDetailsPage = lazy(() => import('./pages/OpportunityDetailsPage'));
+const AwardsSearchPage = lazy(() => import('./pages/AwardsSearchPage'));
+const AwardDetailsPage = lazy(() => import('./pages/AwardDetailsPage'));
+const VendorPerformancePage = lazy(() => import('./pages/VendorPerformancePage'));
 const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettingsPage'));
 const AppLayout = lazy(() => import('./components/AppLayout'));
 
@@ -261,6 +264,30 @@ function App() {
             element={
               <PrivateRoute>
                 <OpportunityDetailsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/awards"
+            element={
+              <PrivateRoute>
+                <AwardsSearchPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/awards/:id"
+            element={
+              <PrivateRoute>
+                <AwardDetailsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/performance"
+            element={
+              <PrivateRoute>
+                <VendorPerformancePage />
               </PrivateRoute>
             }
           />

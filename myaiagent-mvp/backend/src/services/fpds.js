@@ -55,72 +55,141 @@ export async function searchContractAwards(options = {}, userId = null, organiza
       offset = 0,
     } = options;
 
-    if (!apiKey) {
-      console.warn('⚠️ FPDS API Key not configured. Returning empty/mock results.');
-      return {
-        success: true,
-        data: { totalRecords: 0, opportunities: [] },
-        totalRecords: 0,
-        contracts: [],
-        isMock: true
-      };
-    }
+  };
+}
 
-    // Build query parameters
-    const params = {
-      api_key: apiKey,
-      limit,
-      offset,
-    };
-
-    // Add search filters
-    if (piid) params.piid = piid;
-    if (vendorUEI) params.awardeeUeiSAM = vendorUEI;
-    if (vendorName) params.awardeeName = vendorName;
-    if (agencyCode) params.contractingAgencyCode = agencyCode;
-    if (naicsCode) params.naicsCode = naicsCode;
-    if (pscCode) params.productOrServiceCode = pscCode;
-    if (awardDateFrom) params.awardDateFrom = awardDateFrom;
-    if (awardDateTo) params.awardDateTo = awardDateTo;
-    if (setAsideType) params.typeOfSetAside = setAsideType;
-    if (setAsideType) params.typeOfSetAside = setAsideType;
-
-    try {
-      const response = await axios.get(FPDS_API_BASE_URL, {
-        params,
-        timeout: 60000,
-      });
-
-      return {
-        success: true,
-        data: response.data,
-        totalRecords: response.data.totalRecords || 0,
-        contracts: response.data.opportunities || [],
-      };
-    } catch (apiError) {
-      console.warn('⚠️ FPDS API Call Failed. Returning empty/mock results.', apiError.message);
-      // Fallback to mock/empty on API failure (e.g. 403, 500 upstream)
-      return {
-        success: true,
-        data: { totalRecords: 0, opportunities: [] },
-        totalRecords: 0,
-        contracts: [],
-        isMock: true,
-        error: apiError.message
-      };
-    }
-  } catch (error) {
-    console.error('FPDS search error:', error.message);
-    // Even in catastrophic failure, try to return valid structure
-    return {
-      success: true,
-      data: { totalRecords: 0, opportunities: [] },
-      totalRecords: 0,
-      contracts: [],
-      isMock: true,
-      error: error.message
-    };
+// Smart Mock Data for Demo PIIDs (to simulate real fetch when API key is missing)
+const mockDb = {
+  'N0001923C0001': {
+    piid: 'N0001923C0001',
+    modificationNumber: '0',
+    vendorName: 'LOCKHEED MARTIN CORPORATION',
+    vendorUeiSAM: 'LMC123456UEI',
+    contractingAgencyName: 'DEPT OF THE NAVY',
+    awardDate: '2023-05-15',
+    currentContractValue: 15000000.00,
+    awardType: 'DEFINITIVE CONTRACT',
+    naicsCode: '336411',
+    naicsDescription: 'AIRCRAFT MANUFACTURING',
+    descriptionOfContractRequirement: 'F-35 LIGHTNING II JOINT STRIKE FIGHTER PROGRAM SUPPORT AND MAINTENANCE.',
+    productOrServiceCode: '1510',
+    pscDescription: 'AIRCRAFT, FIXED WING',
+    solicitationProcedures: 'COMPETITIVE',
+    numberOfOffersReceived: 2
+  },
+  'FA862023C0002': {
+    piid: 'FA862023C0002',
+    modificationNumber: '0',
+    vendorName: 'BOEING COMPANY, THE',
+    vendorUeiSAM: 'BOE987654UEI',
+    contractingAgencyName: 'DEPT OF THE AIR FORCE',
+    awardDate: '2023-06-20',
+    currentContractValue: 8500000.00,
+    awardType: 'DEFINITIVE CONTRACT',
+    naicsCode: '336411',
+    naicsDescription: 'AIRCRAFT MANUFACTURING',
+    descriptionOfContractRequirement: 'KC-46A TANKER MODERNIZATION AND SUSTAINMENT SERVICES.',
+    productOrServiceCode: '1510',
+    pscDescription: 'AIRCRAFT, FIXED WING',
+    solicitationProcedures: 'FULL AND OPEN COMPETITION',
+    numberOfOffersReceived: 3
+  },
+  'GS00Q14OADU138': {
+    piid: 'GS00Q14OADU138',
+    modificationNumber: '0',
+    vendorName: 'DELOITTE CONSULTING LLP',
+    vendorUeiSAM: 'DEL555666UEI',
+    contractingAgencyName: 'GENERAL SERVICES ADMINISTRATION',
+    awardDate: '2023-04-10',
+    currentContractValue: 2500000.00,
+    awardType: 'DELIVERY ORDER',
+    naicsCode: '541611',
+    naicsDescription: 'ADMINISTRATIVE MANAGEMENT AND GENERAL MANAGEMENT CONSULTING SERVICES',
+    descriptionOfContractRequirement: 'STRATEGIC MANAGEMENT CONSULTING AND DIGITAL TRANSFORMATION SERVICES.',
+    productOrServiceCode: 'R408',
+    pscDescription: 'SUPPORT- PROFESSIONAL: PROGRAM MANAGEMENT/SUPPORT',
+    solicitationProcedures: 'GSA SCHEDULE',
+    numberOfOffersReceived: 5
   }
+};
+
+if (piid && mockDb[piid]) {
+  console.log(`Using smart mock data for PIID: ${piid}`);
+  return {
+    success: true,
+    data: { totalRecords: 1, opportunities: [mockDb[piid]] },
+    totalRecords: 1,
+    contracts: [mockDb[piid]],
+    isMock: true
+  };
+}
+
+if (!apiKey) {
+  console.warn('⚠️ FPDS API Key not configured. Returning empty/mock results.');
+  return {
+    success: true,
+    data: { totalRecords: 0, opportunities: [] },
+    totalRecords: 0,
+    contracts: [],
+    isMock: true
+  };
+}
+
+// Build query parameters
+const params = {
+  api_key: apiKey,
+  limit,
+  offset,
+};
+
+// Add search filters
+if (piid) params.piid = piid;
+if (vendorUEI) params.awardeeUeiSAM = vendorUEI;
+if (vendorName) params.awardeeName = vendorName;
+if (agencyCode) params.contractingAgencyCode = agencyCode;
+if (naicsCode) params.naicsCode = naicsCode;
+if (pscCode) params.productOrServiceCode = pscCode;
+if (awardDateFrom) params.awardDateFrom = awardDateFrom;
+if (awardDateTo) params.awardDateTo = awardDateTo;
+if (setAsideType) params.typeOfSetAside = setAsideType;
+if (setAsideType) params.typeOfSetAside = setAsideType;
+
+try {
+  const response = await axios.get(FPDS_API_BASE_URL, {
+    params,
+    timeout: 60000,
+  });
+
+  return {
+    success: true,
+    data: response.data,
+    totalRecords: response.data.totalRecords || 0,
+    contracts: response.data.opportunities || [],
+  };
+} catch (apiError) {
+  console.warn('⚠️ FPDS API Call Failed. Returning empty/mock results.', apiError.message);
+  // Fallback to mock/empty on API failure (e.g. 403, 500 upstream)
+  return {
+    success: true,
+    data: { totalRecords: 0, opportunities: [] },
+    totalRecords: 0,
+    contracts: [],
+    isMock: true,
+    error: apiError.message
+  };
+}
+  } catch (error) {
+  console.error('FPDS search error:', error.message);
+  // Even in catastrophic failure, try to return valid structure
+  return {
+    success: true,
+    data: { totalRecords: 0, opportunities: [] },
+    totalRecords: 0,
+    contracts: [],
+    isMock: true,
+    error: error.message
+  };
+}
 }
 
 /**

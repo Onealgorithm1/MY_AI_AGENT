@@ -192,6 +192,16 @@ router.put('/:orgId', authenticate, requireOrgAdmin, async (req, res) => {
       values.push(logo_url);
     }
 
+    if (req.body.uei !== undefined) {
+      updates.push(`uei = $${paramCount++}`);
+      values.push(req.body.uei);
+    }
+
+    if (req.body.cage_code !== undefined) {
+      updates.push(`cage_code = $${paramCount++}`);
+      values.push(req.body.cage_code);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
     }

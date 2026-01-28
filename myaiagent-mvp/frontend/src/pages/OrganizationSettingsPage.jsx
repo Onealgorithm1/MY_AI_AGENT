@@ -13,6 +13,8 @@ const OrganizationSettingsPage = () => {
     websiteUrl: '',
     address: '',
     phone: '',
+    uei: '',
+    cage_code: '',
     brandingSettings: {
       logoUrl: '',
       primaryColor: '#000000',
@@ -45,7 +47,10 @@ const OrganizationSettingsPage = () => {
         description: data.description || '',
         websiteUrl: data.website_url || '',
         address: data.address || '',
+        address: data.address || '',
         phone: data.phone || '',
+        uei: data.uei || '',
+        cage_code: data.cage_code || '',
         brandingSettings: data.branding_settings || {
           logoUrl: '',
           primaryColor: '#3B82F6', // Default blue
@@ -90,7 +95,10 @@ const OrganizationSettingsPage = () => {
         websiteUrl: settings.websiteUrl,
         address: settings.address,
         phone: settings.phone,
-        brandingSettings: settings.brandingSettings
+        phone: settings.phone,
+        brandingSettings: settings.brandingSettings,
+        uei: settings.uei,
+        cage_code: settings.cage_code
       });
       setSuccess('Settings updated successfully');
     } catch (err) {
@@ -217,6 +225,48 @@ const OrganizationSettingsPage = () => {
                 rows={3}
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="123 Business St, Suite 100, City, State, ZIP"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Government Registration Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+            Government Registration
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <label htmlFor="uei" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Unique Entity ID (UEI)
+              </label>
+              <input
+                type="text"
+                id="uei"
+                name="uei"
+                value={settings.uei}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="12-char alphanumeric ID"
+                maxLength={12}
+              />
+              <p className="mt-1 text-xs text-gray-500">Required for federal contracting analytics.</p>
+            </div>
+
+            <div>
+              <label htmlFor="cage_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                CAGE Code
+              </label>
+              <input
+                type="text"
+                id="cage_code"
+                name="cage_code"
+                value={settings.cage_code}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="5-char code"
+                maxLength={5}
               />
             </div>
           </div>
