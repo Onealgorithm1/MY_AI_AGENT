@@ -120,7 +120,7 @@ export async function syncRecentOpportunities(days = 7) {
  * Backfill historical data (e.g., last 2 years)
  * Iterates month by month to avoid timeouts and huge payloads
  */
-export async function backfillHistoricalData(monthsBack = 24) {
+export async function backfillHistoricalData(monthsBack = 60) {
     console.log(`[SAM.gov Backfill] Starting ${monthsBack}-month backfill...`);
 
     const today = new Date();

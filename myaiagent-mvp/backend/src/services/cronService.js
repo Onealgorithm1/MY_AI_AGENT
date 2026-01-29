@@ -81,7 +81,7 @@ async function checkAndTriggerBackfill() {
             isBackfilling = true;
 
             // Run in background (don't await)
-            samGovSync.backfillHistoricalData(24)
+            samGovSync.backfillHistoricalData(60)
                 .then(() => {
                     console.log('✅ [Backfill] Historical backfill finished successfully.');
                     isBackfilling = false;
