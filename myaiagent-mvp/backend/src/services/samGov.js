@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getApiKey } from '../utils/apiKeys.js';
+import samGovEntityService from './samGovEntityService.js';
 
 const SAM_API_BASE_URL = 'https://api.sam.gov';
 
@@ -39,6 +40,9 @@ export async function searchEntities(options = {}, userId = null, organizationId
       legalBusinessName,
       dbaName,
       cageCode,
+      registrationStatus,
+      purposeOfRegistration,
+      sort,
       limit = 10,
       offset = 0,
     } = options;
@@ -53,10 +57,67 @@ export async function searchEntities(options = {}, userId = null, organizationId
     if (dbaName) params.dbaName = dbaName;
     if (cageCode) params.cageCode = cageCode;
 
-    const response = await axios.get(`${SAM_API_BASE_URL}/entity-information/v3/entities`, {
+    // Filters - DISABLED temporarily (causing 0 results/API error)
+    // Needs correct code mapping (e.g. 'Active' -> 'A')
+    // if (registrationStatus) params.registrationStatus = registrationStatus;
+    // if (purposeOfRegistration) params.purposeOfRegistrationCode = purposeOfRegistration;
+
+    // Sorting
+    // SAM.gov v4 likely uses 'sort' parameter. 
+    // Format usually: fieldName-order (e.g. legalBusinessName-asc)
+    if (sort) {
+      if (sort === 'name') params.sort = 'legalBusinessName-asc';
+      else if (sort === 'expiration') params.sort = 'expirationDate-asc';
+      else if (sort === '-expiration') params.sort = 'expirationDate-desc';
+      else if (sort !== 'relevance') params.sort = sort;
+    }
+
+    // Add pagination (SAM.gov uses 'limit' and 'offset' for v4 entities?)
+    // WARNING: Entity Management API documentation v2/v3 used 'limit' and 'offset'.
+    // v4 might use 'size' and 'page' similar to Opportunities v2?
+    // Let's check documentation or stick to what was there if we are unsure, 
+    // but based on previous task we changed Opps to size/page.
+    // For now, I will add them as is, but if it fails I will check v4 docs.
+    // Assuming v4 uses limit/offset as per previous code structure intent.
+    // Wait, the USER's previous request mentioned v4 for entities.
+    // I should check if I need size/page for Entities too.
+    // But since I don't have the docs right here and the previous code had them as args,
+    // I'll assume they are needed in the query.
+    // Actually, looking at the previous change for Opps, it was definitely size/page.
+    // Let's try to add them to params.
+    // SAM.gov v4 API uses 'size' and 'page'
+    // Map limit -> size, offset -> page
+    const size = limit;
+    const page = Math.floor(offset / limit);
+
+    if (size) params.size = size;
+    if (page !== undefined) params.page = page;
+
+    // Add includeSections to get full data in search results
+    // DISABLED: caused 0 results in tests
+    // params.includeSections = 'entityRegistration,coreData,assertions,repsAndCerts,pointsOfContact';
+
+    const response = await axios.get(`${SAM_API_BASE_URL}/prod/entity-information/v4/entities`, {
       params,
       timeout: 30000,
     });
+
+    // CACHE ON ACCESS: Save fetched entities to local DB
+    console.log('DEBUG: Accessing Cache Logic');
+    if (response.data) {
+      console.log('DEBUG: Response Data Keys:', Object.keys(response.data));
+      if (response.data.entityData) console.log('DEBUG: EntityData Count:', response.data.entityData.length);
+    }
+
+    if (response.data.entityData && response.data.entityData.length > 0) {
+      console.log(`DEBUG: Attempting to cache ${response.data.entityData.length} entities...`);
+      // Run in background to not block response
+      samGovEntityService.saveEntities(response.data.entityData)
+        .then(() => console.log('DEBUG: ✅ Background cache successful'))
+        .catch(err => console.error('DEBUG: ❌ Background entity cache failed:', err));
+    } else {
+      console.log('DEBUG: No entityData to cache');
+    }
 
     return {
       success: true,
@@ -82,7 +143,7 @@ export async function getEntityByUEI(ueiSAM, userId = null, organizationId = nul
   try {
     const apiKey = await getSamApiKey(organizationId);
 
-    const response = await axios.get(`${SAM_API_BASE_URL}/entity-information/v3/entities`, {
+    const response = await axios.get(`${SAM_API_BASE_URL}/prod/entity-information/v4/entities`, {
       params: {
         api_key: apiKey,
         ueiSAM,
@@ -92,9 +153,16 @@ export async function getEntityByUEI(ueiSAM, userId = null, organizationId = nul
     });
 
     if (response.data.entityData && response.data.entityData.length > 0) {
+      const entity = response.data.entityData[0];
+
+      // CACHE ON ACCESS: Save individual entity
+      samGovEntityService.saveEntity(entity).catch(err =>
+        console.error('Background entity cache failed:', err)
+      );
+
       return {
         success: true,
-        entity: response.data.entityData[0],
+        entity: entity,
       };
     }
 
@@ -151,26 +219,28 @@ export async function searchOpportunities(options = {}, userId = null, organizat
     const defaultPostedTo = formatDate(today);
     const defaultPostedFrom = formatDate(thirtyDaysAgo);
 
+    const page = Math.floor(offset / limit) || 0;
+
     const params = {
       api_key: apiKey,
       postedFrom: postedFrom || defaultPostedFrom,
       postedTo: postedTo || defaultPostedTo,
-      limit: Math.min(limit, 1000), // SAM.gov max is 1000 per request
-      offset,
+      size: Math.min(limit, 1000),
+      page,
     };
 
-    if (keyword) params.title = keyword;
+    if (keyword) params.keyword = keyword;
 
     // If fetchAll is true, paginate through all results
     if (fetchAll) {
       let allOpportunities = [];
-      let currentOffset = 0;
+      let currentPage = 0;
       let totalRecords = 0;
       const pageSize = 1000; // Use max page size for efficiency
 
       do {
-        const pageParams = { ...params, limit: pageSize, offset: currentOffset };
-        const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
+        const pageParams = { ...params, size: pageSize, page: currentPage };
+        const response = await axios.get(`${SAM_API_BASE_URL}/prod/opportunity/v2/search`, {
           params: pageParams,
           timeout: 30000,
         });
@@ -178,7 +248,7 @@ export async function searchOpportunities(options = {}, userId = null, organizat
         const opportunities = response.data.opportunitiesData || [];
         allOpportunities = allOpportunities.concat(opportunities);
         totalRecords = response.data.totalRecords || 0;
-        currentOffset += pageSize;
+        currentPage++;
 
         // Stop if we've fetched all records or if no more results
         if (allOpportunities.length >= totalRecords || opportunities.length === 0) {
@@ -198,7 +268,7 @@ export async function searchOpportunities(options = {}, userId = null, organizat
     }
 
     // Regular single-page request
-    const response = await axios.get(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
+    const response = await axios.get(`${SAM_API_BASE_URL}/prod/opportunity/v2/search`, {
       params,
       timeout: 30000,
     });

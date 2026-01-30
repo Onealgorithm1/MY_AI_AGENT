@@ -26,6 +26,7 @@ const ContractAnalyticsPage = lazy(() => import('./pages/ContractAnalyticsPage')
 const ProposalWorkspacePage = lazy(() => import('./pages/ProposalWorkspacePage'));
 const CompanyDashboardPage = lazy(() => import('./pages/CompanyDashboardPage'));
 const CompanyProfilePage = lazy(() => import('./pages/CompanyProfilePage'));
+const EntitySearchPage = lazy(() => import('./pages/EntitySearchPage'));
 const OpportunityDetailsPage = lazy(() => import('./pages/OpportunityDetailsPage'));
 const AwardsSearchPage = lazy(() => import('./pages/AwardsSearchPage'));
 const AwardDetailsPage = lazy(() => import('./pages/AwardDetailsPage'));
@@ -248,6 +249,14 @@ function App() {
             element={
               <PrivateRoute>
                 <CompanyProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/entities"
+            element={
+              <PrivateRoute>
+                <EntitySearchPage />
               </PrivateRoute>
             }
           />

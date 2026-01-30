@@ -63,6 +63,12 @@ const AppLayout = ({ children }) => {
       title: 'My Saved Opportunities',
     },
     {
+      path: '/entities',
+      icon: Building2,
+      label: 'Entities',
+      title: 'Search Entities',
+    },
+    {
       path: '/awards',
       icon: Award,
       label: 'Awards',

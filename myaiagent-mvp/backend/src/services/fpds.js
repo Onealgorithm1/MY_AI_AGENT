@@ -2,12 +2,9 @@ import axios from 'axios';
 import pool from '../config/database.js';
 import { getApiKey } from '../utils/apiKeys.js';
 
-const FPDS_API_BASE_URL = 'https://api.sam.gov/prod/opportunities/v1/search';
+const FPDS_API_BASE_URL = 'https://api.sam.gov/prod/opportunity/v2/search';
 const FPDS_CONTRACT_DATA_URL = 'https://api.sam.gov/prod/federalaccountingsystem/v1/accounts';
 
-/**
- * Get SAM.gov API key (FPDS uses same key as SAM.gov)
- */
 /**
  * Get SAM.gov API key (FPDS uses same key as SAM.gov)
  */
@@ -22,10 +19,10 @@ async function getFpdsApiKey(userId = null, organizationId = null) {
 }
 
 /**
- * Search for contract awards in FPDS
+ * Search for contract awards in FPDS (via SAM.gov Opportunity API v2)
  * @param {Object} options - Search options
- * @param {string} options.piid - Procurement Instrument Identifier
- * @param {string} options.vendorUEI - Vendor UEI
+ * @param {string} options.piid - Procurement Instrument Identifier (Award Number)
+ * @param {string} options.vendorUEI - Vendor UEI (Mapped to keyword if not supported directly)
  * @param {string} options.vendorName - Vendor name
  * @param {string} options.agencyCode - Contracting agency code
  * @param {string} options.naicsCode - NAICS code
@@ -33,7 +30,7 @@ async function getFpdsApiKey(userId = null, organizationId = null) {
  * @param {string} options.awardDateFrom - Award date range start (YYYY-MM-DD)
  * @param {string} options.awardDateTo - Award date range end (YYYY-MM-DD)
  * @param {string} options.setAsideType - Type of set-aside
- * @param {number} options.limit - Number of results (default: 100)
+ * @param {number} options.limit - Number of results (default: 10)
  * @param {number} options.offset - Pagination offset
  * @param {string} userId - User ID for API key lookup
  * @returns {Promise<Object>} Contract award search results
@@ -51,7 +48,7 @@ export async function searchContractAwards(options = {}, userId = null, organiza
       awardDateFrom,
       awardDateTo,
       setAsideType,
-      limit = 100,
+      limit = 10,
       offset = 0,
     } = options;
 
@@ -133,24 +130,44 @@ export async function searchContractAwards(options = {}, userId = null, organiza
       };
     }
 
-    // Build query parameters
+    // Build query parameters for v2 API
+    // Mapping rules:
+    // noticeType='a' (Award)
+    // limit/offset -> size/page
+    const page = Math.floor(offset / limit) || 0;
+
+    // Default date range if not provided
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setFullYear(today.getFullYear() - 1);
+    const formatDate = (date) => date.toISOString().split('T')[0];
+
     const params = {
       api_key: apiKey,
-      limit,
-      offset,
+      noticeType: 'a', // Filter for Awards
+      size: limit,
+      page: page,
     };
 
-    // Add search filters
-    if (piid) params.piid = piid;
-    if (vendorUEI) params.awardeeUeiSAM = vendorUEI;
-    if (vendorName) params.awardeeName = vendorName;
-    if (agencyCode) params.contractingAgencyCode = agencyCode;
-    if (naicsCode) params.naicsCode = naicsCode;
-    if (pscCode) params.productOrServiceCode = pscCode;
-    if (awardDateFrom) params.awardDateFrom = awardDateFrom;
-    if (awardDateTo) params.awardDateTo = awardDateTo;
-    if (setAsideType) params.typeOfSetAside = setAsideType;
+    if (awardDateFrom) params.postedFrom = awardDateFrom;
+    if (awardDateTo) params.postedTo = awardDateTo;
 
+    // Map filters
+    if (piid) params.awardNumber = piid; // v2 uses awardNumber
+    if (vendorUEI) params.keyword = vendorUEI; // Attempt to use keyword for vendor UEI
+    if (vendorName) params.keyword = vendorName; // Overwrite keyword if name provided (or combine?)
+    if (naicsCode) params.ncode = naicsCode;
+
+    // Combining keyword terms if multiple
+    let keywords = [];
+    if (vendorUEI) keywords.push(vendorUEI);
+    if (vendorName) keywords.push(vendorName);
+    if (naicsCode) keywords.push(naicsCode);
+    if (pscCode) keywords.push(pscCode);
+
+    if (keywords.length > 0) {
+      params.keyword = keywords.join(' ');
+    }
 
     try {
       const response = await axios.get(FPDS_API_BASE_URL, {
@@ -158,14 +175,32 @@ export async function searchContractAwards(options = {}, userId = null, organiza
         timeout: 60000,
       });
 
+      const opportunities = response.data.opportunitiesData || [];
+      const totalRecords = response.data.totalRecords || 0;
+
+      // Map v2 response to expected contract structure
+      const contracts = opportunities.map(opp => ({
+        piid: opp.award?.awardNumber || opp.solicitatioNumber, // Use awardNumber or fallback
+        modificationNumber: '0',
+        vendorName: opp.award?.awardee?.name,
+        vendorUeiSAM: opp.award?.awardee?.ueiSAM,
+        contractingAgencyName: opp.organizationInfo?.name,
+        awardDate: opp.award?.date,
+        currentContractValue: opp.award?.amount,
+        awardType: 'AWARD',
+        descriptionOfContractRequirement: opp.description || opp.title,
+        naicsCode: opp.naicsCode?.[0] || '',
+        raw: opp
+      }));
+
       return {
         success: true,
-        data: response.data,
-        totalRecords: response.data.totalRecords || 0,
-        contracts: response.data.opportunities || [],
+        data: { totalRecords, opportunities },
+        totalRecords: totalRecords,
+        contracts: contracts,
       };
     } catch (apiError) {
-      console.warn('⚠️ FPDS API Call Failed. Returning empty/mock results.', apiError.message);
+      console.warn('⚠️ FPDS API Call Failed (v2). Returning empty/mock results.', apiError.message, apiError.response?.data);
       // Fallback to mock/empty on API failure (e.g. 403, 500 upstream)
       return {
         success: true,

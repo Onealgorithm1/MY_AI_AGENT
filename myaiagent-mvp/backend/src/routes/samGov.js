@@ -17,10 +17,30 @@ router.use(authenticate);
  */
 router.post('/search/entities', async (req, res) => {
   try {
-    const { ueiSAM, legalBusinessName, dbaName, cageCode, limit, offset } = req.body;
+    const {
+      ueiSAM,
+      legalBusinessName,
+      dbaName,
+      cageCode,
+      registrationStatus,
+      purposeOfRegistration,
+      sort,
+      limit,
+      offset
+    } = req.body;
 
     const result = await samGovService.searchEntities(
-      { ueiSAM, legalBusinessName, dbaName, cageCode, limit, offset },
+      {
+        ueiSAM,
+        legalBusinessName,
+        dbaName,
+        cageCode,
+        registrationStatus,
+        purposeOfRegistration,
+        sort,
+        limit,
+        offset
+      },
       req.user.id,
       req.user.organization_id
     );
