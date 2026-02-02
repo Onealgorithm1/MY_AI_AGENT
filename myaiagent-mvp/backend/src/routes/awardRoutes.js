@@ -93,6 +93,18 @@ router.get('/vendor/performance', authenticate, attachOrganization, async (req, 
     }
 });
 
+// Get top performing vendors (Market Intelligence)
+router.get('/vendor/top-performers', authenticate, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const result = await awardService.getTopPerformingVendors(limit);
+        res.json({ vendors: result });
+    } catch (error) {
+        console.error('Top performers error:', error);
+        res.status(500).json({ error: 'Failed to get top performers' });
+    }
+});
+
 // Get logged-in vendor's award history
 router.get('/vendor/history', authenticate, attachOrganization, async (req, res) => {
     try {
@@ -107,6 +119,22 @@ router.get('/vendor/history', authenticate, attachOrganization, async (req, res)
         res.json(result);
     } catch (error) {
         console.error('Vendor history error:', error);
+        res.status(500).json({ error: 'Failed to get vendor history' });
+    }
+});
+
+// Get specific vendor's award history (Public/Research)
+router.get('/vendor/:uei/history', authenticate, async (req, res) => {
+    try {
+        const { uei } = req.params;
+        if (!uei) {
+            return res.status(400).json({ error: 'UEI is required' });
+        }
+
+        const result = await awardService.getVendorAwards(uei, req.query);
+        res.json(result);
+    } catch (error) {
+        console.error('Public vendor history error:', error);
         res.status(500).json({ error: 'Failed to get vendor history' });
     }
 });

@@ -16,6 +16,16 @@ BEGIN
       NULL;
     END;
 
+    -- Cleanup Step 2.5: Remove duplicates before adding the constraint
+    -- Keep the one with the highest ID (latest)
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'api_secrets') THEN
+      DELETE FROM api_secrets a 
+      USING api_secrets b
+      WHERE a.id < b.id 
+      AND a.service_name = b.service_name 
+      AND a.key_label = b.key_label;
+    END IF;
+
     -- Step 3: Add the new UNIQUE constraint on (service_name, key_label) if it doesn't exist
     IF NOT EXISTS (
       SELECT 1 FROM pg_indexes

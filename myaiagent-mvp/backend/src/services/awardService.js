@@ -160,6 +160,38 @@ export const awardService = {
     },
 
     /**
+     * Get top performing vendors by total contract value
+     * @param {number} limit - Number of vendors to return
+     * @returns {Array} - List of top vendors
+     */
+    async getTopPerformingVendors(limit = 10) {
+        // Query the cache where we have actual SAM.gov data (backfilled)
+        // Extract awardee info from the JSON blob in samgov_opportunities_cache
+        const queryText = `
+            SELECT 
+                raw_data->'award'->'awardee'->>'name' as vendor_name, 
+                raw_data->'award'->'awardee'->>'ueiSAM' as vendor_uei, 
+                SUM(CAST(NULLIF(raw_data->'award'->>'amount', '') AS NUMERIC)) as total_value,
+                COUNT(*) as award_count
+            FROM samgov_opportunities_cache
+            WHERE 
+                raw_data->'award' IS NOT NULL 
+                AND raw_data->'award'->>'amount' IS NOT NULL
+                AND CAST(NULLIF(raw_data->'award'->>'amount', '') AS NUMERIC) > 0
+                AND raw_data->'award'->'awardee'->>'name' IS NOT NULL
+                AND raw_data->'award'->'awardee'->>'name' != ''
+                AND raw_data->'award'->'awardee'->>'ueiSAM' IS NOT NULL
+                AND raw_data->'award'->'awardee'->>'ueiSAM' != ''
+            GROUP BY 1, 2
+            ORDER BY total_value DESC
+            LIMIT $1
+        `;
+
+        const result = await query(queryText, [limit]);
+        return result.rows;
+    },
+
+    /**
      * Get historical awards for a specific vendor
      * @param {string} uei - Vendor UEI
      * @param {Object} pagination - Limit and offset

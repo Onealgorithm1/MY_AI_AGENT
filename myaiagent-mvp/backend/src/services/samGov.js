@@ -219,17 +219,35 @@ export async function searchOpportunities(options = {}, userId = null, organizat
     const defaultPostedTo = formatDate(today);
     const defaultPostedFrom = formatDate(thirtyDaysAgo);
 
-    const page = Math.floor(offset / limit) || 0;
-
     const params = {
       api_key: apiKey,
       postedFrom: postedFrom || defaultPostedFrom,
       postedTo: postedTo || defaultPostedTo,
-      size: Math.min(limit, 1000),
-      page,
+      limit: Math.min(limit, 1000),
+      offset: offset || 0,
     };
 
     if (keyword) params.keyword = keyword;
+
+    // requestConfig removed - standard params auth used per v2 docs
+
+    const REQUEST_TIMEOUT = 60000; // 60 seconds
+
+    // Retry helper
+    const makeRequestWithRetry = async (url, config, retries = 3) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await axios.get(url, config);
+        } catch (err) {
+          const isRetryable = !err.response || (err.response.status >= 500 && err.response.status < 600) || err.code === 'ECONNABORTED' || err.response.status === 429;
+          if (!isRetryable || i === retries - 1) throw err;
+
+          const delay = 2000 * Math.pow(2, i); // 2s, 4s, 8s
+          console.log(`⚠️ Request failed (${err.message}). Retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
+    };
 
     // If fetchAll is true, paginate through all results
     if (fetchAll) {
@@ -239,10 +257,15 @@ export async function searchOpportunities(options = {}, userId = null, organizat
       const pageSize = 1000; // Use max page size for efficiency
 
       do {
-        const pageParams = { ...params, size: pageSize, page: currentPage };
-        const response = await axios.get(`${SAM_API_BASE_URL}/prod/opportunity/v2/search`, {
+        // v2 uses offset, not page.
+        // We must calculate offset based on current page count * pageSize
+        const currentOffset = currentPage * pageSize;
+        const pageParams = { ...params, limit: pageSize, offset: currentOffset };
+        console.log('DEBUG: SAM.gov Request Params (Page ' + currentPage + '):', JSON.stringify(pageParams, null, 2));
+
+        const response = await makeRequestWithRetry(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
           params: pageParams,
-          timeout: 30000,
+          timeout: REQUEST_TIMEOUT,
         });
 
         const opportunities = response.data.opportunitiesData || [];
@@ -268,9 +291,9 @@ export async function searchOpportunities(options = {}, userId = null, organizat
     }
 
     // Regular single-page request
-    const response = await axios.get(`${SAM_API_BASE_URL}/prod/opportunity/v2/search`, {
+    const response = await makeRequestWithRetry(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
       params,
-      timeout: 30000,
+      timeout: REQUEST_TIMEOUT,
     });
 
     return {
