@@ -120,7 +120,9 @@ const AwardsSearchPage = () => {
                             ) : awards.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                                        No awards found matching your criteria.
+                                        <div className="mb-6">No specific awards found matching your criteria.</div>
+                                        {/* Show Top Performers if no results found (likely empty search) */}
+                                        <div className="hidden"></div>
                                     </td>
                                 </tr>
                             ) : (
@@ -200,8 +202,82 @@ const AwardsSearchPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Show Top Performers if no specific awards found (default view) */}
+            {!loading && awards.length === 0 && (
+                <TopPerformersTable />
+            )}
         </div>
     );
 };
+
+// Sub-component for Top Performers
+function TopPerformersTable() {
+    const [topVendors, setTopVendors] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchTop = async () => {
+            try {
+                // Reuse the same performance endpoint
+                const res = await api.get('/awards/vendor/top-performers?limit=100');
+                setTopVendors(res.data.vendors || []);
+            } catch (err) {
+                console.error('Failed to load top vendors', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTop();
+    }, []);
+
+    const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+
+    if (loading) return <div className="text-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>;
+
+    if (topVendors.length === 0) return null;
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mt-8">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">🏆 Top Performers</h3>
+            </div>
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 relative">
+                    <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendor Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">UEI</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Value</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Awards</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {topVendors.map((vendor, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    #{idx + 1}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-blue-600 dark:text-blue-400">
+                                    {vendor.vendor_name || 'Unknown Vendor'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {vendor.vendor_uei}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400">
+                                    {formatCurrency(vendor.total_value)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                    {vendor.award_count}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
 
 export default AwardsSearchPage;

@@ -4,11 +4,24 @@ import AwardStatsCards from '../components/awards/AwardStatsCards';
 import { api } from '../services/api';
 
 const VendorPerformancePage = () => {
+    const [activeTab, setActiveTab] = useState('my_performance'); // 'my_performance' or 'market'
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [stats, setStats] = useState(null);
     const [awards, setAwards] = useState([]);
     const [pagination, setPagination] = useState({ limit: 20, offset: 0, total: 0 });
+
+    // Market Data State
+    const [topPerformers, setTopPerformers] = useState([]);
+    const [marketSearch, setMarketSearch] = useState({
+        keyword: '',
+        agency: '',
+        minValue: '',
+        maxValue: '',
+        naicsCode: ''
+    });
+    const [marketResults, setMarketResults] = useState([]);
+    const [marketLoading, setMarketLoading] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -24,7 +37,6 @@ const VendorPerformancePage = () => {
             setPagination(prev => ({ ...prev, total: historyRes.data.total }));
         } catch (err) {
             console.error('Failed to load performance data:', err);
-            // Check for specific error (missing UEI)
             if (err.response && err.response.data && err.response.data.error === 'Organization configuration missing UEI') {
                 setError('missing_uei');
             } else {
@@ -35,37 +47,50 @@ const VendorPerformancePage = () => {
         }
     };
 
+    const fetchMarketData = async () => {
+        setMarketLoading(true);
+        try {
+            // Fetch Top Performers (Increased to 100 as requested)
+            const topRes = await api.get('/awards/vendor/top-performers?limit=100');
+            setTopPerformers(topRes.data.vendors || []);
+        } catch (err) {
+            console.error('Failed to load market data:', err);
+        } finally {
+            setMarketLoading(false);
+        }
+    };
+
+    const handleMarketSearch = async (e) => {
+        if (e) e.preventDefault();
+        setMarketLoading(true);
+        try {
+            const params = new URLSearchParams(marketSearch);
+            // Default sort
+            params.append('sortBy', 'current_contract_value');
+            params.append('sortOrder', 'DESC');
+
+            const res = await api.get(`/awards/search?${params.toString()}`);
+            setMarketResults(res.data.awards || []);
+        } catch (err) {
+            console.error('Search failed:', err);
+        } finally {
+            setMarketLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchData();
     }, [pagination.offset]);
 
+    useEffect(() => {
+        if ((activeTab === 'market' || activeTab === 'top_performers') && topPerformers.length === 0) {
+            fetchMarketData();
+        }
+    }, [activeTab]);
+
     const handleExport = () => {
-        // Export logged in vendor's history
-        // Assuming we can pass a special flag or just use the same export endpoint with vendor filtering implied or explicit
-        // The backend routes show /export checks query params. For a vendor export, 
-        // we might need to filter by their UEI. 
-        // Ideally, we'd have a specific /awards/vendor/export endpoint, OR we use the search export with our UEI.
-        // Since the backend 'vendor/history' uses the user's org UEI automatically, let's see if we added a vendor export...
-        // We added `router.get('/export', ...)` which is generic search export.
-        // We should probably add `vendor_uei` to the query params if we know it, OR relying on the user manually searching.
-        // BUT, for this page, let's just use the search export but pass the `vendor_uei` if we had it available in the frontend state.
-        // Actually, a better approach for "My Export" is filtering by the current org's UEI.
-        // Since we don't have the UEI in frontend state easily here without parsing `stats` or `user` store,
-        // Let's assume the user wants to export what they see in the table.
-        // Let's rely on the user to filter in the main search for now, OR unimplemented.
-        // Wait, the requirement was "Export CSV" on this dashboard. 
-        // Let's call the `export` endpoint with a `vendor_uei` param if we can get it from the Organization Context.
-        // For now, let's disable or show a generic message if sophisticated filtering isn't ready.
-
-        // REVISION: We can just use the search export endpoint and assume the backend *could* restrict it, 
-        // or we just trigger a search export for *this* vendor.
-        // The backend `exportAwardsCSV` takes filters. If we pass `vendor_uei`, it filters.
-        // We need the UEI. We can get it from the `stats` call if we modified the backend to return it, or from the User store if loaded.
-
-        // Fallback: Just alert for now as "Coming Soon" or fix properly by fetching Org details first.
         alert("Exporting your full history...");
-        // Note: In a real app, I'd fetch the Org UEI from context and pass it here:
-        // window.open(`${API_URL}/awards/export?vendor_uei=${orgUei}`, '_blank');
+        // In a real app, window.open(`${API_URL}/awards/export?vendor_uei=${orgUei}`, '_blank');
     };
 
     const formatCurrency = (val) => {
@@ -81,7 +106,7 @@ const VendorPerformancePage = () => {
         return new Date(dateStr).toLocaleDateString();
     };
 
-    if (loading && !stats) {
+    if (loading && !stats && activeTab === 'my_performance') {
         return (
             <div className="p-8 flex justify-center">
                 <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin"></div>
@@ -89,10 +114,10 @@ const VendorPerformancePage = () => {
         );
     }
 
-    if (error === 'missing_uei') {
+    if (error === 'missing_uei' && activeTab === 'my_performance') {
         return (
             <div className="p-6 max-w-7xl mx-auto">
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-md">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-md mb-6">
                     <div className="flex">
                         <div className="flex-shrink-0">
                             <AlertTriangle className="h-5 w-5 text-yellow-400" />
@@ -112,31 +137,32 @@ const VendorPerformancePage = () => {
                         </div>
                     </div>
                 </div>
+                {/* Allow switching to Market tab even if UEI is missing */}
+                <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-6">
+                    <button
+                        onClick={() => setActiveTab('my_performance')}
+                        className={`py-2 px-4 border-b-2 font-medium text-sm ${activeTab === 'my_performance' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        My Performance
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('market')}
+                        className={`py-2 px-4 border-b-2 font-medium text-sm ${activeTab === 'market' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Market Intelligence
+                    </button>
+                </div>
+                {activeTab === 'market' && renderMarketTab()}
             </div>
         );
     }
 
-    return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Performance Dashboard</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        Track your government, contract awards and performance metrics.
-                    </p>
-                </div>
-                <button
-                    onClick={handleExport}
-                    className="flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export History
-                </button>
-            </div>
+    // --- Render Helpers ---
 
+    const renderMyPerformanceTab = () => (
+        <>
             <AwardStatsCards stats={stats} />
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mt-6">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">Award History</h3>
                 </div>
@@ -182,8 +208,7 @@ const VendorPerformancePage = () => {
                         </tbody>
                     </table>
                 </div>
-
-                {/* Simple Pagination */}
+                {/* Pagination */}
                 <div className="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between sm:px-6">
                     <div className="flex-1 flex justify-between">
                         <button
@@ -206,6 +231,209 @@ const VendorPerformancePage = () => {
                     </div>
                 </div>
             </div>
+        </>
+    );
+
+    const renderTopPerformersTab = () => (
+        <div className="space-y-8">
+            {/* Top Performers Section */}
+            <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">🏆 Top Performers</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 relative">
+                            <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rank</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendor</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">UEI</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Value</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Awards</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                {topPerformers.map((vendor, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
+                                            #{idx + 1}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                            {vendor.vendor_name || 'Unknown Vendor'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {vendor.vendor_uei}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency(vendor.total_value)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                            {vendor.award_count}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {topPerformers.length === 0 && !marketLoading && (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                            No data available yet. Backfill in progress...
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderMarketTab = () => (
+        <div className="space-y-8">
+            {/* Search Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">🔍 Search Awards</h3>
+                <form onSubmit={handleMarketSearch} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <input
+                        type="text"
+                        placeholder="Keyword (Vendor, Desc, PIID)"
+                        className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        value={marketSearch.keyword}
+                        onChange={(e) => setMarketSearch({ ...marketSearch, keyword: e.target.value })}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Agency Name"
+                        className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        value={marketSearch.agency}
+                        onChange={(e) => setMarketSearch({ ...marketSearch, agency: e.target.value })}
+                    />
+                    <div className="flex space-x-2">
+                        <input
+                            type="number"
+                            placeholder="Min Value ($)"
+                            className="w-1/2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            value={marketSearch.minValue}
+                            onChange={(e) => setMarketSearch({ ...marketSearch, minValue: e.target.value })}
+                        />
+                        <input
+                            type="number"
+                            placeholder="Max Value ($)"
+                            className="w-1/2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            value={marketSearch.maxValue}
+                            onChange={(e) => setMarketSearch({ ...marketSearch, maxValue: e.target.value })}
+                        />
+                    </div>
+                    <div className="flex space-x-2">
+                        <input
+                            type="text"
+                            placeholder="NAICS Code"
+                            className="flex-grow p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            value={marketSearch.naicsCode}
+                            onChange={(e) => setMarketSearch({ ...marketSearch, naicsCode: e.target.value })}
+                        />
+                        <button
+                            type="submit"
+                            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+                            disabled={marketLoading}
+                        >
+                            {marketLoading ? 'Searching...' : 'Search'}
+                        </button>
+                    </div>
+                </form>
+
+                {/* Search Results Table */}
+                {marketResults.length > 0 && (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Vendor</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Agency</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Value</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {marketResults.map((award) => (
+                                    <tr key={award.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                            {award.vendor_name}<br />
+                                            <span className="text-xs text-gray-500">{award.piid}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                            {award.contracting_agency_name}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-right font-medium text-green-600">
+                                            {formatCurrency(award.current_contract_value)}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            {formatDate(award.award_date)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {marketLoading && marketResults.length === 0 && <p className="text-center text-gray-500 mt-4">Loading results...</p>}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="p-6 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Performance Dashboard</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                        Track your performance and analyze market trends.
+                    </p>
+                </div>
+                {activeTab === 'my_performance' && (
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export History
+                    </button>
+                )}
+            </div>
+
+            {/* Tabs */}
+            <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-6">
+                <button
+                    onClick={() => setActiveTab('my_performance')}
+                    className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'my_performance'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    My Performance
+                </button>
+                <button
+                    onClick={() => setActiveTab('top_performers')}
+                    className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'top_performers'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    Top Performers
+                </button>
+                <button
+                    onClick={() => setActiveTab('market')}
+                    className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${activeTab === 'market'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    Market Intelligence
+                </button>
+            </div>
+
+            {/* Content */}
+            {activeTab === 'my_performance' && renderMyPerformanceTab()}
+            {activeTab === 'top_performers' && renderTopPerformersTab()}
+            {activeTab === 'market' && renderMarketTab()}
         </div>
     );
 };

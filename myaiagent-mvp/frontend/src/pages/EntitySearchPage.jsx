@@ -199,11 +199,19 @@ export default function EntitySearchPage() {
                         </div>
                     )}
 
-                    {!loading && !keyword && (
-                        <div className="bg-white dark:bg-gray-800 p-12 rounded-lg text-center">
-                            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Search for Entities</h3>
-                            <p className="text-gray-500 mb-6">Enter a Legal Business Name, UEI, or CAGE code to find entity registrations.</p>
+                    {!loading && !keyword && entities.length === 0 && (
+                        <div className="space-y-8">
+                            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg text-center mx-auto max-w-2xl">
+                                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Search for Entities</h3>
+                                <p className="text-gray-500 mb-6">Enter a Legal Business Name, UEI, or CAGE code to find entity registrations.</p>
+                            </div>
+
+                            {/* Top Entities Leaderboard */}
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 px-4">🏆 Top Performers</h3>
+                                <TopEntitiesList onSelectEntity={setSelectedEntityUEI} />
+                            </div>
                         </div>
                     )}
 
@@ -299,6 +307,74 @@ export default function EntitySearchPage() {
                     onClose={() => setSelectedEntityUEI(null)}
                 />
             )}
+        </div>
+    );
+}
+
+// Sub-component for Top Entities
+function TopEntitiesList({ onSelectEntity }) {
+    const [topEntities, setTopEntities] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchTop = async () => {
+            try {
+                // Reuse the same performance endpoint as it returns entities with values
+                const res = await api.get('/awards/vendor/top-performers?limit=100');
+                setTopEntities(res.data.vendors || []);
+            } catch (err) {
+                console.error('Failed to load top entities', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTop();
+    }, []);
+
+    const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+
+    if (loading) return <div className="text-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>;
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 relative">
+                    <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Entity Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">UEI</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Contract Value</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Awards</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {topEntities.map((entity, idx) => (
+                            <tr
+                                key={idx}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                onClick={() => onSelectEntity(entity.vendor_uei)}
+                            >
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    #{idx + 1}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                    {entity.vendor_name || 'Unknown Entity'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {entity.vendor_uei}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600 dark:text-green-400">
+                                    {formatCurrency(entity.total_value)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                    {entity.award_count}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }

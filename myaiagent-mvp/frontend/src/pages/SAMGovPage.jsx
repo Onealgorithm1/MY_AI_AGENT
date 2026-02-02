@@ -171,7 +171,7 @@ const SAMGovPage = () => {
       const activeFilters = filterOverrides || filters;
 
       const fullRes = await samGov.getCachedOpportunities({
-        limit: 30000, // Fetch plenty for client-side sorting if needed, or rely on server
+        limit: 60000, // Fetch plenty for client-side sorting if needed, or rely on server
         offset: 0,
         keyword: activeFilters.keyword,
         type: activeFilters.noticeType,

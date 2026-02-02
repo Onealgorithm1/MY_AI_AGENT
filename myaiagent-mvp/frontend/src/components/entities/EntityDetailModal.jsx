@@ -33,12 +33,35 @@ export default function EntityDetailModal({ uei, onClose }) {
     const reps = data?.repsAndCerts || {};
     const pocs = data?.pointsOfContact || {};
 
+    const [awards, setAwards] = useState([]);
+    const [loadingAwards, setLoadingAwards] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'awards' && awards.length === 0) {
+            const fetchAwards = async () => {
+                setLoadingAwards(true);
+                try {
+                    const res = await api.get(`/awards/vendor/${uei}/history?limit=50`);
+                    setAwards(res.data.awards || []);
+                } catch (err) {
+                    console.error("Failed to fetch awards", err);
+                } finally {
+                    setLoadingAwards(false);
+                }
+            };
+            fetchAwards();
+        }
+    }, [activeTab, uei]);
+
     const tabs = [
         { id: 'core', label: 'Core Data', icon: Building },
+        { id: 'awards', label: 'Awards', icon: DollarSign },
         { id: 'assertions', label: 'Assertions', icon: Briefcase },
         { id: 'reps', label: 'Reps & Certs', icon: FileText },
         { id: 'poc', label: 'Points of Contact', icon: Users },
     ];
+
+    const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
@@ -73,14 +96,14 @@ export default function EntityDetailModal({ uei, onClose }) {
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6">
+                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 overflow-x-auto">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/20'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                                ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/20'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -144,6 +167,59 @@ export default function EntityDetailModal({ uei, onClose }) {
                                             </div>
                                         </div>
                                     </Section>
+                                </div>
+                            )}
+
+                            {activeTab === 'awards' && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center justify-between">
+                                            <span>Recent Contract Awards</span>
+                                            {!loadingAwards && <span className="text-sm font-normal text-gray-500">{awards.length} found</span>}
+                                        </h3>
+
+                                        {loadingAwards ? (
+                                            <div className="flex justify-center py-12">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            </div>
+                                        ) : awards.length > 0 ? (
+                                            <div className="overflow-x-auto">
+                                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                                    <thead className="bg-gray-50 dark:bg-gray-900/50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">PIID</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agency</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                                        {awards.map((award, idx) => (
+                                                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400">
+                                                                    {award.piid}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                                                    {award.contracting_agency_name}
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                                    {new Date(award.award_date).toLocaleDateString()}
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-600 dark:text-green-400">
+                                                                    {formatCurrency(award.current_contract_value)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-12 text-gray-500">
+                                                <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                                <p>No recent contract awards found in our database.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
