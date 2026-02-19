@@ -92,7 +92,12 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
                 internal_status: 'New'
             };
 
-            await api.opportunities.create(payload);
+            const response = await api.opportunities.create(payload);
+
+            // If we successfully created it, we should update the local state if on the pipeline page
+            if (response.data?.opportunity && opportunity.onStatusChange) {
+                opportunity.onStatusChange(response.data.opportunity.id, 'New');
+            }
 
             setSavedToTracking(true);
             setTimeout(() => setSavedToTracking(false), 3000);
@@ -106,6 +111,40 @@ const OpportunityDetailModal = ({ opportunity, onClose, formatContractValue }) =
             }
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Handle internal status change for tracked opportunities
+    const handleStatusUpdate = async (newStatus) => {
+        if (!opportunity.id || isNaN(opportunity.id)) return;
+
+        setSaving(true);
+        try {
+            await api.opportunities.updateStatus(opportunity.id, newStatus);
+            // Refresh local state if needed
+            if (opportunity.onStatusChange) {
+                opportunity.onStatusChange(opportunity.id, newStatus);
+            }
+            // Update the local opportunity object so UI reflects it
+            opportunity.internal_status = newStatus;
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            alert('Failed to update status');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'New': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'Qualified': return 'bg-purple-100 text-purple-700 border-purple-200';
+            case 'In Progress': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'Submitted': return 'bg-orange-100 text-orange-700 border-orange-200';
+            case 'Won': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Lost': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Archived': return 'bg-gray-100 text-gray-700 border-gray-200';
+            default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
 
@@ -183,6 +222,43 @@ Keep it factual, concise, and actionable. No fluff or generic advice.`;
                                     <DollarSign className="w-3 h-3 md:w-4 md:h-4" />
                                     {contractValue}
                                 </span>
+                            )}
+
+                            {/* Internal Status Selector - Only for tracked opportunities */}
+                            {opportunity.id && !isNaN(opportunity.id) && (
+                                <div className="flex items-center gap-2 ml-auto md:ml-0 md:pl-3 md:border-l md:border-gray-200">
+                                    <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:inline">Status:</span>
+                                    <select
+                                        value={opportunity.internal_status || 'New'}
+                                        onChange={(e) => handleStatusUpdate(e.target.value)}
+                                        disabled={saving}
+                                        className={`text-xs font-bold rounded-lg border-2 px-2 md:px-3 py-1 md:py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer shadow-sm transition-all appearance-none ${getStatusColor(opportunity.internal_status || 'New')}`}
+                                    >
+                                        {['New', 'Qualified', 'In Progress', 'Submitted', 'Won', 'Lost', 'Archived'].map(status => (
+                                            <option key={status} value={status} className="bg-white text-gray-900 font-medium">
+                                                {status}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Tracking Info - Assigned/Created */}
+                            {opportunity.id && (
+                                <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200 text-[10px] md:text-xs text-gray-500">
+                                    {opportunity.created_by_name && (
+                                        <div>
+                                            <span className="font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Created By</span>
+                                            <span className="text-gray-900">{opportunity.created_by_name}</span>
+                                        </div>
+                                    )}
+                                    {opportunity.assigned_to_name && (
+                                        <div>
+                                            <span className="font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Assigned To</span>
+                                            <span className="text-gray-900 font-medium px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{opportunity.assigned_to_name}</span>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>

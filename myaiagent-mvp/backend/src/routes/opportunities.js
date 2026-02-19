@@ -76,8 +76,20 @@ router.get('/', async (req, res) => {
       paramIndex++;
     }
 
-    const whereClause = whereConditions.length > 0
-      ? `WHERE ${whereConditions.join(' AND ')}`
+    let idConditions = [];
+    if (req.user.organization_id) {
+      idConditions.push(`organization_id = $${paramIndex}`);
+      params.push(req.user.organization_id);
+      paramIndex++;
+    } else {
+      // If no org (personal mode?), filter by user
+      idConditions.push(`created_by = $${paramIndex}`);
+      params.push(req.user.id);
+      paramIndex++;
+    }
+
+    const whereClause = [...idConditions, ...whereConditions].length > 0
+      ? `WHERE ${[...idConditions, ...whereConditions].join(' AND ')}`
       : '';
 
     // Validate sort column
@@ -142,8 +154,8 @@ router.get('/:id', async (req, res) => {
       FROM opportunities o
       LEFT JOIN users u ON o.assigned_to = u.id
       LEFT JOIN users creator ON o.created_by = creator.id
-      WHERE o.id = $1`,
-      [id]
+      WHERE o.id = $1 AND (o.organization_id = $2 OR (o.organization_id IS NULL AND o.created_by = $3))`,
+      [id, req.user.organization_id, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -202,15 +214,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'notice_id and title are required' });
     }
 
-    // Check if opportunity already exists in THIS user's pipeline
+    // Check if opportunity already exists in THIS organization's pipeline
     const existingResult = await query(
-      'SELECT id FROM opportunities WHERE notice_id = $1 AND created_by = $2',
-      [notice_id, req.user.id]
+      'SELECT id FROM opportunities WHERE notice_id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND created_by = $3))',
+      [notice_id, req.user.organization_id, req.user.id]
     );
 
     if (existingResult.rows.length > 0) {
       return res.status(409).json({
-        error: 'Opportunity already in your pipeline',
+        error: 'Opportunity already in your organization pipeline',
         id: existingResult.rows[0].id
       });
     }
@@ -220,22 +232,22 @@ router.post('/', async (req, res) => {
         notice_id, solicitation_number, title, type, posted_date, response_deadline,
         naics_code, set_aside_type, contracting_office, place_of_performance,
         description, raw_data, internal_status, internal_score, internal_notes,
-        created_by, last_sync_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
+        created_by, organization_id, last_sync_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
       RETURNING *`,
       [
         notice_id, solicitation_number, title, type, posted_date, response_deadline,
         naics_code, set_aside_type, contracting_office, place_of_performance,
         description, raw_data, internal_status, internal_score, internal_notes,
-        req.user.id
+        req.user.id, req.user.organization_id
       ]
     );
 
     // Log activity
     await query(
-      `INSERT INTO opportunity_activity (opportunity_id, user_id, activity_type, new_value)
-       VALUES ($1, $2, 'created', $3)`,
-      [result.rows[0].id, req.user.id, internal_status]
+      `INSERT INTO opportunity_activity (opportunity_id, user_id, organization_id, activity_type, new_value)
+       VALUES ($1, $2, $3, 'created', $4)`,
+      [result.rows[0].id, req.user.id, req.user.organization_id, internal_status]
     );
 
     res.status(201).json({ opportunity: result.rows[0] });
@@ -274,6 +286,16 @@ router.patch('/:id/status', async (req, res) => {
 
     const oldStatus = currentResult.rows[0].internal_status;
 
+    // Security check: ensure user belongs to the org that owns this opportunity
+    const ownerResult = await query(
+      'SELECT organization_id, created_by FROM opportunities WHERE id = $1',
+      [id]
+    );
+    const opportunity = ownerResult.rows[0];
+    if (opportunity.organization_id !== req.user.organization_id && (opportunity.organization_id !== null || opportunity.created_by !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     // Update status
     const result = await query(
       `UPDATE opportunities
@@ -286,9 +308,9 @@ router.patch('/:id/status', async (req, res) => {
     // Log activity
     await query(
       `INSERT INTO opportunity_activity (
-        opportunity_id, user_id, activity_type, old_value, new_value, notes
-      ) VALUES ($1, $2, 'status_change', $3, $4, $5)`,
-      [id, req.user.id, oldStatus, status, notes]
+        opportunity_id, user_id, organization_id, activity_type, old_value, new_value, notes
+      ) VALUES ($1, $2, $3, 'status_change', $4, $5, $6)`,
+      [id, req.user.id, req.user.organization_id, oldStatus, status, notes]
     );
 
     res.json({ opportunity: result.rows[0] });
@@ -330,6 +352,16 @@ router.patch('/:id/assign', async (req, res) => {
     const oldAssignedTo = currentResult.rows[0].assigned_to;
     const oldAssignedName = currentResult.rows[0].old_assigned_name;
 
+    // Security check
+    const ownerResult = await query(
+      'SELECT organization_id, created_by FROM opportunities WHERE id = $1',
+      [id]
+    );
+    const opportunity = ownerResult.rows[0];
+    if (opportunity.organization_id !== req.user.organization_id && (opportunity.organization_id !== null || opportunity.created_by !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     // Update assignment
     const result = await query(
       `UPDATE opportunities
@@ -349,9 +381,9 @@ router.patch('/:id/assign', async (req, res) => {
     // Log activity
     await query(
       `INSERT INTO opportunity_activity (
-        opportunity_id, user_id, activity_type, old_value, new_value, notes
-      ) VALUES ($1, $2, 'assignment', $3, $4, $5)`,
-      [id, req.user.id, oldAssignedName || 'Unassigned', newAssignedName || 'Unassigned', notes]
+        opportunity_id, user_id, organization_id, activity_type, old_value, new_value, notes
+      ) VALUES ($1, $2, $3, 'assignment', $4, $5, $6)`,
+      [id, req.user.id, req.user.organization_id, oldAssignedName || 'Unassigned', newAssignedName || 'Unassigned', notes]
     );
 
     res.json({ opportunity: result.rows[0] });
@@ -386,6 +418,16 @@ router.patch('/:id/score', async (req, res) => {
 
     const oldScore = currentResult.rows[0].internal_score;
 
+    // Security check
+    const ownerResult = await query(
+      'SELECT organization_id, created_by FROM opportunities WHERE id = $1',
+      [id]
+    );
+    const opportunity = ownerResult.rows[0];
+    if (opportunity.organization_id !== req.user.organization_id && (opportunity.organization_id !== null || opportunity.created_by !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     // Update score
     const result = await query(
       `UPDATE opportunities
@@ -398,9 +440,9 @@ router.patch('/:id/score', async (req, res) => {
     // Log activity
     await query(
       `INSERT INTO opportunity_activity (
-        opportunity_id, user_id, activity_type, old_value, new_value, notes
-      ) VALUES ($1, $2, 'score_updated', $3, $4, $5)`,
-      [id, req.user.id, oldScore?.toString() || 'None', score.toString(), notes]
+        opportunity_id, user_id, organization_id, activity_type, old_value, new_value, notes
+      ) VALUES ($1, $2, $3, 'score_updated', $4, $5, $6)`,
+      [id, req.user.id, req.user.organization_id, oldScore?.toString() || 'None', score.toString(), notes]
     );
 
     res.json({ opportunity: result.rows[0] });
@@ -421,6 +463,19 @@ router.patch('/:id/notes', async (req, res) => {
 
     if (!notes || typeof notes !== 'string') {
       return res.status(400).json({ error: 'Notes must be a non-empty string' });
+    }
+
+    // Security check
+    const ownerResult = await query(
+      'SELECT organization_id, created_by FROM opportunities WHERE id = $1',
+      [id]
+    );
+    if (ownerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+    const opportunity = ownerResult.rows[0];
+    if (opportunity.organization_id !== req.user.organization_id && (opportunity.organization_id !== null || opportunity.created_by !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     let updateQuery;
@@ -456,9 +511,9 @@ router.patch('/:id/notes', async (req, res) => {
     // Log activity
     await query(
       `INSERT INTO opportunity_activity (
-        opportunity_id, user_id, activity_type, new_value
-      ) VALUES ($1, $2, 'note_added', $3)`,
-      [id, req.user.id, notes.substring(0, 500)]
+        opportunity_id, user_id, organization_id, activity_type, new_value
+      ) VALUES ($1, $2, $3, 'note_added', $4)`,
+      [id, req.user.id, req.user.organization_id, notes.substring(0, 500)]
     );
 
     res.json({ opportunity: result.rows[0] });
@@ -481,6 +536,19 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Only admins can permanently delete opportunities' });
     }
 
+    // Security check
+    const ownerResult = await query(
+      'SELECT organization_id, created_by FROM opportunities WHERE id = $1',
+      [id]
+    );
+    if (ownerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+    const opportunity = ownerResult.rows[0];
+    if (opportunity.organization_id !== req.user.organization_id && (opportunity.organization_id !== null || opportunity.created_by !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     if (permanent) {
       // Hard delete
       await query('DELETE FROM opportunities WHERE id = $1', [id]);
@@ -493,9 +561,9 @@ router.delete('/:id', async (req, res) => {
 
       await query(
         `INSERT INTO opportunity_activity (
-          opportunity_id, user_id, activity_type, new_value
-        ) VALUES ($1, $2, 'archived', 'Archived by user')`,
-        [id, req.user.id]
+          opportunity_id, user_id, organization_id, activity_type, new_value
+        ) VALUES ($1, $2, $3, 'archived', 'Archived by user')`,
+        [id, req.user.id, req.user.organization_id]
       );
     }
 
@@ -534,8 +602,10 @@ router.get('/stats/summary', async (req, res) => {
         COUNT(*) FILTER (WHERE assigned_to IS NULL) as unassigned_count,
         AVG(internal_score) as avg_score
       FROM opportunities
-      WHERE internal_status != 'Archived' ${userFilter}`,
-      params
+      WHERE internal_status != 'Archived' 
+      AND (organization_id = $1 OR (organization_id IS NULL AND created_by = $2))
+      ${userFilter}`,
+      [req.user.organization_id, req.user.id, ...params]
     );
 
     res.json({ stats: result.rows[0] });

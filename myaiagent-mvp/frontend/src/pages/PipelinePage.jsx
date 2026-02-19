@@ -22,8 +22,8 @@ const PipelinePage = () => {
     const loadPipeline = async () => {
         setLoading(true);
         try {
-            // Fetch tracked opportunities created by current user
-            const response = await api.opportunities.list({ createdBy: 'me' });
+            // Fetch all opportunities for the current organization
+            const response = await api.opportunities.list();
             setOpportunities(response.data.opportunities || []);
         } catch (error) {
             console.error('Failed to load pipeline:', error);
@@ -71,6 +71,12 @@ const PipelinePage = () => {
             </div>
         );
     }
+
+    const handleStatusChange = (id, newStatus) => {
+        setOpportunities(prev => prev.map(op =>
+            op.id === id ? { ...op, internal_status: newStatus } : op
+        ));
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -189,7 +195,10 @@ const PipelinePage = () => {
 
             {selectedOpportunity && (
                 <OpportunityDetailModal
-                    opportunity={selectedOpportunity}
+                    opportunity={{
+                        ...selectedOpportunity,
+                        onStatusChange: handleStatusChange
+                    }}
                     onClose={() => setSelectedOpportunity(null)}
                 />
             )}
