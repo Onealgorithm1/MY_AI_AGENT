@@ -380,46 +380,48 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/recommendations', recommendationsRoutes);
 app.use('/api/awards', awardRoutes);
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendPath));
+// Serve static files in production (DISABLED FOR SEPARATE DEPLOYMENT)
+// Since we are deploying frontend to Cloudflare, the backend should only serve API routes.
+// if (process.env.NODE_ENV === 'production') {
+//   const frontendPath = path.join(__dirname, '../../frontend/dist');
+//   app.use(express.static(frontendPath));
+// 
+//   // Fallback to index.html for React Router (catch-all)
+//   app.get('*', (req, res, next) => {
+//     // Skip API routes, WebSocket endpoints, and static resources
+//     if (req.path.startsWith('/api') ||
+//       req.path.startsWith('/health') ||
+//       req.path.startsWith('/voice') ||
+//       req.path.startsWith('/ws') ||
+//       req.path.startsWith('/uploads') ||
+//       req.path.startsWith('/stt-stream')) {
+//       return next();
+//     }
+//     res.sendFile(path.join(frontendPath, 'index.html'));
+//   });
+// } else {
 
-  // Fallback to index.html for React Router (catch-all)
-  app.get('*', (req, res, next) => {
-    // Skip API routes, WebSocket endpoints, and static resources
-    if (req.path.startsWith('/api') ||
-      req.path.startsWith('/health') ||
-      req.path.startsWith('/voice') ||
-      req.path.startsWith('/ws') ||
-      req.path.startsWith('/uploads') ||
-      req.path.startsWith('/stt-stream')) {
-      return next();
-    }
-    res.sendFile(path.join(frontendPath, 'index.html'));
+// Root endpoint for all environments (API only)
+app.get('/', (req, res) => {
+  res.json({
+    name: 'werkules API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      conversations: '/api/conversations',
+      messages: '/api/messages',
+      memory: '/api/memory',
+      attachments: '/api/attachments',
+      feedback: '/api/feedback',
+      admin: '/api/admin',
+      secrets: '/api/secrets',
+      voice: 'ws://localhost:' + PORT + '/voice',
+    },
   });
-} else {
-  // Root endpoint in development
-  app.get('/', (req, res) => {
-    res.json({
-      name: 'werkules API',
-      version: '1.0.0',
-      status: 'running',
-      endpoints: {
-        health: '/health',
-        auth: '/api/auth',
-        conversations: '/api/conversations',
-        messages: '/api/messages',
-        memory: '/api/memory',
-        attachments: '/api/attachments',
-        feedback: '/api/feedback',
-        admin: '/api/admin',
-        secrets: '/api/secrets',
-        voice: 'ws://localhost:3000/voice',
-      },
-    });
-  });
-}
+});
+// }
 
 // 404 handler
 app.use((req, res) => {
