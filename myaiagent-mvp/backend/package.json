@@ -11,7 +11,8 @@
     "seed": "node seed-demo-user.js",
     "migrate": "node src/scripts/run-migrations.js",
     "test:gemini": "node test-gemini-setup.js",
-    "test:endpoints": "node test-ai-agents-endpoint.js"
+    "test:endpoints": "node test-ai-agents-endpoint.js",
+    "build": "echo \"No build required for backend\""
   },
   "keywords": [
     "ai",
