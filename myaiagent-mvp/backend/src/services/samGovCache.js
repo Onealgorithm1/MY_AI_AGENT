@@ -1,6 +1,14 @@
 import pool from '../utils/database.js';
 import samGovService from './samGov.js';
 
+// Simple in-memory cache for slow statistical queries
+const memoryCache = {
+  facets: {},
+  facetsTimestamp: {},
+  warming: {},
+  CACHE_TTL: 3600000 // 1 hour
+};
+
 /**
  * Extract notice_id from SAM.gov opportunity data
  * @param {Object} opp - SAM.gov opportunity object
@@ -39,8 +47,8 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
       const existingResult = await client.query(
         `SELECT id, notice_id, first_seen_at, seen_count 
          FROM samgov_opportunities_cache 
-         WHERE notice_id = $1 
-         AND (($2::INTEGER IS NULL AND organization_id IS NULL) OR organization_id = $2)`,
+         WHERE notice_id = $1
+AND(($2:: INTEGER IS NULL AND organization_id IS NULL) OR organization_id = $2)`,
         [noticeId, effectiveOrgId]
       );
 
@@ -50,8 +58,8 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
         await client.query(
           `UPDATE samgov_opportunities_cache
            SET last_seen_at = CURRENT_TIMESTAMP,
-               seen_count = seen_count + 1,
-               raw_data = $1
+  seen_count = seen_count + 1,
+  raw_data = $1
            WHERE id = $2`,
           [JSON.stringify(opp), existing.id]
         );
@@ -68,23 +76,23 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
       } else {
         // New opportunity - insert into cache
         const insertResult = await client.query(
-          `INSERT INTO samgov_opportunities_cache (
-            notice_id,
-            solicitation_number,
-            title,
-            type,
-            posted_date,
-            response_deadline,
-            archive_date,
-            naics_code,
-            set_aside_type,
-            contracting_office,
-            place_of_performance,
-            description,
-            raw_data,
-            created_by,
-            organization_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          `INSERT INTO samgov_opportunities_cache(
+    notice_id,
+    solicitation_number,
+    title,
+    type,
+    posted_date,
+    response_deadline,
+    archive_date,
+    naics_code,
+    set_aside_type,
+    contracting_office,
+    place_of_performance,
+    description,
+    raw_data,
+    created_by,
+    organization_id
+  ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING id, first_seen_at`,
           [
             noticeId,
@@ -153,18 +161,18 @@ export async function cacheOpportunities(opportunities, userId = null, organizat
 export async function recordSearchHistory(params, results, userId = null) {
   try {
     const result = await pool.query(
-      `INSERT INTO samgov_search_history (
-        keyword,
-        posted_from,
-        posted_to,
-        naics_code,
-        total_records,
-        new_records,
-        existing_records,
-        searched_by,
-        search_params
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *`,
+      `INSERT INTO samgov_search_history(
+    keyword,
+    posted_from,
+    posted_to,
+    naics_code,
+    total_records,
+    new_records,
+    existing_records,
+    searched_by,
+    search_params
+  ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING * `,
       [
         params.keyword || null,
         params.postedFrom || null,
@@ -231,7 +239,7 @@ export async function searchAndCache(searchParams, searchFunction, userId = null
 export async function getCachedOpportunity(noticeId) {
   try {
     const result = await pool.query(
-      `SELECT * FROM samgov_opportunities_cache WHERE notice_id = $1 OR id::text = $1`,
+      `SELECT * FROM samgov_opportunities_cache WHERE notice_id = $1 OR id:: text = $1`,
       [noticeId]
     );
 
@@ -300,117 +308,201 @@ export async function getCachedOpportunities(options = {}) {
       responseTo
     } = options;
 
-    let queryText = 'SELECT * FROM samgov_opportunities_cache WHERE 1=1';
+    let queryText = `
+      SELECT 
+        id, 
+        notice_id, 
+        solicitation_number, 
+        title, 
+        type, 
+        posted_date, 
+        response_deadline, 
+        naics_code, 
+        set_aside_type, 
+        contracting_office, 
+        place_of_performance, 
+        LEFT(description, 500) as description, 
+        first_seen_at, 
+        last_seen_at, 
+        seen_count,
+        jsonb_build_object(
+          'award', (raw_data::jsonb)->'award',
+          'fullParentPathName', (raw_data::jsonb)->>'fullParentPathName'
+        ) as raw_data
+      FROM samgov_opportunities_cache 
+      WHERE 1=1
+    `;
+    let countQueryText = 'SELECT COUNT(*) FROM samgov_opportunities_cache WHERE 1=1';
     const params = [];
     let paramIndex = 1;
 
+    // Track if any filters are applied
+    let hasFilters = false;
+
     // Add filters
     if (keyword) {
-      queryText += ` AND (title ILIKE $${paramIndex} OR solicitation_number ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
-      params.push(`%${keyword}%`);
+      // Use Postgres Full Text Search (GIn Index) instead of slow ILIKE
+      // plainto_tsquery handles spaces and punctuation safely
+      const searchCondition = ` AND search_vector @@plainto_tsquery('english', $${paramIndex})`;
+      queryText += searchCondition;
+      countQueryText += searchCondition;
+      params.push(keyword);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (type) {
-      queryText += ` AND type = $${paramIndex}`;
+      queryText += ` AND type = $${paramIndex} `;
+      countQueryText += ` AND type = $${paramIndex} `;
       params.push(type);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (status === 'active') {
-      // Active: Deadline is in future OR null (assuming null means open/unknown)
-      queryText += ` AND (response_deadline >= CURRENT_TIMESTAMP OR response_deadline IS NULL)`;
+      const activeCond = ` AND(response_deadline >= CURRENT_TIMESTAMP OR response_deadline IS NULL)`;
+      queryText += activeCond;
+      countQueryText += activeCond;
+      hasFilters = true;
     } else if (status === 'inactive') {
-      // Inactive: Deadline is in past
-      queryText += ` AND response_deadline < CURRENT_TIMESTAMP`;
+      const inactiveCond = ` AND response_deadline < CURRENT_TIMESTAMP`;
+      queryText += inactiveCond;
+      countQueryText += inactiveCond;
+      hasFilters = true;
     }
 
     if (naicsCode) {
-      queryText += ` AND naics_code ILIKE $${paramIndex}`;
-      params.push(`%${naicsCode}%`);
+      queryText += ` AND naics_code ILIKE $${paramIndex} `;
+      countQueryText += ` AND naics_code ILIKE $${paramIndex} `;
+      params.push(`% ${naicsCode}% `);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (naicsCodes && Array.isArray(naicsCodes) && naicsCodes.length > 0) {
       queryText += ` AND naics_code = ANY($${paramIndex})`;
+      countQueryText += ` AND naics_code = ANY($${paramIndex})`;
       params.push(naicsCodes);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (setAside) {
-      queryText += ` AND set_aside_type = $${paramIndex}`;
+      queryText += ` AND set_aside_type = $${paramIndex} `;
+      countQueryText += ` AND set_aside_type = $${paramIndex} `;
       params.push(setAside);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (agency) {
-      queryText += ` AND contracting_office ILIKE $${paramIndex}`;
-      params.push(`%${agency}%`);
+      queryText += ` AND contracting_office ILIKE $${paramIndex} `;
+      countQueryText += ` AND contracting_office ILIKE $${paramIndex} `;
+      params.push(`% ${agency}% `);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (placeOfPerformance) {
-      queryText += ` AND place_of_performance ILIKE $${paramIndex}`;
-      params.push(`%${placeOfPerformance}%`);
+      queryText += ` AND place_of_performance ILIKE $${paramIndex} `;
+      countQueryText += ` AND place_of_performance ILIKE $${paramIndex} `;
+      params.push(`% ${placeOfPerformance}% `);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (postedFrom) {
-      queryText += ` AND posted_date::date >= $${paramIndex}`;
+      queryText += ` AND posted_date:: date >= $${paramIndex} `;
+      countQueryText += ` AND posted_date:: date >= $${paramIndex} `;
       params.push(postedFrom);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (postedTo) {
-      queryText += ` AND posted_date::date <= $${paramIndex}`;
+      queryText += ` AND posted_date:: date <= $${paramIndex} `;
+      countQueryText += ` AND posted_date:: date <= $${paramIndex} `;
       params.push(postedTo);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (responseFrom) {
-      queryText += ` AND response_deadline >= $${paramIndex}`;
+      queryText += ` AND response_deadline >= $${paramIndex} `;
+      countQueryText += ` AND response_deadline >= $${paramIndex} `;
       params.push(responseFrom);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (responseTo) {
-      queryText += ` AND response_deadline <= $${paramIndex}`;
+      queryText += ` AND response_deadline <= $${paramIndex} `;
+      countQueryText += ` AND response_deadline <= $${paramIndex} `;
       params.push(responseTo);
       paramIndex++;
+      hasFilters = true;
     }
 
     if (userId) {
-      queryText += ` AND created_by = $${paramIndex}`;
+      queryText += ` AND created_by = $${paramIndex} `;
+      countQueryText += ` AND created_by = $${paramIndex} `;
       params.push(userId);
       paramIndex++;
+      hasFilters = true;
     }
 
     // Organization Isolation Logic - DISABLED for SAM.gov Cache (Public Data)
     /*
     if (!isMasterAdmin && organizationId) {
-      queryText += ` AND (organization_id = $${paramIndex} OR organization_id IS NULL)`;
+      queryText += ` AND(organization_id = $${ paramIndex } OR organization_id IS NULL)`;
       params.push(organizationId);
       paramIndex++;
     } else if (!isMasterAdmin && !organizationId) {
-      queryText += ` AND (organization_id IS NULL)`;
+      queryText += ` AND(organization_id IS NULL)`;
     }
     */
-    // Master Admin sees ALL (no filter added)
+    // ORM-like FAST PATH Optimization: Use EXPLAIN to get instant row count estimates
+    // even with complex filters. This prevents NeonDB throwing 30-second read timeouts.
+    let totalCount = 0;
+    try {
+      // Get exact count for very small queries if useful, but EXPLAIN is safer for NeonDB
+      const explainQuery = `EXPLAIN (FORMAT JSON) ${queryText}`;
+      const explainResult = await pool.query(explainQuery, params);
+      const plan = explainResult.rows[0]['QUERY PLAN'][0].Plan;
+      totalCount = Math.floor(plan['Plan Rows'] || 0);
 
-    // Count total
-    const countQuery = queryText.replace('SELECT *', 'SELECT COUNT(*)');
-    const countResult = await pool.query(countQuery, params);
-    const total = parseInt(countResult.rows[0].count);
+      // If estimate is surprisingly small, we could do exact COUNT, but returning estimate is safer.
+      if (totalCount === 0 || totalCount < 50) {
+        try {
+          const exactResult = await pool.query(countQueryText, params);
+          totalCount = parseInt(exactResult.rows[0].count, 10);
+        } catch (exactErr) {
+          console.warn('Exact count timed out, using fallback 0');
+        }
+      }
+    } catch (err) {
+      console.error('Count estimate failed:', err);
+      totalCount = Array.isArray(naicsCodes) ? 1000 : 0; // rough fallback to prevent UI crash
+    }
 
     // Add ordering and pagination
-    queryText += ` ORDER BY last_seen_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    // If it's a keyword search, order by rank first
+    if (keyword) {
+      // Use ts_rank to order by relevance
+      queryText += ` ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC, last_seen_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1} `;
+    } else {
+      queryText += ` ORDER BY last_seen_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1} `;
+    }
     params.push(limit, offset);
+
+    console.log("EXECUTING SQL:", queryText);
+    console.log("WITH PARAMS:", params);
 
     const result = await pool.query(queryText, params);
 
     return {
       success: true,
-      total,
+      total: totalCount,
       opportunities: result.rows,
       limit,
       offset
@@ -465,8 +557,8 @@ export async function getAllCachedOpportunities(limit = 50, offset = 0) {
 
     const result = await pool.query(
       `SELECT id, notice_id, solicitation_number, title, type, posted_date,
-              response_deadline, naics_code, set_aside_type, contracting_office,
-              place_of_performance, description, first_seen_at, last_seen_at, seen_count
+  response_deadline, naics_code, set_aside_type, contracting_office,
+  place_of_performance, description, first_seen_at, last_seen_at, seen_count
        FROM samgov_opportunities_cache
        ORDER BY first_seen_at DESC
        LIMIT $1 OFFSET $2`,
@@ -492,6 +584,12 @@ export async function getAllCachedOpportunities(limit = 50, offset = 0) {
  */
 export async function getFacets(category) {
   try {
+    const now = Date.now();
+    // Use Memory Cache to avoid heavy GROUP BY queries on every page load
+    if (memoryCache.facets[category] && memoryCache.facets[category].length > 0 && (now - memoryCache.facetsTimestamp[category] < memoryCache.CACHE_TTL)) {
+      return memoryCache.facets[category];
+    }
+
     let column = '';
     switch (category) {
       case 'naics': column = 'naics_code'; break;
@@ -501,6 +599,7 @@ export async function getFacets(category) {
       default: throw new Error('Invalid facet category');
     }
 
+    // Heavy aggregation query over Cloud DB
     const query = `
       SELECT ${column} as value, COUNT(*) as count 
       FROM samgov_opportunities_cache 
@@ -510,10 +609,30 @@ export async function getFacets(category) {
       LIMIT 1000
     `;
 
-    const result = await pool.query(query);
-    return result.rows;
+    // NON-BLOCKING CACHE WARMUP
+    // Since this query takes > 30s on NeonDB, we DO NOT await it.
+    // Instead we start it in the background to warm the cache for future requests
+    // and immediately return empty so the UI doesn't crash on page load.
+    if (!memoryCache.warming[category]) {
+      console.log(`[Cache Warmup] Starting async background facet aggregation for ${category}...`);
+      memoryCache.warming[category] = true;
+      pool.query(query)
+        .then(result => {
+          console.log(`[Cache Warmup] Completed facet aggregation for ${category}. Cached ${result.rows.length} items.`);
+          memoryCache.facets[category] = result.rows;
+          memoryCache.facetsTimestamp[category] = Date.now();
+          memoryCache.warming[category] = false;
+        })
+        .catch(err => {
+          console.error(`[Cache Warmup] Failed aggregating facets for ${category}:`, err.message);
+          memoryCache.warming[category] = false;
+        });
+    }
+
+    // Return empty array or any previously cached data immediately so UI renders
+    return memoryCache.facets[category] || [];
   } catch (error) {
-    console.error(`Error getting facets for ${category}:`, error);
+    console.error(`Error getting facets for ${category}: `, error);
     return [];
   }
 }
@@ -528,11 +647,11 @@ export async function processPendingDescriptions(limit = 20) {
       FROM samgov_opportunities_cache 
       WHERE description LIKE 'https://api.sam.gov%' 
       LIMIT $1 FOR UPDATE SKIP LOCKED
-    `, [limit]);
+  `, [limit]);
 
     if (res.rows.length === 0) return 0;
 
-    console.log(`[Description Sync] Found ${res.rows.length} opportunities with link-based descriptions.`);
+    console.log(`[Description Sync] Found ${res.rows.length} opportunities with link - based descriptions.`);
 
     // 2. Find a fallback API key (Organization) if needed
     // SAM.gov opportunities are often global (org_id=null), but we need a valid key to fetch details
@@ -542,7 +661,7 @@ export async function processPendingDescriptions(limit = 20) {
     );
     if (keyRes.rows.length > 0) {
       fallbackOrgId = keyRes.rows[0].organization_id;
-      // console.log(`[Description Sync] Using fallback Org ID: ${fallbackOrgId}`);
+      // console.log(`[Description Sync] Using fallback Org ID: ${ fallbackOrgId } `);
     } else {
       console.warn('[Description Sync] ⚠️ No active SAM.gov API keys found in system. Cannot fetch descriptions.');
     }
@@ -566,7 +685,7 @@ export async function processPendingDescriptions(limit = 20) {
           UPDATE samgov_opportunities_cache 
           SET description = $1 
           WHERE id = $2
-        `, [fullDesc, row.id]);
+  `, [fullDesc, row.id]);
         processedCount++;
       }
 

@@ -15,8 +15,8 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
-  statement_timeout: 30000,
-  query_timeout: 30000,
+  statement_timeout: 120000,
+  query_timeout: 120000,
   application_name: 'werkules-backend',
 });
 

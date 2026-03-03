@@ -234,9 +234,24 @@ router.get('/facets/:category', async (req, res) => {
  */
 router.post('/batch-fetch-all', async (req, res) => {
   try {
-    const { keyword = '', postedFrom = '', postedTo = '' } = req.body;
+    let { keyword = '', postedFrom = '', postedTo = '' } = req.body;
 
-    console.log('🔄 Starting batch fetch of all SAM.gov opportunities...');
+    // OPTIMIZATION: If no dates are provided, default to the last 7 days to prevent fetching the entire SAM.gov history
+    if (!postedFrom) {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      // Format as MM/DD/YYYY for SAM.gov API
+      postedFrom = `${String(lastWeek.getMonth() + 1).padStart(2, '0')}/${String(lastWeek.getDate()).padStart(2, '0')}/${lastWeek.getFullYear()}`;
+
+      if (!postedTo) {
+        const today = new Date();
+        postedTo = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+      }
+
+      console.log(`📅 No date bounds provided. Defaulting to recent records only: ${postedFrom} to ${postedTo}`);
+    }
+
+    console.log('🔄 Starting batch fetch of SAM.gov opportunities...');
     console.log('⚠️  SAM.gov API has rate limits - this may take a few minutes...');
 
     let allOpportunities = [];

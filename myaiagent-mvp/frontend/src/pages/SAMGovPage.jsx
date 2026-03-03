@@ -144,15 +144,14 @@ const SAMGovPage = () => {
       const cachedRes = await samGov.getCachedOpportunities({ limit: 10, offset: 0 });
       const cachedCount = cachedRes.total || 0;
 
-      // If we have fewer than 100 cached opportunities, batch-fetch more
-      if (cachedCount < 100 && !isBackgroundRefresh) {
-        console.log(`ðŸ“¥ Only ${cachedCount} cached opportunities, batch-fetching from SAM.gov...`);
-        console.log('âš ï¸  This may take a few minutes due to SAM.gov API rate limits');
+      // Only auto-fetch if we have ZERO records. Otherwise rely on user clicking "Fetch Latest"
+      if (cachedCount === 0 && !isBackgroundRefresh) {
+        console.log(`📥 No cached opportunities found, batch-fetching from SAM.gov...`);
+        console.log('⚠️  This may take a few minutes due to SAM.gov API rate limits');
         setLoadingBatch(true);
         try {
+          // Fetch a small batch initially so the screen populates faster
           await samGov.batchFetchAll({ keyword: '' });
-          await samGov.batchFetchAll({ keyword: '' });
-          // await loadDepartments(); // Reload departments after batch fetch - Deprecated in favor of facets
         } catch (batchError) {
           const errorMessage = batchError?.response?.data?.error || batchError?.message || 'Unknown error';
           console.error('âŒ Batch fetch failed:', errorMessage);
@@ -171,7 +170,7 @@ const SAMGovPage = () => {
       const activeFilters = filterOverrides || filters;
 
       const fullRes = await samGov.getCachedOpportunities({
-        limit: 60000, // Fetch plenty for client-side sorting if needed, or rely on server
+        limit: 100000, // Fetch plenty for client-side sorting if needed, or rely on server
         offset: 0,
         keyword: activeFilters.keyword,
         type: activeFilters.noticeType,
@@ -200,6 +199,21 @@ const SAMGovPage = () => {
         setRefreshing(false);
       } else {
         setLoading(false);
+      }
+    }
+  };
+
+  const handleFetchLatest = async () => {
+    if (confirm("This will fetch the newest opportunities directly from SAM.gov and may take a few minutes. Continue?")) {
+      setLoadingBatch(true);
+      try {
+        await samGov.batchFetchAll({ keyword: filters.keyword || '' });
+        await loadData(false); // Reload from cache after fetching
+      } catch (error) {
+        console.error("Failed to fetch latest:", error);
+        alert("Failed to fetch latest opportunities from SAM.gov. Please try again later.");
+      } finally {
+        setLoadingBatch(false);
       }
     }
   };
@@ -587,7 +601,16 @@ What would you like to know about this opportunity?`;
               className="px-4 md:px-6 py-2.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg sm:rounded-r-lg transition-colors flex items-center justify-center gap-2 touch-manipulation min-h-[44px] md:min-h-0"
             >
               <Search className="w-4 h-4" />
-              <span>Search</span>
+              <span className="hidden sm:inline">Search DB</span>
+            </button>
+            <button
+              onClick={handleFetchLatest}
+              disabled={loadingBatch}
+              className="px-4 md:px-6 py-2.5 md:py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 touch-manipulation min-h-[44px] md:min-h-0 ml-0 sm:ml-2"
+              title="Fetch latest from SAM.gov directly"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">{loadingBatch ? 'Fetching...' : 'Fetch Latest SAM.gov'}</span>
             </button>
           </div>
         </div>

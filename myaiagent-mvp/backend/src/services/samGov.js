@@ -250,45 +250,8 @@ export async function searchOpportunities(options = {}, userId = null, organizat
     };
 
     // If fetchAll is true, paginate through all results
-    if (fetchAll) {
-      let allOpportunities = [];
-      let currentPage = 0;
-      let totalRecords = 0;
-      const pageSize = 1000; // Use max page size for efficiency
-
-      do {
-        // v2 uses offset, not page.
-        // We must calculate offset based on current page count * pageSize
-        const currentOffset = currentPage * pageSize;
-        const pageParams = { ...params, limit: pageSize, offset: currentOffset };
-        console.log('DEBUG: SAM.gov Request Params (Page ' + currentPage + '):', JSON.stringify(pageParams, null, 2));
-
-        const response = await makeRequestWithRetry(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
-          params: pageParams,
-          timeout: REQUEST_TIMEOUT,
-        });
-
-        const opportunities = response.data.opportunitiesData || [];
-        allOpportunities = allOpportunities.concat(opportunities);
-        totalRecords = response.data.totalRecords || 0;
-        currentPage++;
-
-        // Stop if we've fetched all records or if no more results
-        if (allOpportunities.length >= totalRecords || opportunities.length === 0) {
-          break;
-        }
-
-        // Add delay to respect SAM.gov rate limits (2 second minimum between requests)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } while (true);
-
-      return {
-        success: true,
-        data: { totalRecords, opportunitiesData: allOpportunities },
-        totalRecords,
-        opportunities: allOpportunities,
-      };
-    }
+    // DEPRECATED: fetchAll removed from this base function to prevent rate limits.
+    // The route `batch-fetch-all` safely manages paginations with limits now.
 
     // Regular single-page request
     const response = await makeRequestWithRetry(`${SAM_API_BASE_URL}/opportunities/v2/search`, {
