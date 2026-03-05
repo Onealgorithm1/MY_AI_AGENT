@@ -22,9 +22,27 @@ const getApiBaseUrl = () => {
     // Explicit localhost check - DEFAULT TO LOCAL BACKEND
     if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
       const localApi = 'http://localhost:3000/api';
-
       console.log('🏠 Detected localhost - using local API:', localApi);
       return localApi;
+    }
+
+    // Cloudflare Pages specific check
+    if (hostname.includes('pages.dev')) {
+      // First try to use the environment variable if it was injected
+      let url = import.meta.env.VITE_API_URL;
+
+      // If it evaluates to just '/api' (because of .env.production fallback), 
+      // or if it's missing entirely, we MUST provide a fully qualified URL for the backend
+      if (!url || url === '/api') {
+        // We warn the user, but we MUST attempt to guess the backend URL if they didn't provide it
+        // Note: The user MUST provide this in their CF Pages dashboard for real production use
+        console.error('❌ CRITICAL ERROR: VITE_API_URL is set to relative "/api" or is missing on a Cloudflare Pages domain.');
+        console.error('You must set the VITE_API_URL environment variable in your Cloudflare Pages Settings to your full backend URL (e.g., https://your-backend.up.railway.app/api), then RE-DEPLOY.');
+
+        // Return a broken URL purposefully so the network tab shows exactly what's missing
+        return 'https://MISSING_BACKEND_URL_IN_CLOUDFLARE_PAGES_SETTINGS/api';
+      }
+      return url;
     }
 
     // If on fly.dev or Builder.io preview, use full VITE_API_URL
@@ -40,17 +58,8 @@ const getApiBaseUrl = () => {
 
   // Development: check environment variable first
   if (import.meta.env.VITE_API_URL) {
-    const url = import.meta.env.VITE_API_URL;
-
-    // Cloudflare Pages Fix: If VITE_API_URL is '/api' but we are on pages.dev, it will fail
-    // because pages.dev only serves static files and does not proxy to the backend.
-    if (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev') && url === '/api') {
-      console.error('❌ CRITICAL ERROR: VITE_API_URL is set to relative "/api" on a Cloudflare Pages domain.');
-      console.error('You must set the VITE_API_URL environment variable in your Cloudflare Pages Settings to your full backend URL (e.g., https://your-backend.up.railway.app/api), then RE-DEPLOY.');
-    }
-
-    console.log('🔧 Using VITE_API_URL:', url);
-    return url;
+    console.log('🔧 Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
   }
 
   // Development fallback - use local API by default instead of production
