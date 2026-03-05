@@ -703,8 +703,8 @@ router.post('/', authenticate, attachUIContext, checkRateLimit, async (req, res)
 
     if (isRateLimitError) {
       errorMessage = `Service temporarily unavailable (rate limit). ${error.message}. Please try again in a moment.`;
-    } else if (error.message?.includes('API key')) {
-      errorMessage = `API key not configured. Please add your API key in the admin settings.`;
+    } else if (error.code === 'AUTH_ERROR' || error.message?.includes('API key')) {
+      errorMessage = `API key authentication failed. Your key may be invalid, suspended, or missing. Please check your API key in the admin settings.`;
     }
 
     // Check if headers have already been sent (e.g., during streaming)
