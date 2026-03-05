@@ -68,7 +68,7 @@ const getApiBaseUrl = () => {
 };
 
 // Get base URL or force /api for production
-let API_BASE_URL = getApiBaseUrl();
+export let API_BASE_URL = getApiBaseUrl();
 
 // FAILSAFE: If somehow empty or undefined, force /api for production
 if (!API_BASE_URL || API_BASE_URL === '') {

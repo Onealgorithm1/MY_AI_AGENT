@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken, tts, auth as authApi, webSearch as webSearchApi } from '../services/api';
+import { conversations as conversationsApi, messages as messagesApi, feedback as feedbackApi, memory as memoryApi, fetchCsrfToken, getCsrfToken, tts, auth as authApi, webSearch as webSearchApi, API_BASE_URL } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'sonner';
@@ -354,8 +354,8 @@ export default function ChatPage() {
     setStreamingContent('');
 
     try {
-      // Get API base URL - use relative path for Vite proxy
-      const apiUrl = '/api';
+      // Get API base URL from the centralized configuration
+      const apiUrl = API_BASE_URL;
 
       // Ensure CSRF token is fetched and available
       let csrfToken = getCsrfToken();
@@ -1018,8 +1018,8 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowInsights(!showInsights)}
                 className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${showInsights
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 title="Conversation Insights"
               >
@@ -1031,8 +1031,8 @@ export default function ChatPage() {
             <button
               onClick={() => setShowSAMGovPanel(!showSAMGovPanel)}
               className={`p-1.5 sm:p-2 rounded-lg transition-colors touch-manipulation hidden md:flex min-h-[44px] min-w-[44px] items-center justify-center ${showSAMGovPanel
-                  ? 'bg-green-500 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'bg-green-500 text-white'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               title="SAM.gov Cache"
             >
@@ -1043,8 +1043,8 @@ export default function ChatPage() {
             <button
               onClick={() => handleTtsToggle(!ttsEnabled)}
               className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 md:px-3 py-1.5 sm:py-2 md:py-2 rounded-lg font-medium transition-all touch-manipulation min-h-[44px] ${ttsEnabled
-                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
+                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
                 }`}
               title={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
             >
@@ -1254,8 +1254,8 @@ export default function ChatPage() {
                 onClick={handleMicClick}
                 disabled={isTranscribing}
                 className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${isListening
-                    ? 'bg-red-500 text-white animate-pulse'
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   } ${isTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={isListening ? 'Stop recording' : 'Start recording'}
               >
@@ -1272,8 +1272,8 @@ export default function ChatPage() {
                 onClick={handleManualSearch}
                 disabled={isManualSearching}
                 className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center ${isManualSearching
-                    ? 'text-blue-400 animate-pulse cursor-wait'
-                    : 'text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                  ? 'text-blue-400 animate-pulse cursor-wait'
+                  : 'text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                   }`}
                 title="Manual web search"
               >
